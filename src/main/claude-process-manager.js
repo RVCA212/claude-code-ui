@@ -1,5 +1,6 @@
 const { spawn } = require('child_process');
 const { v4: uuidv4 } = require('uuid');
+const McpServerManager = require('./mcp-server-manager');
 
 class ClaudeProcessManager {
   constructor(sessionManager, checkpointManager, fileOperations, mainWindow) {
@@ -8,7 +9,7 @@ class ClaudeProcessManager {
     this.fileOperations = fileOperations;
     this.mainWindow = mainWindow;
     this.claudeProcesses = new Map(); // Track running Claude processes
-    
+
     this.ALL_TOOLS = [
       "Task", "Bash", "Glob", "Grep", "LS", "exit_plan_mode", "Read", "Edit",
       "MultiEdit", "Write", "NotebookRead", "NotebookEdit", "WebFetch",
@@ -107,6 +108,9 @@ class ClaudeProcessManager {
       status: 'waiting_for_response'
     });
 
+    // Before spawning, ensure enabled MCP servers are registered once per app run
+    await this.ensureMcpServersRegistered();
+
     // Create Claude process - follow SDK best practices
     const claudeArgs = [];
 
@@ -171,7 +175,7 @@ class ClaudeProcessManager {
   // Handle Claude process execution
   async handleClaudeProcess(claudeProcess, sessionId) {
     const session = this.sessionManager.getSession(sessionId);
-    
+
     return new Promise((resolve, reject) => {
       let output = '';
       let errorOutput = '';
@@ -287,7 +291,9 @@ class ClaudeProcessManager {
                 // Update assistant message with structured content by accumulating blocks
                 assistantMessage.id = assistantPayload.id || assistantMessage.id;
                 if (assistantPayload.content && Array.isArray(assistantPayload.content)) {
-                    assistantMessage.content = assistantPayload.content.filter(b => b.type !== 'thinking');
+                    const newContent = assistantPayload.content.filter(b => b.type !== 'thinking');
+                    // Accumulate content instead of replacing it
+                    assistantMessage.content = [...(assistantMessage.content || []), ...newContent];
                 }
 
                 // Send streaming update to renderer with structured data
@@ -355,9 +361,12 @@ class ClaudeProcessManager {
             }
 
             if (assistantPayload) {
-              // Update assistant message with structured content
-              assistantMessage.content = assistantPayload.content;
+              // Update assistant message with structured content by accumulating
               assistantMessage.id = assistantPayload.id || assistantMessage.id;
+              if (assistantPayload.content && Array.isArray(assistantPayload.content)) {
+                const newContent = assistantPayload.content.filter(b => b.type !== 'thinking');
+                assistantMessage.content = [...(assistantMessage.content || []), ...newContent];
+              }
             }
           } catch (e) {
             console.log('Failed to parse remaining buffer:', e.message);
@@ -527,6 +536,34 @@ class ClaudeProcessManager {
     }
 
     this.claudeProcesses.clear();
+  }
+
+  /* MCP registration helpers */
+  async ensureMcpServersRegistered() {
+    if (this._mcpRegistered) return;
+    try {
+      const servers = McpServerManager.getServers().filter(s => s.enabled);
+      for (const server of servers) {
+        await this.registerSingleMcpServerCLI(server);
+      }
+      this._mcpRegistered = true;
+    } catch (err) {
+      console.error('Failed to register MCP servers:', err);
+    }
+  }
+
+  registerSingleMcpServerCLI(server) {
+    return new Promise((resolve) => {
+      const args = ['mcp', 'add', '--transport', server.transport, server.name, server.url];
+      if (server.headers) {
+        for (const [key, value] of Object.entries(server.headers)) {
+          args.push('--header', `${key}: ${value}`);
+        }
+      }
+      const proc = spawn('claude', args, { stdio: 'ignore' });
+      proc.on('close', () => resolve());
+      proc.on('error', () => resolve());
+    });
   }
 }
 

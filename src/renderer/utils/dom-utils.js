@@ -224,6 +224,70 @@ class DOMUtils {
   static generateId() {
     return 'el_' + Math.random().toString(36).substr(2, 9);
   }
+
+  // Get current cursor position in textarea
+  static getCursorPosition(textarea) {
+    if (textarea && typeof textarea.selectionStart === 'number') {
+      return textarea.selectionStart;
+    }
+    return 0;
+  }
+
+  // Set cursor position in textarea
+  static setCursorPosition(textarea, position) {
+    if (textarea && typeof textarea.setSelectionRange === 'function') {
+      textarea.setSelectionRange(position, position);
+      textarea.focus();
+    }
+  }
+
+  // Get token at a specific position in text
+  static getTokenAtPosition(text, position) {
+    if (!text || position < 0 || position > text.length) {
+      return { token: '', start: position, end: position };
+    }
+
+    // Find the start of the current token (non-whitespace before position)
+    let start = position;
+    while (start > 0 && !/\s/.test(text[start - 1])) {
+      start--;
+    }
+
+    // Find the end of the current token (non-whitespace after position)
+    let end = position;
+    while (end < text.length && !/\s/.test(text[end])) {
+      end++;
+    }
+
+    return {
+      token: text.substring(start, end),
+      start: start,
+      end: end
+    };
+  }
+
+  // Check if position is at start of input or after whitespace
+  static isTokenStart(text, position) {
+    if (position === 0) return true;
+    if (position > 0 && /\s/.test(text[position - 1])) return true;
+    return false;
+  }
+
+  // Extract mention query from text at position
+  static extractMentionQuery(text, position) {
+    const tokenInfo = this.getTokenAtPosition(text, position);
+    
+    if (tokenInfo.token.startsWith('@')) {
+      return {
+        query: tokenInfo.token.substring(1), // Remove '@' prefix
+        start: tokenInfo.start,
+        end: tokenInfo.end,
+        fullMatch: tokenInfo.token
+      };
+    }
+    
+    return null;
+  }
 }
 
 // Export for use in other modules

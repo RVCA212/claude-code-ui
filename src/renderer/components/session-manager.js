@@ -18,16 +18,16 @@ class SessionManager {
     this.editTitleBtn = document.getElementById('editTitleBtn');
     this.conversationStatus = document.getElementById('conversationStatus');
     this.conversationContext = document.getElementById('conversationContext');
-    
+
     // History dropdown elements
     this.historyBtn = document.getElementById('historyBtn');
     this.historyDropdown = document.getElementById('historyDropdown');
-    
+
     // Delete modal elements
     this.deleteModal = document.getElementById('deleteModal');
     this.confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
     this.cancelDeleteBtn = document.getElementById('cancelDeleteBtn');
-    
+
     this.sessionToDelete = null;
   }
 
@@ -115,7 +115,21 @@ class SessionManager {
     try {
       const sessions = await window.electronAPI.getSessions();
       this.sessions = sessions;
+
+      // If this is the first time the user opens the app (no sessions yet),
+      // automatically create a brand-new conversation so the UI is immediately ready.
+      if (this.sessions.length === 0) {
+        await this.createNewSession();
+        // createNewSession will trigger the onSessionCreated event which
+        // handles rendering and selection, so we can return early here.
+        return;
+      }
+
+      // Otherwise render existing sessions and automatically select the most
+      // recent one so that a conversation is ready as soon as the UI appears.
+      this.sortSessions();
       this.renderSessions();
+      this.selectSession(this.sessions[0].id);
     } catch (error) {
       console.error('Failed to load sessions:', error);
     }
@@ -139,17 +153,17 @@ class SessionManager {
 
     try {
       this.currentSessionId = sessionId;
-      
+
       // Update UI to show selected session
       this.updateSessionSelection();
-      
+
       // Load session context
       const context = await window.electronAPI.getSessionContext(sessionId);
       this.updateSessionInfo(context);
-      
+
       // Notify other components about session change
       this.notifySessionChange(sessionId, context);
-      
+
     } catch (error) {
       console.error('Failed to select session:', error);
     }
@@ -183,7 +197,19 @@ class SessionManager {
     }
   }
 
+  // Utility: sort sessions newest first by lastActivity/updatedAt/createdAt
+  sortSessions() {
+    this.sessions.sort((a, b) => {
+      const dateA = new Date(a.lastActivity || a.updatedAt || a.createdAt || 0);
+      const dateB = new Date(b.lastActivity || b.updatedAt || b.createdAt || 0);
+      return dateB - dateA; // Newest first
+    });
+  }
+
   renderSessions() {
+    // Ensure sessions are ordered newest -> oldest each time we render
+    this.sortSessions();
+
     if (!this.conversationsList) return;
 
     if (this.sessions.length === 0) {
@@ -203,7 +229,7 @@ class SessionManager {
       const timestamp = DOMUtils.formatTimestamp(session.lastActivity || session.updatedAt);
 
       return `
-        <div class="conversation-item ${isActive ? 'active' : ''}" 
+        <div class="conversation-item ${isActive ? 'active' : ''}"
              onclick="sessionManager.selectSession('${session.id}')">
           <div class="conversation-content">
             <div class="conversation-header">
@@ -216,7 +242,7 @@ class SessionManager {
               <span class="message-count">${session.messages?.length || 0} msgs</span>
             </div>
           </div>
-          <button class="delete-conversation-btn" 
+          <button class="delete-conversation-btn"
                   onclick="event.stopPropagation(); sessionManager.deleteSession('${session.id}')"
                   title="Delete conversation">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -291,7 +317,7 @@ class SessionManager {
   createStatusHTML(statusInfo) {
     const statusClass = statusInfo.status || 'active';
     const statusIcon = this.getStatusIcon(statusClass);
-    
+
     return `
       <div class="status-badge ${statusClass}">
         ${statusIcon} ${statusClass}
@@ -338,7 +364,7 @@ class SessionManager {
     if (this.conversationTitle) {
       this.conversationTitle.contentEditable = 'true';
       this.conversationTitle.focus();
-      
+
       // Select all text
       const range = document.createRange();
       range.selectNodeContents(this.conversationTitle);
@@ -353,7 +379,7 @@ class SessionManager {
 
     this.conversationTitle.contentEditable = 'false';
     const newTitle = this.conversationTitle.textContent.trim();
-    
+
     if (newTitle) {
       try {
         await this.updateSessionTitle(this.currentSessionId, newTitle);
@@ -372,7 +398,7 @@ class SessionManager {
     if (!this.conversationTitle || !this.currentSessionId) return;
 
     this.conversationTitle.contentEditable = 'false';
-    
+
     // Revert to original title
     const session = this.sessions.find(s => s.id === this.currentSessionId);
     if (session) {

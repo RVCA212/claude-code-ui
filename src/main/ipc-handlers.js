@@ -1,4 +1,5 @@
 const { ipcMain } = require('electron');
+const McpServerManager = require('./mcp-server-manager');
 
 class IPCHandlers {
   constructor(sessionManager, checkpointManager, fileOperations, modelConfig, claudeProcessManager, mainWindow) {
@@ -14,19 +15,22 @@ class IPCHandlers {
   registerHandlers() {
     // Setup and configuration handlers
     this.registerSetupHandlers();
-    
+
     // Model management handlers
     this.registerModelHandlers();
-    
+
+    // MCP server management handlers
+    this.registerMcpHandlers();
+
     // Session management handlers
     this.registerSessionHandlers();
-    
+
     // Messaging handlers
     this.registerMessagingHandlers();
-    
+
     // Checkpoint handlers
     this.registerCheckpointHandlers();
-    
+
     // File system handlers
     this.registerFileSystemHandlers();
   }
@@ -59,6 +63,62 @@ class IPCHandlers {
     });
   }
 
+  registerMcpHandlers() {
+    // Retrieve configured MCP servers
+    ipcMain.handle('get-mcp-servers', async () => {
+      return McpServerManager.getServers();
+    });
+
+    // Save or update a server configuration
+    ipcMain.handle('save-mcp-server', async (event, serverConfig) => {
+      try {
+        const saved = McpServerManager.saveServer(serverConfig);
+        McpServerManager.syncCli();
+        return { success: true, server: saved };
+      } catch (err) {
+        return { success: false, error: err.message };
+      }
+    });
+
+    // Delete a server
+    ipcMain.handle('delete-mcp-server', async (event, serverId) => {
+      const success = McpServerManager.deleteServer(serverId);
+      McpServerManager.syncCli();
+      return { success };
+    });
+
+    // Enable/disable server
+    ipcMain.handle('toggle-mcp-server', async (event, serverId, enabled) => {
+      try {
+        const server = McpServerManager.toggleServer(serverId, enabled);
+        McpServerManager.syncCli();
+        return { success: true, server };
+      } catch (err) {
+        return { success: false, error: err.message };
+      }
+    });
+
+    // Test connectivity to server – basic fetch to URL (HEAD request)
+    ipcMain.handle('test-mcp-server', async (event, serverConfig) => {
+      const https = require('https');
+      return new Promise((resolve) => {
+        try {
+          const req = https.request(serverConfig.url, { method: 'HEAD', timeout: 5000 }, (res) => {
+            resolve({ success: true, statusCode: res.statusCode });
+          });
+          req.on('error', () => resolve({ success: false }));
+          req.on('timeout', () => {
+            req.destroy();
+            resolve({ success: false, timeout: true });
+          });
+          req.end();
+        } catch (err) {
+          resolve({ success: false, error: err.message });
+        }
+      });
+    });
+  }
+
   registerSessionHandlers() {
     ipcMain.handle('get-sessions', async () => {
       return this.sessionManager.getSessions();
@@ -66,7 +126,7 @@ class IPCHandlers {
 
     ipcMain.handle('create-session', async (event, title) => {
       const session = await this.sessionManager.createSession(title);
-      
+
       // Notify frontend of new session
       if (this.mainWindow) {
         this.mainWindow.webContents.send('session-created', session);
@@ -78,7 +138,7 @@ class IPCHandlers {
     ipcMain.handle('delete-session', async (event, sessionId) => {
       // Clean up any running Claude process for this session
       await this.claudeProcessManager.stopMessage(sessionId);
-      
+
       const result = await this.sessionManager.deleteSession(sessionId);
 
       // Notify frontend

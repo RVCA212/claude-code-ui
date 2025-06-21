@@ -39,6 +39,19 @@ async function createWindow() {
     show: false // Don't show until ready
   });
 
+  // Update window references in managers
+  if (claudeProcessManager) {
+    claudeProcessManager.mainWindow = mainWindow;
+  }
+  if (ipcHandlers) {
+    ipcHandlers.mainWindow = mainWindow;
+  }
+
+  // Send initial data to renderer (after window is created)
+  if (ipcHandlers && sessionManager) {
+    ipcHandlers.sendSessionsLoaded(sessionManager.getSessions());
+  }
+
   // Load the app
   try {
     await mainWindow.loadFile(path.join(__dirname, '../../renderer/index.html'));
@@ -96,23 +109,23 @@ async function initializeApp() {
     checkpointManager = new CheckpointManager();
     fileOperations = new FileOperations();
     modelConfig = new ModelConfig();
-    
-    // Claude process manager needs access to other managers and the main window
+
+    // Claude process manager needs access to other managers (mainWindow will be set later)
     claudeProcessManager = new ClaudeProcessManager(
-      sessionManager, 
-      checkpointManager, 
-      fileOperations, 
-      mainWindow
+      sessionManager,
+      checkpointManager,
+      fileOperations,
+      null // mainWindow will be set after createWindow()
     );
-    
-    // IPC handlers coordinate between all managers
+
+    // IPC handlers coordinate between all managers (mainWindow will be set later)
     ipcHandlers = new IPCHandlers(
       sessionManager,
       checkpointManager,
       fileOperations,
       modelConfig,
       claudeProcessManager,
-      mainWindow
+      null // mainWindow will be set after createWindow()
     );
 
     // Initialize everything
@@ -130,11 +143,6 @@ async function initializeApp() {
     // Register all IPC handlers
     ipcHandlers.registerHandlers();
 
-    // Send initial data to renderer
-    if (mainWindow) {
-      ipcHandlers.sendSessionsLoaded(sessionManager.getSessions());
-    }
-
     console.log('App initialization completed successfully');
   } catch (error) {
     console.error('Failed to initialize app:', error);
@@ -144,8 +152,8 @@ async function initializeApp() {
 
 // App event handlers
 app.whenReady().then(async () => {
-  await createWindow();
   await initializeApp();
+  await createWindow();
 });
 
 app.on('window-all-closed', () => {
@@ -156,8 +164,8 @@ app.on('window-all-closed', () => {
 
 app.on('activate', async () => {
   if (BrowserWindow.getAllWindows().length === 0) {
-    await createWindow();
     await initializeApp();
+    await createWindow();
   }
 });
 
@@ -169,15 +177,15 @@ app.on('before-quit', async () => {
     if (claudeProcessManager) {
       await claudeProcessManager.cleanup();
     }
-    
+
     if (sessionManager) {
       await sessionManager.saveSessions();
     }
-    
+
     if (checkpointManager) {
       checkpointManager.close();
     }
-    
+
     console.log('Cleanup completed');
   } catch (error) {
     console.error('Error during cleanup:', error);

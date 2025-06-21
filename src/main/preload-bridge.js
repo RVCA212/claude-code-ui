@@ -39,6 +39,13 @@ class PreloadBridge {
       navigateForward: () => ipcRenderer.invoke('navigate-forward'),
       navigateUp: () => ipcRenderer.invoke('navigate-up'),
 
+      // MCP server management
+      getMcpServers: () => ipcRenderer.invoke('get-mcp-servers'),
+      saveMcpServer: (server) => ipcRenderer.invoke('save-mcp-server', server),
+      deleteMcpServer: (serverId) => ipcRenderer.invoke('delete-mcp-server', serverId),
+      toggleMcpServer: (serverId, enabled) => ipcRenderer.invoke('toggle-mcp-server', serverId, enabled),
+      testMcpServer: (server) => ipcRenderer.invoke('test-mcp-server', server),
+
       // Event listeners
       onSessionsLoaded: (callback) => ipcRenderer.on('sessions-loaded', callback),
       onMessageStream: (callback) => ipcRenderer.on('message-stream', callback),
@@ -65,6 +72,7 @@ class PreloadBridge {
       'revertToMessage', 'unrevertFromMessage', 'getMessageCheckpoints', 'hasFileChanges',
       'getDirectoryContents', 'navigateToDirectory', 'getCurrentDirectory', 'getHomeDirectory',
       'getCommonDirectories', 'navigateBack', 'navigateForward', 'navigateUp',
+      'getMcpServers', 'saveMcpServer', 'deleteMcpServer', 'toggleMcpServer', 'testMcpServer',
       'onSessionsLoaded', 'onMessageStream', 'onSessionUpdated', 'onSessionDeleted', 'onSessionCreated',
       'removeAllListeners'
     ];

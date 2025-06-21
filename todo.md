@@ -1,4 +1,7 @@
-add file search
+
+
+add file views for when a user selects on a file itself.
+
 
 fix the edit diff styles
 

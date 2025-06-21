@@ -6,6 +6,13 @@ class MessageComponent {
     this.editingMessageId = null;
     this.currentRevertMessageId = null;
 
+    // File mention state
+    this.isMentioning = false;
+    this.mentionQuery = '';
+    this.mentionStartPos = -1;
+    this.selectedMentionIndex = 0;
+    this.mentionMatches = [];
+
     this.initializeElements();
     this.setupEventListeners();
   }
@@ -18,6 +25,10 @@ class MessageComponent {
     this.inputArea = document.getElementById('inputArea');
     this.charCounter = document.getElementById('charCounter');
     this.sessionInfo = document.getElementById('sessionInfo');
+
+    // File mention dropdown elements
+    this.fileMentionDropdown = document.getElementById('fileMentionDropdown');
+    this.fileMentionList = document.getElementById('fileMentionList');
   }
 
   setupEventListeners() {
@@ -35,6 +46,7 @@ class MessageComponent {
     if (this.messageInput) {
       this.messageInput.addEventListener('input', () => this.handleInputChange());
       this.messageInput.addEventListener('keydown', (e) => this.handleKeyDown(e));
+      this.messageInput.addEventListener('blur', () => this.hideMentionDropdown());
     }
 
     // Message stream events
@@ -52,16 +64,46 @@ class MessageComponent {
     if (this.messageInput) {
       // Auto-resize textarea
       DOMUtils.autoResizeTextarea(this.messageInput);
-      
+
       // Update character counter
       MessageUtils.updateCharCounter(this.messageInput, this.charCounter);
-      
+
+      // Handle file mention detection and search
+      this.handleMentionDetection();
+
       // Update send button state
       this.updateSendButtonState();
     }
   }
 
   handleKeyDown(e) {
+    // Handle file mention dropdown navigation
+    if (this.isMentioning && this.mentionMatches.length > 0) {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        this.selectedMentionIndex = Math.min(this.selectedMentionIndex + 1, this.mentionMatches.length - 1);
+        this.updateMentionSelection();
+        return;
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        this.selectedMentionIndex = Math.max(this.selectedMentionIndex - 1, 0);
+        this.updateMentionSelection();
+        return;
+      } else if (e.key === 'Enter' || e.key === 'Tab') {
+        e.preventDefault();
+        this.insertSelectedMention();
+        return;
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        this.hideMentionDropdown();
+        return;
+      } else if (e.key === ' ') {
+        // Close mention dropdown on space
+        this.hideMentionDropdown();
+      }
+    }
+
+    // Regular message handling
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       this.sendMessage();
@@ -79,17 +121,17 @@ class MessageComponent {
     try {
       // Add user message to UI immediately
       this.addUserMessage(message);
-      
+
       // Clear input
       this.messageInput.value = '';
       this.handleInputChange();
-      
+
       // Start streaming
       this.setStreaming(true);
-      
+
       // Send message to backend
       await window.electronAPI.sendMessage(sessionId, message);
-      
+
     } catch (error) {
       console.error('Failed to send message:', error);
       this.setStreaming(false);
@@ -111,7 +153,7 @@ class MessageComponent {
 
   handleMessageStream(data) {
     const { sessionId, message, isComplete, thinkingContent } = data;
-    
+
     // Only process streams for the current session
     if (sessionId !== this.sessionManager.getCurrentSessionId()) {
       return;
@@ -127,6 +169,10 @@ class MessageComponent {
 
   handleSessionChange(detail) {
     const { sessionId, context } = detail;
+
+    // Close file mention dropdown when session changes
+    this.hideMentionDropdown();
+
     this.loadSessionMessages(context);
     this.updateInputArea(context);
   }
@@ -139,7 +185,7 @@ class MessageComponent {
       return;
     }
 
-    const messagesHTML = context.messages.map(message => 
+    const messagesHTML = context.messages.map(message =>
       this.createMessageHTML(message, context.id)
     ).join('');
 
@@ -185,7 +231,7 @@ class MessageComponent {
       `;
     } else if (message.type === 'assistant') {
       const contentHTML = MessageUtils.createMessageHTML(message);
-      
+
       return `
         <div class="conversation-turn assistant ${isInvalidated ? 'invalidated' : ''}" id="message-${messageId}">
           <div class="conversation-content">
@@ -202,7 +248,7 @@ class MessageComponent {
   createMessageActions(message, sessionId) {
     return `
       <div class="message-actions">
-        <button class="revert-btn" 
+        <button class="revert-btn"
                 onclick="messageComponent.revertToMessage('${sessionId}', '${message.id}')"
                 title="Revert files to this point">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -251,8 +297,8 @@ class MessageComponent {
       existingStreaming.remove();
     }
 
-    // Create streaming message
-    const contentHTML = MessageUtils.createMessageHTML(message);
+    // Create streaming message with inline tool calls
+    const contentHTML = this.createStreamingMessageHTML(message, thinkingContent);
     const messageHTML = `
       <div class="conversation-turn assistant streaming-message" id="streaming-message">
         <div class="conversation-content">
@@ -264,6 +310,39 @@ class MessageComponent {
 
     this.messagesContainer.insertAdjacentHTML('beforeend', messageHTML);
     this.scrollToBottom();
+  }
+
+  createStreamingMessageHTML(message, thinkingContent) {
+    const { orderedContent, thinking } = MessageUtils.parseMessageContent(message.content);
+
+    if (!orderedContent || orderedContent.length === 0) {
+      // Fallback to regular message HTML for simple content
+      return MessageUtils.createMessageHTML(message);
+    }
+
+    let html = '<div class="assistant-response inline-response streaming">';
+
+    orderedContent.forEach(block => {
+      if (block.type === 'text') {
+        if (block.text && block.text.trim()) {
+          html += `<div class="response-text">${MessageUtils.formatTextContent(block.text)}</div>`;
+        }
+      } else if (block.type === 'tool_use') {
+        // During streaming, show tool calls as "in_progress" unless they have output
+        const status = block.output ? 'completed' : 'in_progress';
+        html += MessageUtils.createInlineToolCall(block, status);
+      }
+    });
+
+    // Add thinking content if provided during streaming
+    if (thinkingContent) {
+      html += MessageUtils.createThinkingSection({ thinking: thinkingContent }, true);
+    } else if (thinking) {
+      html += MessageUtils.createThinkingSection(thinking, true);
+    }
+
+    html += '</div>';
+    return html;
   }
 
   finalizeAssistantMessage(message) {
@@ -278,7 +357,7 @@ class MessageComponent {
     // Add final message
     const sessionId = this.sessionManager.getCurrentSessionId();
     const finalMessageHTML = this.createMessageHTML(message, sessionId);
-    
+
     this.messagesContainer.insertAdjacentHTML('beforeend', finalMessageHTML);
     this.scrollToBottom();
   }
@@ -355,6 +434,8 @@ class MessageComponent {
       this.updateSessionInfo(context);
     } else {
       this.inputArea.style.display = 'none';
+      // Hide mention dropdown when input area is hidden
+      this.hideMentionDropdown();
     }
   }
 
@@ -373,17 +454,22 @@ class MessageComponent {
 
     const hasContent = this.messageInput.value.trim().length > 0;
     const canSend = hasContent && !this.isStreaming && this.sessionManager.getCurrentSessionId();
-    
+
     this.sendBtn.disabled = !canSend;
   }
 
   setStreaming(streaming) {
     this.isStreaming = streaming;
     this.sessionManager.setStreaming(streaming);
-    
+
+    // Hide mention dropdown when streaming starts
+    if (streaming) {
+      this.hideMentionDropdown();
+    }
+
     // Update UI
     this.updateSendButtonState();
-    
+
     if (this.sendBtn && this.stopBtn) {
       if (streaming) {
         this.sendBtn.style.display = 'none';
@@ -413,6 +499,188 @@ class MessageComponent {
 
   getCurrentRevertMessageId() {
     return this.currentRevertMessageId;
+  }
+
+  // File mention methods
+  handleMentionDetection() {
+    if (!this.messageInput) return;
+
+    const text = this.messageInput.value;
+    const cursorPos = DOMUtils.getCursorPosition(this.messageInput);
+
+    // Extract mention query from current cursor position
+    const mentionInfo = DOMUtils.extractMentionQuery(text, cursorPos);
+
+    if (mentionInfo) {
+      // Check if this is a new mention or continuing an existing one
+      if (!this.isMentioning || this.mentionStartPos !== mentionInfo.start) {
+        // New mention started
+        this.isMentioning = true;
+        this.mentionStartPos = mentionInfo.start;
+        this.selectedMentionIndex = 0;
+      }
+
+      // Update query and search for files
+      this.mentionQuery = mentionInfo.query;
+      this.searchAndShowMentions();
+    } else {
+      // No mention detected, hide dropdown
+      this.hideMentionDropdown();
+    }
+  }
+
+  searchAndShowMentions() {
+    if (!this.mentionQuery && this.mentionQuery !== '') {
+      this.hideMentionDropdown();
+      return;
+    }
+
+    // Get file browser instance
+    const fileBrowser = window.fileBrowser;
+    if (!fileBrowser) {
+      this.hideMentionDropdown();
+      return;
+    }
+
+    // Search for matching files
+    this.mentionMatches = fileBrowser.searchFilesByPrefix(this.mentionQuery);
+
+    if (this.mentionMatches.length > 0) {
+      this.selectedMentionIndex = 0;
+      this.showMentionDropdown();
+    } else {
+      this.hideMentionDropdown();
+    }
+  }
+
+  showMentionDropdown() {
+    if (!this.fileMentionDropdown || !this.fileMentionList) return;
+
+    // Populate dropdown with file matches
+    const itemsHTML = this.mentionMatches.map((match, index) => {
+      const isSelected = index === this.selectedMentionIndex;
+      const highlightedName = this.highlightMentionQuery(match.name, this.mentionQuery);
+
+      return `
+        <div class="file-mention-item ${isSelected ? 'selected' : ''}"
+             data-index="${index}"
+             role="option"
+             aria-selected="${isSelected}">
+          <span class="file-mention-icon">${match.icon}</span>
+          <span class="file-mention-name">${highlightedName}</span>
+        </div>
+      `;
+    }).join('');
+
+    if (itemsHTML) {
+      this.fileMentionList.innerHTML = itemsHTML;
+
+      // Set ARIA attributes
+      if (this.messageInput) {
+        this.messageInput.setAttribute('aria-owns', 'fileMentionList');
+        this.messageInput.setAttribute('aria-expanded', 'true');
+      }
+
+      // Add click handlers for dropdown items
+      this.addMentionClickHandlers();
+
+      // Show dropdown
+      this.fileMentionDropdown.style.display = 'block';
+    } else {
+      this.hideMentionDropdown();
+    }
+  }
+
+  hideMentionDropdown() {
+    if (this.fileMentionDropdown) {
+      this.fileMentionDropdown.style.display = 'none';
+    }
+
+    if (this.messageInput) {
+      this.messageInput.removeAttribute('aria-owns');
+      this.messageInput.setAttribute('aria-expanded', 'false');
+    }
+
+    // Reset mention state
+    this.isMentioning = false;
+    this.mentionQuery = '';
+    this.mentionStartPos = -1;
+    this.selectedMentionIndex = 0;
+    this.mentionMatches = [];
+  }
+
+  updateMentionSelection() {
+    if (!this.fileMentionList) return;
+
+    const items = this.fileMentionList.querySelectorAll('.file-mention-item');
+    items.forEach((item, index) => {
+      const isSelected = index === this.selectedMentionIndex;
+      item.classList.toggle('selected', isSelected);
+      item.setAttribute('aria-selected', isSelected);
+    });
+
+    // Scroll selected item into view
+    const selectedItem = items[this.selectedMentionIndex];
+    if (selectedItem) {
+      DOMUtils.scrollIntoView(selectedItem, { block: 'nearest' });
+    }
+  }
+
+  insertSelectedMention() {
+    if (!this.messageInput || this.selectedMentionIndex >= this.mentionMatches.length) return;
+
+    const selectedMatch = this.mentionMatches[this.selectedMentionIndex];
+    const text = this.messageInput.value;
+
+    // Get the mention info to know what to replace
+    const mentionInfo = DOMUtils.extractMentionQuery(text, DOMUtils.getCursorPosition(this.messageInput));
+    if (!mentionInfo) return;
+
+    // Replace the mention with the selected file path (relative path + trailing space)
+    const beforeMention = text.substring(0, mentionInfo.start);
+    const afterMention = text.substring(mentionInfo.end);
+    const relativePath = selectedMatch.name; // Use just the filename for simplicity
+
+    const newText = beforeMention + '@' + relativePath + ' ' + afterMention;
+    const newCursorPos = beforeMention.length + relativePath.length + 2; // +2 for '@' and space
+
+    this.messageInput.value = newText;
+    DOMUtils.setCursorPosition(this.messageInput, newCursorPos);
+
+    // Hide dropdown and reset state
+    this.hideMentionDropdown();
+
+    // Trigger input change to update UI
+    this.handleInputChange();
+  }
+
+  addMentionClickHandlers() {
+    if (!this.fileMentionList) return;
+
+    const items = this.fileMentionList.querySelectorAll('.file-mention-item');
+    items.forEach((item, index) => {
+      item.addEventListener('click', (e) => {
+        e.preventDefault();
+        this.selectedMentionIndex = index;
+        this.insertSelectedMention();
+      });
+    });
+  }
+
+  highlightMentionQuery(filename, query) {
+    if (!query) return DOMUtils.escapeHTML(filename);
+
+    const escapedFilename = DOMUtils.escapeHTML(filename);
+    const escapedQuery = DOMUtils.escapeHTML(query);
+    const queryLength = query.length;
+
+    if (filename.toLowerCase().startsWith(query.toLowerCase())) {
+      const beforeMatch = escapedFilename.substring(0, queryLength);
+      const afterMatch = escapedFilename.substring(queryLength);
+      return `<span class="file-mention-highlight">${beforeMatch}</span>${afterMatch}`;
+    }
+
+    return escapedFilename;
   }
 }
 

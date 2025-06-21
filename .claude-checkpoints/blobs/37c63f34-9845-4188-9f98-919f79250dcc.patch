@@ -1,0 +1,33 @@
+Index: tree.md
+===================================================================
+--- tree.md	before
++++ tree.md	after
+@@ -0,0 +1,27 @@
++```
++src/
++├── main
++│   ├── checkpoint-manager.js        # Manages saving and restoring application checkpoints
++│   ├── claude-process-manager.js    # Handles Claude CLI process creation and management
++│   ├── file-operations.js           # Provides file-related operations for the main process
++│   ├── ipc-handlers.js              # Manages inter-process communication handlers
++│   ├── main.js                      # Main entry point for the Electron application
++│   ├── model-config.js              # Handles model configuration settings
++│   ├── preload-bridge.js            # Bridges between main and renderer processes
++│   └── session-manager.js           # Manages application sessions
++
++├── renderer
++│   ├── app.js                       # Renderer process main application logic
++│   ├── components
++│   │   ├── app-component.js         # Main application component
++│   │   ├── file-browser.js          # Component for browsing files
++│   │   ├── message-component.js     # Handles message rendering and interactions
++│   │   ├── session-manager.js       # Manages UI-side session state
++│   │   └── settings-component.js    # Application settings UI component
++│   └── utils
++│       ├── dom-utils.js             # Utility functions for DOM manipulation
++│       └── message-utils.js         # Utility functions for message handling
++
++└── shared
++    └── api-definitions.js           # Shared API definitions between main and renderer processes
++```
+\ No newline at end of file

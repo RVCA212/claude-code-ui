@@ -1,0 +1,548 @@
+Index: mcp.md
+===================================================================
+--- mcp.md	before
++++ mcp.md	after
+@@ -1,309 +1,263 @@
+-To add remote MCP (Model Control Plane) servers to your Electron-based Claude app and integrate them into your SDK workflow, follow this comprehensive guide:
++# MCP Server Management Implementation Plan
+ 
+-### 1. Design UI for MCP Server Management
+-**Create a settings page with these components:**
+-```html
+-<!-- settings.html -->
+-<div class="mcp-management">
+-  <h2>Remote MCP Servers</h2>
+-  
+-  <!-- Add/Edit Form -->
+-  <div class="server-form">
+-    <input type="hidden" id="server-id">
+-    <input type="text" id="server-name" placeholder="Server Name">
+-    <input type="url" id="server-url" placeholder="https://api.example.com">
+-    <input type="password" id="server-apikey" placeholder="API Key">
+-    <button id="save-server">Save Server</button>
+-  </div>
++## Project Overview
++This plan outlines the step-by-step implementation of MCP (Model Context Protocol) server management functionality in the Claude Code Chat Electron app. The implementation will allow users to add, configure, and manage remote MCP servers (SSE and HTTP transports) that integrate with the Claude CLI backend.
+ 
+-  <!-- Server List -->
+-  <ul id="server-list">
+-    <!-- Dynamically populated -->
+-  </ul>
+-</div>
+-```
++## Implementation Plan
+ 
+-**CSS for Toggle Switches:**
+-```css
+-.switch {
+-  position: relative;
+-  display: inline-block;
+-  width: 50px;
+-  height: 24px;
+-}
++### Phase 1: UI Components and Settings Integration
+ 
+-.switch input {
+-  opacity: 0;
+-  width: 0;
+-  height: 0;
+-}
++#### Step 1.1: Extend Settings Component HTML Structure
++- **File**: Add MCP section to the settings modal HTML
++- **Task**: Modify the settings modal to include MCP server management section
++- **Components to add**:
++  - MCP servers list container
++  - Add/Edit form for server configuration
++  - Transport type selector (SSE/HTTP)
++  - URL input field
++  - Custom headers input (key-value pairs)
++  - Enable/disable toggle switches
++  - Delete confirmation dialogs
+ 
+-.slider {
+-  position: absolute;
+-  cursor: pointer;
+-  top: 0;
+-  left: 0;
+-  right: 0;
+-  bottom: 0;
+-  background-color: #ccc;
+-  transition: .4s;
+-  border-radius: 24px;
+-}
++#### Step 1.2: CSS Styling for MCP Components
++- **File**: Update CSS to style MCP components
++- **Task**: Add responsive styling for MCP server management UI
++- **Components to style**:
++  - Toggle switches for enable/disable state
++  - Server list items with status indicators
++  - Form inputs for server configuration
++  - Transport type selection buttons
++  - Header management interface
+ 
+-.slider:before {
+-  position: absolute;
+-  content: "";
+-  height: 16px;
+-  width: 16px;
+-  left: 4px;
+-  bottom: 4px;
+-  background-color: white;
+-  transition: .4s;
+-  border-radius: 50%;
+-}
++#### Step 1.3: Extend Settings Component JavaScript
++- **File**: `src/renderer/components/settings-component.js`
++- **Task**: Add MCP server management functionality to SettingsComponent class
++- **Methods to add**:
++  - `initializeMcpElements()` - Initialize MCP-related DOM elements
++  - `setupMcpEventListeners()` - Set up event listeners for MCP UI
++  - `loadMcpServers()` - Load and display configured MCP servers
++  - `saveMcpServer()` - Save/update MCP server configuration
++  - `deleteMcpServer()` - Remove MCP server configuration
++  - `toggleMcpServer()` - Enable/disable MCP server
++  - `validateMcpServer()` - Validate server configuration
+ 
+-input:checked + .slider {
+-  background-color: #2196F3;
+-}
++### Phase 2: Backend Storage and Security
+ 
+-input:checked + .slider:before {
+-  transform: translateX(26px);
+-}
+-```
++#### Step 2.1: Secure Storage System
++- **File**: `src/main/main.js` (or new dedicated MCP manager)
++- **Task**: Implement secure storage for MCP server credentials
++- **Components**:
++  - Encrypted storage using Electron's safeStorage API
++  - Fallback encryption using crypto module
++  - Schema definition for MCP server configuration
++  - Data validation and sanitization
+ 
+-### 2. Implement Storage and Encryption
+-**Main Process (main.js):**
+-```javascript
+-const { app, ipcMain } = require('electron');
+-const Store = require('electron-store');
+-const crypto = require('crypto');
++#### Step 2.2: IPC Communication Handlers
++- **File**: `src/main/main.js`
++- **Task**: Add IPC handlers for MCP server management
++- **Handlers to implement**:
++  - `get-mcp-servers` - Retrieve list of configured servers
++  - `save-mcp-server` - Save/update server configuration
++  - `delete-mcp-server` - Remove server configuration
++  - `toggle-mcp-server` - Enable/disable server
++  - `test-mcp-server` - Test server connectivity
+ 
+-const schema = {
+-  mcpServers: {
+-    type: 'array',
+-    default: [],
+-    items: {
+-      type: 'object',
+-      properties: {
+-        id: { type: 'string' },
+-        name: { type: 'string' },
+-        url: { type: 'string' },
+-        apiKey: { type: 'string' },
+-        enabled: { type: 'boolean' }
+-      }
+-    }
+-  }
+-};
++#### Step 2.3: Configuration Management
++- **Task**: Implement MCP server configuration management
++- **Features**:
++  - Support for SSE and HTTP transport types
++  - Custom headers management (Authorization, API keys, etc.)
++  - Server status tracking and validation
++  - Backup and restore functionality
+ 
+-const store = new Store({ schema });
++### Phase 3: Claude CLI Integration
+ 
+-// Encryption key management
+-const ENCRYPTION_KEY = crypto.scryptSync(
+-  process.env.ENCRYPTION_SECRET || 'default-secret',
+-  'salt',
+-  32
+-);
++#### Step 3.1: MCP Server Registration with Claude CLI
++- **File**: `src/main/claude-process-manager.js`
++- **Task**: Modify Claude CLI invocation to include MCP servers
++- **Implementation**:
++  - Generate dynamic MCP server configurations
++  - Use `claude mcp add` commands to register servers
++  - Manage server scope (local/project/user)
++  - Handle server authentication and credentials
+ 
+-function encrypt(text) {
+-  const iv = crypto.randomBytes(16);
+-  const cipher = crypto.createCipheriv('aes-256-cbc', ENCRYPTION_KEY, iv);
+-  let encrypted = cipher.update(text);
+-  encrypted = Buffer.concat([encrypted, cipher.final()]);
+-  return iv.toString('hex') + ':' + encrypted.toString('hex');
+-}
++#### Step 3.2: Dynamic Server Management
++- **Task**: Implement runtime MCP server management
++- **Features**:
++  - Add/remove servers without restarting the app
++  - Real-time server status monitoring
++  - Automatic server registration on app startup
++  - Graceful handling of server failures
+ 
+-function decrypt(text) {
+-  const [ivHex, encryptedHex] = text.split(':');
+-  const iv = Buffer.from(ivHex, 'hex');
+-  const encrypted = Buffer.from(encryptedHex, 'hex');
+-  const decipher = crypto.createDecipheriv('aes-256-cbc', ENCRYPTION_KEY, iv);
+-  let decrypted = decipher.update(encrypted);
+-  decrypted = Buffer.concat([decrypted, decipher.final()]);
+-  return decrypted.toString();
+-}
++#### Step 3.3: Authentication Flow Integration
++- **Task**: Support OAuth and API key authentication
++- **Implementation**:
++  - Handle OAuth 2.0 flow for supported servers
++  - Secure API key storage and transmission
++  - Token refresh and management
++  - Authentication status indicators in UI
+ 
+-// IPC Handlers
+-ipcMain.handle('get-mcp-servers', () => {
+-  return store.get('mcpServers', []).map(server => ({
+-    ...server,
+-    apiKey: '••••••••' // Masked in UI
+-  }));
+-});
++### Phase 4: Transport-Specific Implementation
+ 
+-ipcMain.handle('save-mcp-server', (event, server) => {
+-  const servers = store.get('mcpServers', []);
+-  const encryptedServer = {
+-    ...server,
+-    apiKey: encrypt(server.apiKey)
+-  };
++#### Step 4.1: SSE (Server-Sent Events) Transport
++- **Task**: Implement SSE transport support
++- **Features**:
++  - SSE endpoint configuration
++  - Custom headers for authentication
++  - Connection status monitoring
++  - Real-time event handling
+ 
+-  if (server.id) {
+-    const index = servers.findIndex(s => s.id === server.id);
+-    servers[index] = encryptedServer;
+-  } else {
+-    encryptedServer.id = Date.now().toString();
+-    encryptedServer.enabled = true;
+-    servers.push(encryptedServer);
+-  }
++#### Step 4.2: HTTP Transport
++- **Task**: Implement HTTP transport support
++- **Features**:
++  - HTTP endpoint configuration
++  - Request/response handling
++  - Custom headers and authentication
++  - Connection testing and validation
+ 
+-  store.set('mcpServers', servers);
+-  return encryptedServer.id;
+-});
+-```
++#### Step 4.3: Transport Validation and Testing
++- **Task**: Add connection testing capabilities
++- **Features**:
++  - Pre-save connection validation
++  - Real-time status monitoring
++  - Error handling and user feedback
++  - Connection retry logic
+ 
+-### 3. Renderer Logic for UI (renderer.js)
+-```javascript
+-document.addEventListener('DOMContentLoaded', () => {
+-  const serverList = document.getElementById('server-list');
+-  const serverForm = document.querySelector('.server-form');
+-  
+-  // Load servers
+-  async function loadServers() {
+-    const servers = await window.electron.ipcRenderer.invoke('get-mcp-servers');
+-    serverList.innerHTML = '';
+-    
+-    servers.forEach(server => {
+-      const li = document.createElement('li');
+-      li.innerHTML = `
+-        <div>
+-          <h3>${server.name}</h3>
+-          <p>${server.url}</p>
+-        </div>
+-        <label class="switch">
+-          <input type="checkbox" ${server.enabled ? 'checked' : ''}
+-                 data-id="${server.id}">
+-          <span class="slider"></span>
+-        </label>
+-        <button class="edit-btn" data-id="${server.id}">Edit</button>
+-        <button class="delete-btn" data-id="${server.id}">Delete</button>
+-      `;
+-      serverList.appendChild(li);
+-    });
+-  }
+-  
+-  // Save server
+-  document.getElementById('save-server').addEventListener('click', async () => {
+-    const server = {
+-      id: document.getElementById('server-id').value || null,
+-      name: document.getElementById('server-name').value,
+-      url: document.getElementById('server-url').value,
+-      apiKey: document.getElementById('server-apikey').value
+-    };
+-    
+-    await window.electron.ipcRenderer.invoke('save-mcp-server', server);
+-    resetForm();
+-    loadServers();
+-  });
+-  
+-  // Edit server
+-  serverList.addEventListener('click', async (e) => {
+-    if (e.target.classList.contains('edit-btn')) {
+-      const serverId = e.target.dataset.id;
+-      const servers = await window.electron.ipcRenderer.invoke('get-mcp-servers');
+-      const server = servers.find(s => s.id === serverId);
+\ No newline at end of file
+-      
+-      document.getElementById('server-id').value = server.id;
+-      document.getElementById('server-name').value = server.name;
+-      document.getElementById('server-url').value = server.url;
+-      document.getElementById('server-apikey').placeholder = 'Enter new key or leave blank';
+-    }
+-  });
+-  
+-  loadServers();
+-});
+-```
++### Phase 5: Integration with Claude Process
+ 
+-### 4. Modify SDK Invocation Command
+-**Main Process Command Builder:**
+-```javascript
+-const { exec } = require('child_process');
+-const tmp = require('tmp');
+-const fs = require('fs');
++#### Step 5.1: Process Manager Integration
++- **File**: `src/main/claude-process-manager.js`
++- **Task**: Integrate MCP servers with Claude process execution
++- **Implementation**:
++  - Pre-flight server registration
++  - Environment variable management
++  - Process cleanup on server changes
++  - Error handling and logging
+ 
+-function runClaudeCommand(prompt) {
+-  const servers = store.get('mcpServers', [])
+-    .filter(s => s.enabled)
+-    .map(server => ({
+-      url: server.url,
+-      apiKey: decrypt(server.apiKey)
+-    }));
++#### Step 5.2: Session Management
++- **Task**: Handle MCP servers in conversation sessions
++- **Features**:
++  - Session-specific server configurations
++  - Server state persistence across sessions
++  - Cleanup on session end
++  - Server access control per session
+ 
+-  // Create temporary config file
+-  const configFile = tmp.fileSync({ postfix: '.json' });
+-  fs.writeFileSync(configFile.name, JSON.stringify({
+-    mcp_servers: servers
+-  }));
++#### Step 5.3: Resource and Prompt Management
++- **Task**: Support MCP resources and prompts
++- **Features**:
++  - Resource discovery and caching
++  - Prompt registration and execution
++  - @ mention support for MCP resources
++  - Slash command integration for MCP prompts
+ 
+-  const command = `claude-code --prompt "${prompt}" --config ${configFile.name}`;
+-  
+-  exec(command, (error, stdout, stderr) => {
+-    // Cleanup temp file
+-    configFile.removeCallback();
+-    
+-    if (error) {
+-      console.error(`Execution error: ${error}`);
+-      return;
+-    }
+-    console.log(stdout);
+-  });
++### Phase 6: Security and Validation
++
++#### Step 6.1: Security Hardening
++- **Task**: Implement comprehensive security measures
++- **Features**:
++  - Input validation and sanitization
++  - URL whitelist/blacklist capabilities
++  - Rate limiting for server requests
++  - Secure credential storage and transmission
++
++#### Step 6.2: Error Handling and Recovery
++- **Task**: Robust error handling and recovery
++- **Features**:
++  - Graceful degradation on server failures
++  - User-friendly error messages
++  - Automatic retry mechanisms
++  - Logging and debugging capabilities
++
++#### Step 6.3: Validation and Testing
++- **Task**: Comprehensive validation system
++- **Features**:
++  - Server configuration validation
++  - Connection testing before saving
++  - Runtime health checks
++  - User feedback and status indicators
++
++### Phase 7: User Experience Enhancements
++
++#### Step 7.1: Status Indicators and Feedback
++- **Task**: Implement comprehensive status system
++- **Features**:
++  - Real-time connection status
++  - Server health indicators
++  - Performance metrics display
++  - Error state visualization
++
++#### Step 7.2: Import/Export Functionality
++- **Task**: Support configuration portability
++- **Features**:
++  - Export server configurations
++  - Import from JSON files
++  - Backup and restore functionality
++  - Migration from Claude Desktop
++
++#### Step 7.3: Advanced Configuration Options
++- **Task**: Support advanced MCP features
++- **Features**:
++  - Custom timeout settings
++  - Retry configuration
++  - Logging level control
++  - Performance optimization settings
++
++## Technical Specifications
++
++### Data Structure for MCP Server Storage
++```json
++{
++  "id": "string", // Unique identifier
++  "name": "string", // User-friendly name
++  "transport": "sse|http", // Transport type
++  "url": "string", // Server endpoint URL
++  "headers": { // Custom headers
++    "Authorization": "Bearer token",
++    "X-API-Key": "api-key"
++  },
++  "enabled": "boolean", // Enable/disable state
++  "scope": "local|project|user", // MCP scope
++  "created": "timestamp",
++  "lastUsed": "timestamp",
++  "status": "connected|disconnected|error"
+ }
+ ```
+ 
+-### 5. Security Enhancements
+-1. **Environment Variables:** Store encryption secret in `.env` file:
+-   ```
+-   ENCRYPTION_SECRET=your_strong_secret_here
+-   ```
+-2. **Secure Storage:** Use Electron's safeStorage when available:
+-   ```javascript
+-   const { safeStorage } = require('electron');
+-   
+-   function encrypt(text) {
+-     return safeStorage.encryptString(text).toString('hex');
+-   }
+-   ```
+-3. **Input Validation:**
+-   ```javascript
+-   function validateServer(server) {
+-     if (!server.url.match(/^https:\/\/.+/)) {
+-       throw new Error('Invalid URL format');
+-     }
+-     if (server.apiKey && server.apiKey.length < 32) {
+-       throw new Error('API key too short');
+-     }
+-   }
+-   ```
++### Security Requirements
++- All credentials encrypted at rest using Electron's safeStorage
++- HTTPS-only for remote servers
++- Input validation for all user inputs
++- Secure header handling for authentication
++- Rate limiting for server connections
+ 
+-### 6. Usage Workflow
+-1. **Adding a Server:**
+-   - User enters name, URL, and API key
+-   - Data is encrypted and stored
+-   - Server appears in list with toggle switch
++### Integration Points
++- Settings modal integration
++- Claude CLI command generation
++- Process manager integration
++- Session management integration
++- Error handling and logging
+ 
+-2. **Invoking Claude:**
+-   - App checks enabled servers
+-   - Creates temporary config with decrypted credentials
+-   - Passes config to SDK command
+-   - Deletes config after execution
++### Testing Requirements
++- Unit tests for storage and encryption
++- Integration tests for Claude CLI interaction
++- UI tests for settings components
++- Security testing for credential handling
++- Performance testing for multiple servers
+ 
+-3. **Editing Credentials:**
+-   - "Enter new key or leave blank" placeholder
+-   - Blank field preserves existing key
+-   - New key overwrites existing one
++## Success Criteria
++1. Users can add and manage remote MCP servers through the settings UI
++2. MCP servers are automatically registered with Claude CLI
++3. Server credentials are securely stored and transmitted
++4. Real-time status monitoring and error handling
++5. Seamless integration with existing conversation flow
++6. Support for both SSE and HTTP transport types
++7. Robust error handling and recovery mechanisms
++8. Comprehensive security measures implemented
+ 
+-### Key Considerations
+-1. **Temporary Files:**
+-   - Use `tmp` module for auto-cleanup
+-   - Set strict file permissions (0600)
+-2. **Error Handling:**
+-   - Validate server URLs before saving
+-   - Handle SDK command failures gracefully
+-3. **User Experience:**
+-   - Show enabled/disabled status clearly
+-   - Provide feedback on save operations
+-   - Mask API keys in UI
+-4. **SDK Compatibility:**
+-   - Ensure your SDK version supports `--config` flag
+-   - Verify MCP server API compatibility
++## Risks and Mitigations
++- **Security risks**: Mitigated through encryption, validation, and secure storage
++- **Claude CLI compatibility**: Mitigated through version checking and feature detection
++- **Network connectivity**: Mitigated through retry logic and graceful degradation
++- **User experience complexity**: Mitigated through progressive disclosure and clear status indicators
+ 
+-This implementation provides a secure, user-friendly way to manage remote Claude servers while maintaining compatibility with your existing local execution workflow. The encryption ensures API keys are protected at rest, and the temporary file approach keeps credentials secure during execution.
++This comprehensive plan ensures a secure, user-friendly, and robust implementation of MCP server management in the Claude Code Chat Electron application.
+\ No newline at end of file

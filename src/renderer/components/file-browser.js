@@ -8,10 +8,12 @@ class FileBrowser {
     this.canGoForward = false;
     this.commonDirectories = [];
     this.fileSearchQuery = '';
-    this.isQuickAccessCollapsed = false;
+    this.isQuickAccessCollapsed = true; // Start minimized by default
+    this.homeDirectory = '~'; // Default to '~'
 
     this.initializeElements();
     this.setupEventListeners();
+    this.applyInitialQuickAccessState();
     this.loadInitialDirectory();
   }
 
@@ -72,9 +74,27 @@ class FileBrowser {
     }
   }
 
+  applyInitialQuickAccessState() {
+    // Apply the initial collapsed state
+    if (this.quickAccessList) {
+      this.quickAccessList.style.display = this.isQuickAccessCollapsed ? 'none' : 'flex';
+    }
+
+    if (this.quickAccessToggle) {
+      this.quickAccessToggle.classList.toggle('collapsed', this.isQuickAccessCollapsed);
+    }
+  }
+
   async loadInitialDirectory() {
     try {
       this.showLoading(true);
+
+      // Fetch home directory first
+      const homeResult = await window.electronAPI.getHomeDirectory();
+      if (homeResult.success) {
+        this.homeDirectory = homeResult.path;
+      }
+
       await this.loadCommonDirectories();
       const result = await window.electronAPI.getCurrentDirectory();
       if (result.success) {
@@ -218,7 +238,7 @@ class FileBrowser {
     const breadcrumbHTML = pathParts.map((part, index) => {
       const fullPath = '/' + pathParts.slice(0, index + 1).join('/');
       const isLast = index === pathParts.length - 1;
-      
+
       if (isLast) {
         return `<span class="breadcrumb-segment current">${part}</span>`;
       } else {
@@ -236,7 +256,9 @@ class FileBrowser {
 
   updateCurrentWorkingDirectory() {
     if (this.cwdPath && this.currentDirectory) {
-      const displayPath = this.currentDirectory.replace(process.env.HOME || '', '~');
+      const displayPath = this.currentDirectory.startsWith(this.homeDirectory)
+        ? '~' + this.currentDirectory.slice(this.homeDirectory.length)
+        : this.currentDirectory;
       this.cwdPath.textContent = displayPath;
     }
   }
@@ -275,7 +297,7 @@ class FileBrowser {
       const modifiedText = DOMUtils.formatTimestamp(item.modified);
 
       return `
-        <div class="file-item ${item.isDirectory ? 'directory' : 'file'}" 
+        <div class="file-item ${item.isDirectory ? 'directory' : 'file'}"
              onclick="fileBrowser.handleFileClick('${item.path}', ${item.isDirectory})"
              title="${item.path}">
           <span class="file-icon">${icon}</span>
@@ -308,11 +330,11 @@ class FileBrowser {
 
   toggleQuickAccess() {
     this.isQuickAccessCollapsed = !this.isQuickAccessCollapsed;
-    
+
     if (this.quickAccessList) {
       this.quickAccessList.style.display = this.isQuickAccessCollapsed ? 'none' : 'flex';
     }
-    
+
     if (this.quickAccessToggle) {
       this.quickAccessToggle.classList.toggle('collapsed', this.isQuickAccessCollapsed);
     }
@@ -397,6 +419,35 @@ class FileBrowser {
   // Get filtered contents for file mentions
   getFilteredContents() {
     return this.filteredContents;
+  }
+
+  // Search files by prefix for mention autocompletion
+  searchFilesByPrefix(query, maxResults = 8) {
+    if (!query || !this.directoryContents) {
+      return [];
+    }
+
+    const queryLower = query.toLowerCase();
+
+    // Filter files that start with the query (case-insensitive)
+    const matches = this.directoryContents
+      .filter(item => item.name.toLowerCase().startsWith(queryLower))
+      .sort((a, b) => {
+        // Sort directories first, then by name alphabetically
+        if (a.isDirectory !== b.isDirectory) {
+          return a.isDirectory ? -1 : 1;
+        }
+        return a.name.localeCompare(b.name);
+      })
+      .slice(0, maxResults)
+      .map(item => ({
+        name: item.name,
+        path: item.path,
+        isDirectory: item.isDirectory,
+        icon: item.isDirectory ? '📁' : this.getFileIcon(item.name)
+      }));
+
+    return matches;
   }
 }
 
