@@ -29,6 +29,12 @@ class MessageComponent {
     // File mention dropdown elements
     this.fileMentionDropdown = document.getElementById('fileMentionDropdown');
     this.fileMentionList = document.getElementById('fileMentionList');
+
+    // Ensure file mention elements exist, create if missing
+    if (!this.fileMentionDropdown) {
+      console.warn('File mention dropdown not found in DOM, creating fallback');
+      this.createFileMentionElements();
+    }
   }
 
   setupEventListeners() {
@@ -224,8 +230,8 @@ class MessageComponent {
         <div class="conversation-turn user ${isInvalidated ? 'invalidated' : ''}" id="message-${messageId}">
           <div class="conversation-content">
             <div class="message-content">${DOMUtils.escapeHTML(message.content)}</div>
-            <div class="conversation-timestamp">${timestamp}</div>
             ${this.createMessageActions(message, sessionId)}
+            <div class="conversation-timestamp">${timestamp}</div>
           </div>
         </div>
       `;
@@ -251,11 +257,7 @@ class MessageComponent {
         <button class="revert-btn"
                 onclick="messageComponent.revertToMessage('${sessionId}', '${message.id}')"
                 title="Revert files to this point">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-            <path d="M21 3v5h-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-            <path d="M21 12a9 9 0 0 1-9 9c-4.7 0-8.6-3.4-9-8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
+          revert changes
         </button>
       </div>
     `;
@@ -501,6 +503,37 @@ class MessageComponent {
     return this.currentRevertMessageId;
   }
 
+  // Create file mention elements if they don't exist
+  createFileMentionElements() {
+    if (!this.inputArea) {
+      console.error('Input area not found, cannot create file mention elements');
+      return;
+    }
+
+    // Create dropdown container
+    const dropdown = DOMUtils.createElement('div', {
+      id: 'fileMentionDropdown',
+      className: 'file-mention-dropdown',
+      style: 'display: none;'
+    });
+
+    // Create list container
+    const list = DOMUtils.createElement('div', {
+      id: 'fileMentionList',
+      className: 'file-mention-list',
+      role: 'listbox'
+    });
+
+    dropdown.appendChild(list);
+    this.inputArea.insertBefore(dropdown, this.inputArea.firstChild);
+
+    // Update references
+    this.fileMentionDropdown = dropdown;
+    this.fileMentionList = list;
+
+    console.log('File mention elements created successfully');
+  }
+
   // File mention methods
   handleMentionDetection() {
     if (!this.messageInput) return;
@@ -538,17 +571,30 @@ class MessageComponent {
     // Get file browser instance
     const fileBrowser = window.fileBrowser;
     if (!fileBrowser) {
+      console.debug('File browser not available for mention search');
       this.hideMentionDropdown();
       return;
     }
 
-    // Search for matching files
-    this.mentionMatches = fileBrowser.searchFilesByPrefix(this.mentionQuery);
+    // Ensure file browser has content to search
+    if (!fileBrowser.getFilteredContents || typeof fileBrowser.searchFilesByPrefix !== 'function') {
+      console.warn('File browser search method not available');
+      this.hideMentionDropdown();
+      return;
+    }
 
-    if (this.mentionMatches.length > 0) {
-      this.selectedMentionIndex = 0;
-      this.showMentionDropdown();
-    } else {
+    try {
+      // Search for matching files
+      this.mentionMatches = fileBrowser.searchFilesByPrefix(this.mentionQuery);
+
+      if (this.mentionMatches.length > 0) {
+        this.selectedMentionIndex = 0;
+        this.showMentionDropdown();
+      } else {
+        this.hideMentionDropdown();
+      }
+    } catch (error) {
+      console.error('Error searching for file mentions:', error);
       this.hideMentionDropdown();
     }
   }

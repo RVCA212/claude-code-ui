@@ -2447,7 +2447,7 @@ pre code {
 }
 
 .file-mention-highlight {
-  background: rgba(var(--color-primary-rgb, 33, 128, 141), 0.3);
+  background: rgba(33, 128, 141, 0.3);
   color: var(--color-text);
   font-weight: var(--font-weight-medium);
 }

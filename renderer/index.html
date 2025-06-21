@@ -254,7 +254,7 @@
             <div class="input-area" id="inputArea" style="display: none;">
                 <!-- File Mention Dropdown -->
                 <div class="file-mention-dropdown" id="fileMentionDropdown" style="display: none;">
-                    <div class="file-mention-list" id="fileMentionList">
+                    <div class="file-mention-list" id="fileMentionList" role="listbox">
                         <!-- File items will be populated by JavaScript -->
                     </div>
                 </div>
@@ -264,6 +264,9 @@
                         id="messageInput"
                         placeholder="Type your message... (Enter to send, Shift+Enter for new line)"
                         rows="1"
+                        aria-expanded="false"
+                        aria-autocomplete="list"
+                        role="combobox"
                     ></textarea>
                     <button class="send-btn" id="sendBtn" disabled>
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
