@@ -1,6 +1,9 @@
 // Main Renderer Application Entry Point
 // This file orchestrates all the modular components
 
+// Import utility classes (these are loaded via script tags in HTML)
+// DOMUtils, MessageUtils are loaded from separate files
+
 // Global app instance
 let app;
 

@@ -259,6 +259,18 @@
         </div>
     </div>
 
+    <!-- Load utility modules first -->
+    <script src="../src/renderer/utils/dom-utils.js"></script>
+    <script src="../src/renderer/utils/message-utils.js"></script>
+    
+    <!-- Load component modules -->
+    <script src="../src/renderer/components/file-browser.js"></script>
+    <script src="../src/renderer/components/session-manager.js"></script>
+    <script src="../src/renderer/components/message-component.js"></script>
+    <script src="../src/renderer/components/settings-component.js"></script>
+    <script src="../src/renderer/components/app-component.js"></script>
+    
+    <!-- Load main app -->
     <script src="app.js"></script>
 </body>
 </html>
