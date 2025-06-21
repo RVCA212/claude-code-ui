@@ -2391,20 +2391,113 @@ function getFileIcon(item) {
     }
 
     const ext = item.name.split('.').pop()?.toLowerCase();
+    const filename = item.name.toLowerCase();
+    
+    // Special filename cases
+    if (filename === 'readme.md' || filename === 'readme.txt' || filename === 'readme') {
+        return '📖';
+    }
+    if (filename === 'license' || filename === 'license.txt' || filename === 'license.md') {
+        return '📜';
+    }
+    if (filename === 'dockerfile' || filename === 'docker-compose.yml' || filename === 'docker-compose.yaml') {
+        return '🐳';
+    }
+    if (filename === 'makefile' || filename === 'cmake.txt' || filename === 'cmakelists.txt') {
+        return '🔨';
+    }
+    if (filename === '.gitignore' || filename === '.gitattributes') {
+        return '🙈';
+    }
+    if (filename === 'package.json' || filename === 'package-lock.json') {
+        return '📦';
+    }
+
     const iconMap = {
-        // Text files
-        'txt': '📄', 'md': '📄', 'readme': '📄',
-        // Code files
-        'js': '📄', 'ts': '📄', 'py': '🐍', 'html': '🌐', 'css': '🎨',
-        'json': '📄', 'xml': '📄', 'yaml': '📄', 'yml': '📄',
+        // JavaScript & TypeScript
+        'js': '🟨', 'jsx': '⚛️', 'ts': '🔷', 'tsx': '⚛️',
+        'vue': '💚', 'svelte': '🧡', 'angular': '🔴',
+        
+        // Python
+        'py': '🐍', 'pyx': '🐍', 'pyw': '🐍', 'pyc': '🐍',
+        'ipynb': '📊', 'pyi': '🐍',
+        
+        // Web Technologies
+        'html': '🌐', 'htm': '🌐', 'xhtml': '🌐',
+        'css': '🎨', 'scss': '🎨', 'sass': '🎨', 'less': '🎨',
+        'php': '🐘', 'asp': '🔵', 'aspx': '🔵',
+        
+        // Other Programming Languages
+        'java': '☕', 'class': '☕', 'jar': '☕',
+        'cpp': '⚙️', 'cxx': '⚙️', 'cc': '⚙️', 'c': '⚙️', 'h': '⚙️', 'hpp': '⚙️',
+        'cs': '🔷', 'vb': '🔷', 'fs': '🔷',
+        'rb': '💎', 'gem': '💎', 'rake': '💎',
+        'go': '🐹', 'rs': '🦀', 'swift': '🦉', 'kt': '🔶', 'scala': '🔴',
+        'r': '📊', 'rmd': '📊', 'matlab': '🔢', 'm': '🔢',
+        'sh': '🐚', 'bash': '🐚', 'zsh': '🐚', 'fish': '🐚',
+        'ps1': '💙', 'bat': '⚫', 'cmd': '⚫',
+        'lua': '🌙', 'perl': '🐪', 'pl': '🐪',
+        
+        // Configuration & Data Files
+        'json': '📋', 'yaml': '📋', 'yml': '📋', 'toml': '📋', 'ini': '📋',
+        'xml': '📄', 'config': '⚙️', 'conf': '⚙️', 'cfg': '⚙️',
+        'env': '🔐', 'dotenv': '🔐',
+        'log': '📜', 'txt': '📝',
+        
+        // Microsoft Office Files
+        'doc': '📘', 'docx': '📘', 'rtf': '📘', 'odt': '📘',
+        'xls': '📗', 'xlsx': '📗', 'xlsm': '📗', 'ods': '📗',
+        'ppt': '📙', 'pptx': '📙', 'pps': '📙', 'ppsx': '📙', 'odp': '📙',
+        'csv': '📊', 'tsv': '📊',
+        
+        // Documents & Text
+        'pdf': '📕', 'epub': '📖', 'mobi': '📖',
+        'md': '📄', 'markdown': '📄', 'rst': '📄', 'adoc': '📄',
+        'tex': '📄', 'latex': '📄',
+        
         // Images
-        'png': '🖼️', 'jpg': '🖼️', 'jpeg': '🖼️', 'gif': '🖼️', 'svg': '🖼️',
-        // Archives
-        'zip': '📦', 'tar': '📦', 'gz': '📦', '7z': '📦',
-        // Documents
-        'pdf': '📕', 'doc': '📄', 'docx': '📄', 'xls': '📊', 'xlsx': '📊',
-        // Media
-        'mp3': '🎵', 'wav': '🎵', 'mp4': '🎬', 'avi': '🎬', 'mov': '🎬'
+        'png': '🖼️', 'jpg': '🖼️', 'jpeg': '🖼️', 'gif': '🖼️', 'svg': '🎨',
+        'webp': '🖼️', 'ico': '🖼️', 'bmp': '🖼️', 'tiff': '🖼️', 'tga': '🖼️',
+        'psd': '🎨', 'ai': '🎨', 'sketch': '🎨', 'figma': '🎨',
+        
+        // Audio Files
+        'mp3': '🎵', 'wav': '🎵', 'flac': '🎵', 'aac': '🎵', 'ogg': '🎵',
+        'wma': '🎵', 'm4a': '🎵', 'opus': '🎵',
+        
+        // Video Files
+        'mp4': '🎬', 'avi': '🎬', 'mov': '🎬', 'mkv': '🎬', 'webm': '🎬',
+        'flv': '🎬', 'wmv': '🎬', 'm4v': '🎬', '3gp': '🎬',
+        
+        // Archives & Compressed Files
+        'zip': '📦', 'rar': '📦', '7z': '📦', 'tar': '📦', 'gz': '📦',
+        'bz2': '📦', 'xz': '📦', 'lz': '📦', 'deb': '📦', 'rpm': '📦',
+        'dmg': '💿', 'iso': '💿', 'img': '💿',
+        
+        // Database Files
+        'db': '🗄️', 'sqlite': '🗄️', 'sqlite3': '🗄️', 'sql': '🗄️',
+        'mdb': '🗄️', 'accdb': '🗄️',
+        
+        // Font Files
+        'ttf': '🔤', 'otf': '🔤', 'woff': '🔤', 'woff2': '🔤', 'eot': '🔤',
+        
+        // Executable Files
+        'exe': '⚙️', 'msi': '⚙️', 'deb': '📦', 'rpm': '📦', 'app': '📱',
+        'bin': '⚙️', 'run': '⚙️',
+        
+        // Lock Files
+        'lock': '🔒', 'lockfile': '🔒',
+        
+        // Certificates & Security
+        'pem': '🔐', 'crt': '🔐', 'key': '🔐', 'p12': '🔐', 'pfx': '🔐',
+        
+        // Data Exchange
+        'parquet': '📊', 'avro': '📊', 'proto': '📊', 'protobuf': '📊',
+        
+        // Version Control
+        'patch': '🔧', 'diff': '🔧',
+        
+        // Jupyter & Data Science
+        'ipynb': '📊', 'rmd': '📊', 'qmd': '📊'
     };
 
     return iconMap[ext] || '📄';
