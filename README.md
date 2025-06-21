@@ -27,11 +27,16 @@ git clone https://github.com/your-org/claude-code-chat.git
 # Install dependencies
 npm install
 
-# Install Claude Code CLI
+# Install Claude Code CLI if not already installed
 npm run install-claude
 ```
 
 ## Development
+
+*quick start*
+```bash
+npm start
+```
 
 ```bash
 # Start in development mode

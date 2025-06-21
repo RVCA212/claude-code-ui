@@ -16,6 +16,13 @@ let canGoForward = false;
 let commonDirectories = [];
 let fileSearchQuery = '';
 
+// File mention state
+let fileMentionActive = false;
+let fileMentionQuery = '';
+let fileMentionStartPos = 0;
+let selectedMentionIndex = 0;
+let filteredMentionFiles = [];
+
 // DOM elements
 const settingsModal = document.getElementById('settingsModal');
 const cliStatus = document.getElementById('cliStatus');
@@ -66,6 +73,10 @@ const fileSearchInput = document.getElementById('fileSearchInput');
 const fileList = document.getElementById('fileList');
 const loadingState = document.getElementById('loadingState');
 const statusText = document.getElementById('statusText');
+
+// File mention elements
+const fileMentionDropdown = document.getElementById('fileMentionDropdown');
+const fileMentionList = document.getElementById('fileMentionList');
 
 // Initialize application
 async function init() {
@@ -191,6 +202,15 @@ function setupEventListeners() {
             const isButton = historyBtn && historyBtn.contains(e.target);
             if (!withinDropdown && !isButton) {
                 historyDropdown.style.display = 'none';
+            }
+        }
+
+        // Close file mention dropdown when clicking outside
+        if (fileMentionDropdown && fileMentionActive) {
+            const withinMentionDropdown = fileMentionDropdown.contains(e.target);
+            const isInput = messageInput && messageInput.contains(e.target);
+            if (!withinMentionDropdown && !isInput) {
+                hideFileMentionDropdown();
             }
         }
     });
@@ -369,6 +389,26 @@ function handleMessagesContainerClick(e) {
 
 // Handle input keydown
 function handleInputKeydown(e) {
+    // Handle file mention navigation
+    if (fileMentionActive) {
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            selectedMentionIndex = Math.min(selectedMentionIndex + 1, filteredMentionFiles.length - 1);
+            renderFileMentionDropdown();
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            selectedMentionIndex = Math.max(selectedMentionIndex - 1, 0);
+            renderFileMentionDropdown();
+        } else if (e.key === 'Enter') {
+            e.preventDefault();
+            insertSelectedFile();
+        } else if (e.key === 'Escape') {
+            e.preventDefault();
+            hideFileMentionDropdown();
+        }
+        return;
+    }
+
     if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault();
         if (!isStreaming) {
@@ -388,6 +428,186 @@ function handleInputChange(e) {
 
     // Enable/disable send button
     sendBtn.disabled = e.target.value.trim() === '' || isStreaming;
+
+    // Handle file mention detection
+    handleFileMentionInput(e.target);
+}
+
+// ====================================================
+// File Mention Functionality
+// ====================================================
+
+// Handle file mention input detection
+function handleFileMentionInput(input) {
+    const value = input.value;
+    const cursorPos = input.selectionStart;
+    
+    // Find the @ symbol that would trigger file mention
+    let atPos = -1;
+    for (let i = cursorPos - 1; i >= 0; i--) {
+        const char = value[i];
+        if (char === '@') {
+            // Check if @ is at start or preceded by whitespace (not another character)
+            const prevChar = i > 0 ? value[i - 1] : ' ';
+            if (prevChar === ' ' || prevChar === '\n' || prevChar === '\t' || i === 0) {
+                atPos = i;
+                break;
+            } else {
+                // @ is preceded by a character, not a valid mention
+                break;
+            }
+        } else if (char === ' ' || char === '\n' || char === '\t') {
+            // Hit whitespace before finding @, stop searching
+            break;
+        }
+    }
+    
+    if (atPos !== -1) {
+        // Extract the query after @
+        const afterAt = value.substring(atPos + 1, cursorPos);
+        
+        // Check if the query contains spaces (should end mention)
+        if (afterAt.includes(' ') || afterAt.includes('\n') || afterAt.includes('\t')) {
+            hideFileMentionDropdown();
+            return;
+        }
+        
+        // Start or update file mention
+        fileMentionActive = true;
+        fileMentionQuery = afterAt;
+        fileMentionStartPos = atPos;
+        selectedMentionIndex = 0;
+        
+        filterFilesForMention();
+        showFileMentionDropdown();
+    } else {
+        // No valid @ found, hide dropdown
+        hideFileMentionDropdown();
+    }
+}
+
+// Filter files based on mention query
+function filterFilesForMention() {
+    if (!directoryContents) {
+        filteredMentionFiles = [];
+        return;
+    }
+    
+    const query = fileMentionQuery.toLowerCase();
+    filteredMentionFiles = directoryContents.filter(item => {
+        return item.name.toLowerCase().includes(query);
+    }).slice(0, 10); // Limit to 10 results for performance
+    
+    // Reset selection if out of bounds
+    if (selectedMentionIndex >= filteredMentionFiles.length) {
+        selectedMentionIndex = 0;
+    }
+}
+
+// Show file mention dropdown
+function showFileMentionDropdown() {
+    if (filteredMentionFiles.length > 0) {
+        fileMentionDropdown.style.display = 'block';
+        renderFileMentionDropdown();
+    } else {
+        hideFileMentionDropdown();
+    }
+}
+
+// Hide file mention dropdown
+function hideFileMentionDropdown() {
+    fileMentionActive = false;
+    fileMentionQuery = '';
+    fileMentionStartPos = 0;
+    selectedMentionIndex = 0;
+    filteredMentionFiles = [];
+    fileMentionDropdown.style.display = 'none';
+}
+
+// Render file mention dropdown contents
+function renderFileMentionDropdown() {
+    if (!fileMentionList) return;
+    
+    if (filteredMentionFiles.length === 0) {
+        fileMentionList.innerHTML = '<div class="file-mention-empty">No files found</div>';
+        return;
+    }
+    
+    const itemsHtml = filteredMentionFiles.map((file, index) => {
+        const icon = getFileIcon(file);
+        const isSelected = index === selectedMentionIndex;
+        const query = fileMentionQuery.toLowerCase();
+        
+        // Highlight matching text
+        let highlightedName = file.name;
+        if (query) {
+            const regex = new RegExp(`(${escapeRegex(query)})`, 'gi');
+            highlightedName = file.name.replace(regex, '<span class="file-mention-highlight">$1</span>');
+        }
+        
+        return `
+            <div class="file-mention-item ${isSelected ? 'selected' : ''}" data-index="${index}">
+                <div class="file-mention-icon">${icon}</div>
+                <div class="file-mention-name">${highlightedName}</div>
+            </div>
+        `;
+    }).join('');
+    
+    fileMentionList.innerHTML = itemsHtml;
+    
+    // Add click handlers
+    fileMentionList.querySelectorAll('.file-mention-item').forEach((item, index) => {
+        item.addEventListener('click', () => {
+            selectedMentionIndex = index;
+            insertSelectedFile();
+        });
+    });
+    
+    // Scroll selected item into view
+    const selectedItem = fileMentionList.querySelector('.file-mention-item.selected');
+    if (selectedItem) {
+        selectedItem.scrollIntoView({ block: 'nearest' });
+    }
+}
+
+// Insert selected file into input
+function insertSelectedFile() {
+    if (!fileMentionActive || filteredMentionFiles.length === 0) return;
+    
+    const selectedFile = filteredMentionFiles[selectedMentionIndex];
+    if (!selectedFile) return;
+    
+    const input = messageInput;
+    const value = input.value;
+    
+    // Build the replacement text with @ and file name
+    const replacement = `@${selectedFile.name} `;
+    
+    // Calculate positions for replacement
+    const beforeMention = value.substring(0, fileMentionStartPos);
+    const afterCursor = value.substring(input.selectionStart);
+    
+    // Build new value
+    const newValue = beforeMention + replacement + afterCursor;
+    const newCursorPos = fileMentionStartPos + replacement.length;
+    
+    // Update input
+    input.value = newValue;
+    input.setSelectionRange(newCursorPos, newCursorPos);
+    
+    // Trigger input change event to update UI
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    
+    // Hide dropdown
+    hideFileMentionDropdown();
+    
+    // Focus back to input
+    input.focus();
+}
+
+// Helper function to escape regex special characters
+function escapeRegex(string) {
+    return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 // Render sessions list
@@ -482,6 +702,9 @@ async function loadSession(sessionId) {
     if (!session) return;
 
     currentSessionId = sessionId;
+
+    // Hide file mention dropdown when switching sessions
+    hideFileMentionDropdown();
 
     // Reset button state when switching sessions to prevent state persistence
     resetButtonState();
@@ -1374,6 +1597,9 @@ function showEmptyState() {
     currentSessionId = null;
     currentRevertMessageId = null; // Clear revert state
 
+    // Hide file mention dropdown
+    hideFileMentionDropdown();
+
     // Reset button state when showing empty state
     resetButtonState();
 
@@ -1405,6 +1631,9 @@ function showEmptyState() {
 async function sendMessage() {
     const content = messageInput.value.trim();
     if (!content || !currentSessionId || isStreaming) return;
+
+    // Hide file mention dropdown
+    hideFileMentionDropdown();
 
     // Update UI state
     isStreaming = true;
