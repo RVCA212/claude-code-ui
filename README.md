@@ -1,0 +1,198 @@
+# Claude Code Chat
+
+A clean and modern Electron app for chatting with Claude Code SDK. Features session-based conversations, streaming responses, and full Claude Code tool access.
+
+![Claude Code Chat](screenshot.png)
+
+## Features
+
+- ✨ **Real Claude Code SDK integration** - Direct integration with the Claude Code CLI
+- 🔄 **Session-based conversations** - Resume conversations using Claude's session IDs
+- ⚡ **Streaming responses** - Real-time streaming of Claude's responses
+- 🛠️ **Full tool access** - All Claude Code tools (file operations, web search, etc.)
+- 💾 **Persistent conversation history** - Local storage of all conversations
+- 🎨 **Modern UI** - Clean, responsive interface with dark/light mode support
+- 🔒 **Secure** - Proper Electron security with context isolation
+- ⌨️ **Keyboard shortcuts** - Cmd/Ctrl+N for new conversation
+
+## Prerequisites
+
+Before running the app, you need:
+
+1. **Node.js** (v16 or later)
+2. **Claude Code CLI** installed globally
+3. **Anthropic API Key**
+
+## Quick Setup
+
+### 1. Install Claude Code CLI
+
+```bash
+npm install -g @anthropic-ai/claude-code
+```
+
+### 2. Get an Anthropic API Key
+
+1. Visit [console.anthropic.com](https://console.anthropic.com/)
+2. Create an account or sign in
+3. Generate a new API key
+4. Keep it handy - you'll enter it in the app
+
+### 3. Install and Run the App
+
+```bash
+# Clone or download this repository
+cd claude-code-chat
+
+# Install dependencies
+npm install
+
+# Start the app
+npm start
+```
+
+### 4. First-Time Setup
+
+When you first run the app:
+
+1. The setup modal will appear
+2. If Claude Code CLI is not detected, install it first
+3. Enter your Anthropic API key when prompted
+4. Click "Start Chatting" to begin
+
+## Usage
+
+### Creating Conversations
+
+- Click the "New Conversation" button in the sidebar
+- Or use the keyboard shortcut: `Cmd/Ctrl + N`
+
+### Sending Messages
+
+- Type your message in the input area at the bottom
+- Press `Enter` to send (or `Shift+Enter` for new line)
+- Click the stop button to halt generation if needed
+
+### Managing Conversations
+
+- **Rename**: Click the edit icon next to the conversation title
+- **Delete**: Click the trash icon on any conversation in the sidebar
+- **Resume**: Conversations automatically resume using Claude's session IDs
+
+### Session Information
+
+Each conversation maintains its own Claude session ID, shown in the bottom-right of the input area. This allows Claude to maintain context across app restarts.
+
+## Development
+
+### Project Structure
+
+```
+claude-code-chat/
+├── main.js              # Electron main process
+├── preload.js           # Secure IPC bridge
+├── package.json         # Dependencies and scripts
+├── renderer/            # Frontend files
+│   ├── index.html       # Main UI
+│   ├── app.js          # Frontend logic
+│   └── style.css       # Styling
+└── README.md           # This file
+```
+
+### Running in Development
+
+```bash
+# Start with dev tools open
+npm run dev
+```
+
+### Building for Distribution
+
+```bash
+# Build for current platform
+npm run build
+```
+
+This will create a distributable app in the `dist/` folder.
+
+## How It Works
+
+### Architecture
+
+The app uses a secure Electron architecture:
+
+1. **Main Process** (`main.js`): Manages the app lifecycle, handles Claude CLI spawning, and manages session storage
+2. **Preload Script** (`preload.js`): Provides secure IPC bridge between main and renderer
+3. **Renderer Process** (`renderer/`): The frontend UI that users interact with
+
+### Claude Integration
+
+The app integrates with Claude Code in two ways:
+
+1. **Direct CLI Spawning**: Uses Node.js `spawn` to run `claude` commands
+2. **Streaming JSON Output**: Parses Claude's `--output-format stream-json` for real-time updates
+3. **Session Management**: Automatically resumes conversations using Claude's session IDs
+
+### Data Storage
+
+- **Conversations**: Stored locally in `~/.claude-code-chat/sessions.json`
+- **API Key**: Stored in environment variable (not persisted)
+- **Session IDs**: Managed automatically by Claude Code CLI
+
+## Security
+
+The app implements Electron security best practices:
+
+- Context isolation enabled
+- Node integration disabled in renderer
+- Secure IPC communication via preload script
+- API key handled only in main process
+- Sandboxed renderer process
+
+## Troubleshooting
+
+### "Claude Code CLI not found"
+
+Make sure Claude Code CLI is installed globally:
+
+```bash
+npm install -g @anthropic-ai/claude-code
+claude --version  # Should show version number
+```
+
+### "API key verification failed"
+
+1. Check that your API key is correct
+2. Ensure you have credits in your Anthropic account
+3. Verify network connectivity
+
+### "Failed to start Claude process"
+
+1. Check that your API key environment variable is set
+2. Try running `claude -p "test"` manually in terminal
+3. Ensure Claude Code CLI is working properly
+
+### Performance Issues
+
+- Large conversation histories may slow down the app
+- Consider deleting old conversations you no longer need
+- The app loads all conversations on startup
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Test thoroughly
+5. Submit a pull request
+
+## License
+
+MIT License - see LICENSE file for details.
+
+## Acknowledgments
+
+- Built with [Electron](https://electronjs.org/)
+- Powered by [Claude Code SDK](https://docs.anthropic.com/en/docs/claude-code)
+- UI inspired by modern chat applications
+- Design system based on Anthropic's design principles
