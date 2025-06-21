@@ -5,6 +5,16 @@ let sessionToDelete = null;
 let isStreaming = false;
 let editingMessageId = null;
 let currentRevertMessageId = null; // Track which message is currently reverted
+let currentModel = ''; // Track current model selection (empty string = default Sonnet)
+
+// File browser state
+let currentDirectory = null;
+let directoryContents = [];
+let filteredContents = [];
+let canGoBack = false;
+let canGoForward = false;
+let commonDirectories = [];
+let fileSearchQuery = '';
 
 // DOM elements
 const settingsModal = document.getElementById('settingsModal');
@@ -37,6 +47,26 @@ const cancelDeleteBtn = document.getElementById('cancelDeleteBtn');
 const historyBtn = document.getElementById('historyBtn');
 const historyDropdown = document.getElementById('historyDropdown');
 
+// Model selection elements
+const modelSelect = document.getElementById('modelSelect');
+
+// File browser elements
+const backBtn = document.getElementById('backBtn');
+const forwardBtn = document.getElementById('forwardBtn');
+const upBtn = document.getElementById('upBtn');
+const homeBtn = document.getElementById('homeBtn');
+const breadcrumb = document.getElementById('breadcrumb');
+const cwdPath = document.getElementById('cwdPath');
+const quickAccessList = document.getElementById('quickAccessList');
+const quickAccessHeader = document.getElementById('quickAccessHeader');
+const quickAccessToggle = document.getElementById('quickAccessToggle');
+const fileCount = document.getElementById('fileCount');
+const refreshBtn = document.getElementById('refreshBtn');
+const fileSearchInput = document.getElementById('fileSearchInput');
+const fileList = document.getElementById('fileList');
+const loadingState = document.getElementById('loadingState');
+const statusText = document.getElementById('statusText');
+
 // Initialize application
 async function init() {
     console.log('Initializing Claude Code Chat...');
@@ -47,8 +77,14 @@ async function init() {
     // Listen for IPC events
     setupIPCListeners();
 
+    // Initialize file browser
+    await initializeFileBrowser();
+
     // Load sessions directly
     await loadSessions();
+
+    // Initialize model selection
+    await initializeModelSelection();
 }
 
 // Check system status for settings modal
@@ -158,6 +194,14 @@ function setupEventListeners() {
             }
         }
     });
+
+    // File browser events
+    setupFileBrowserEventListeners();
+
+    // Model selection
+    if (modelSelect) {
+        modelSelect.addEventListener('change', handleModelChange);
+    }
 }
 
 // Set up IPC listeners
@@ -348,7 +392,11 @@ function handleInputChange(e) {
 
 // Render sessions list
 function renderSessions() {
-    conversationsList.innerHTML = '';
+    // Get the conversations list from the history dropdown
+    const historyConversationsList = document.querySelector('#historyDropdown .conversations-list');
+    if (!historyConversationsList) return;
+
+    historyConversationsList.innerHTML = '';
 
     // Sort sessions by updatedAt (most recent first)
     const sortedSessions = [...sessions].sort((a, b) =>
@@ -357,7 +405,7 @@ function renderSessions() {
 
     sortedSessions.forEach(session => {
         const sessionEl = createSessionElement(session);
-        conversationsList.appendChild(sessionEl);
+        historyConversationsList.appendChild(sessionEl);
     });
 }
 
@@ -1813,6 +1861,587 @@ function toggleHistoryDropdown() {
     } else {
         historyDropdown.style.display = 'none';
     }
+}
+
+// ====================================================
+// Model Selection Management
+// ====================================================
+
+// Initialize model selection
+async function initializeModelSelection() {
+    try {
+        const model = await window.electronAPI.getCurrentModel();
+        currentModel = model || '';
+
+        if (modelSelect) {
+            modelSelect.value = currentModel;
+        }
+
+        console.log('Model selection initialized:', currentModel || 'Default (Sonnet)');
+    } catch (error) {
+        console.error('Failed to initialize model selection:', error);
+        // Default to empty string (Sonnet) if there's an error
+        currentModel = '';
+        if (modelSelect) {
+            modelSelect.value = '';
+        }
+    }
+}
+
+// Handle model selection change
+async function handleModelChange() {
+    if (!modelSelect) return;
+
+    const newModel = modelSelect.value;
+    const selectedIndex = modelSelect.selectedIndex;
+
+    try {
+        // Disable dropdown while updating
+        modelSelect.disabled = true;
+
+        await window.electronAPI.setCurrentModel(newModel);
+        currentModel = newModel;
+
+        console.log('Model changed to:', newModel || 'Default (Sonnet)');
+
+        // Show a brief confirmation
+        const originalText = modelSelect.options[selectedIndex].text;
+        modelSelect.options[selectedIndex].text = '✓ ' + originalText;
+
+        setTimeout(() => {
+            if (modelSelect.options[selectedIndex]) {
+                modelSelect.options[selectedIndex].text = originalText;
+                // Ensure the dropdown value stays set to the selected model
+                modelSelect.value = newModel;
+            }
+        }, 1000);
+
+    } catch (error) {
+        console.error('Failed to change model:', error);
+
+        // Revert to previous model on error
+        modelSelect.value = currentModel;
+
+        alert(`Failed to change model: ${error.message}`);
+    } finally {
+        modelSelect.disabled = false;
+    }
+}
+
+// ============================================================================
+// File Browser Implementation
+// ============================================================================
+
+// Setup file browser event listeners
+function setupFileBrowserEventListeners() {
+    // Navigation buttons
+    if (backBtn) backBtn.addEventListener('click', handleNavigateBack);
+    if (forwardBtn) forwardBtn.addEventListener('click', handleNavigateForward);
+    if (upBtn) upBtn.addEventListener('click', handleNavigateUp);
+    if (homeBtn) homeBtn.addEventListener('click', handleNavigateHome);
+    if (refreshBtn) refreshBtn.addEventListener('click', handleRefreshDirectory);
+
+    // File search
+    if (fileSearchInput) {
+        fileSearchInput.addEventListener('input', handleFileSearch);
+        fileSearchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                fileSearchInput.value = '';
+                handleFileSearch();
+            }
+        });
+    }
+
+    // Quick access toggle - both header and button should work
+    if (quickAccessHeader) {
+        quickAccessHeader.addEventListener('click', handleQuickAccessToggle);
+    }
+    if (quickAccessToggle) {
+        quickAccessToggle.addEventListener('click', (e) => {
+            e.stopPropagation(); // Prevent double-triggering from header click
+            handleQuickAccessToggle();
+        });
+    }
+
+    // Keyboard shortcuts for file browser
+    document.addEventListener('keydown', (e) => {
+        // Only handle shortcuts when not in input fields
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.contentEditable === 'true') {
+            return;
+        }
+
+        if ((e.ctrlKey || e.metaKey)) {
+            switch (e.key) {
+                case 'ArrowLeft':
+                    e.preventDefault();
+                    if (canGoBack) handleNavigateBack();
+                    break;
+                case 'ArrowRight':
+                    e.preventDefault();
+                    if (canGoForward) handleNavigateForward();
+                    break;
+                case 'ArrowUp':
+                    e.preventDefault();
+                    handleNavigateUp();
+                    break;
+            }
+        }
+    });
+}
+
+// Initialize file browser
+async function initializeFileBrowser() {
+    try {
+        updateStatus('Initializing file browser...');
+
+        // Load common directories for quick access
+        const commonDirsResult = await window.electronAPI.getCommonDirectories();
+        if (commonDirsResult.success) {
+            commonDirectories = commonDirsResult.directories;
+            renderQuickAccess();
+        }
+
+        // Load current directory
+        await loadCurrentDirectory();
+
+        updateStatus('File browser ready');
+    } catch (error) {
+        console.error('Failed to initialize file browser:', error);
+        updateStatus(`Error: ${error.message}`);
+    }
+}
+
+// Load current directory contents
+async function loadCurrentDirectory() {
+    try {
+        showLoadingState(true);
+        updateStatus('Loading directory...');
+
+        const result = await window.electronAPI.getCurrentDirectory();
+
+        if (result.success) {
+            currentDirectory = result.path;
+            directoryContents = result.contents || [];
+            canGoBack = result.canGoBack || false;
+            canGoForward = result.canGoForward || false;
+
+            // Apply current search filter
+            applyFileSearch();
+
+            // Update UI
+            updateNavigationState();
+            updateDirectoryDisplay();
+            renderDirectoryContents();
+
+            updateStatus(`Loaded ${directoryContents.length} items`);
+        } else {
+            throw new Error(result.error || 'Failed to load directory');
+        }
+    } catch (error) {
+        console.error('Failed to load current directory:', error);
+        updateStatus(`Error: ${error.message}`);
+    } finally {
+        showLoadingState(false);
+    }
+}
+
+// Navigate to a specific directory
+async function navigateToDirectory(path) {
+    try {
+        showLoadingState(true);
+        updateStatus(`Navigating to ${path}...`);
+
+        const result = await window.electronAPI.navigateToDirectory(path);
+
+        if (result.success) {
+            currentDirectory = result.path;
+            directoryContents = result.contents || [];
+            canGoBack = result.canGoBack || false;
+            canGoForward = result.canGoForward || false;
+
+            // Clear search when navigating
+            fileSearchInput.value = '';
+            fileSearchQuery = '';
+            applyFileSearch();
+
+            // Update UI
+            updateNavigationState();
+            updateDirectoryDisplay();
+            renderDirectoryContents();
+
+            updateStatus(`Navigated to ${path}`);
+            console.log('Working directory changed to:', path);
+        } else {
+            throw new Error(result.error || 'Failed to navigate to directory');
+        }
+    } catch (error) {
+        console.error('Failed to navigate to directory:', error);
+        updateStatus(`Error: ${error.message}`);
+    } finally {
+        showLoadingState(false);
+    }
+}
+
+// Navigation handlers
+async function handleNavigateBack() {
+    if (!canGoBack) return;
+
+    try {
+        const result = await window.electronAPI.navigateBack();
+        if (result.success) {
+            currentDirectory = result.path;
+            directoryContents = result.contents || [];
+            canGoBack = result.canGoBack || false;
+            canGoForward = result.canGoForward || false;
+
+            applyFileSearch();
+            updateNavigationState();
+            updateDirectoryDisplay();
+            renderDirectoryContents();
+            updateStatus('Navigated back');
+        } else {
+            updateStatus(`Error: ${result.error}`);
+        }
+    } catch (error) {
+        console.error('Failed to navigate back:', error);
+        updateStatus(`Error: ${error.message}`);
+    }
+}
+
+async function handleNavigateForward() {
+    if (!canGoForward) return;
+
+    try {
+        const result = await window.electronAPI.navigateForward();
+        if (result.success) {
+            currentDirectory = result.path;
+            directoryContents = result.contents || [];
+            canGoBack = result.canGoBack || false;
+            canGoForward = result.canGoForward || false;
+
+            applyFileSearch();
+            updateNavigationState();
+            updateDirectoryDisplay();
+            renderDirectoryContents();
+            updateStatus('Navigated forward');
+        } else {
+            updateStatus(`Error: ${result.error}`);
+        }
+    } catch (error) {
+        console.error('Failed to navigate forward:', error);
+        updateStatus(`Error: ${error.message}`);
+    }
+}
+
+async function handleNavigateUp() {
+    try {
+        const result = await window.electronAPI.navigateUp();
+        if (result.success) {
+            currentDirectory = result.path;
+            directoryContents = result.contents || [];
+            canGoBack = result.canGoBack || false;
+            canGoForward = result.canGoForward || false;
+
+            applyFileSearch();
+            updateNavigationState();
+            updateDirectoryDisplay();
+            renderDirectoryContents();
+            updateStatus('Navigated up');
+        } else {
+            updateStatus(`Error: ${result.error}`);
+        }
+    } catch (error) {
+        console.error('Failed to navigate up:', error);
+        updateStatus(`Error: ${error.message}`);
+    }
+}
+
+async function handleNavigateHome() {
+    try {
+        const homeResult = await window.electronAPI.getHomeDirectory();
+        if (homeResult.success) {
+            await navigateToDirectory(homeResult.path);
+        } else {
+            updateStatus('Error: Could not get home directory');
+        }
+    } catch (error) {
+        console.error('Failed to navigate home:', error);
+        updateStatus(`Error: ${error.message}`);
+    }
+}
+
+async function handleRefreshDirectory() {
+    await loadCurrentDirectory();
+}
+
+// Handle quick access toggle
+function handleQuickAccessToggle() {
+    if (!quickAccessList) return;
+
+    const isExpanded = quickAccessList.style.display !== 'none';
+
+    if (isExpanded) {
+        // Collapse
+        quickAccessList.style.display = 'none';
+        quickAccessToggle.classList.add('collapsed');
+        quickAccessToggle.title = 'Expand Quick Access';
+
+        // Rotate arrow to point right
+        const svg = quickAccessToggle.querySelector('svg path');
+        if (svg) {
+            svg.setAttribute('d', 'M9 18l6-6-6-6');
+        }
+    } else {
+        // Expand
+        quickAccessList.style.display = 'flex';
+        quickAccessToggle.classList.remove('collapsed');
+        quickAccessToggle.title = 'Collapse Quick Access';
+
+        // Rotate arrow to point down
+        const svg = quickAccessToggle.querySelector('svg path');
+        if (svg) {
+            svg.setAttribute('d', 'M18 15l-6-6-6 6');
+        }
+    }
+}
+
+// File search handler
+function handleFileSearch() {
+    fileSearchQuery = fileSearchInput.value.toLowerCase().trim();
+    applyFileSearch();
+    renderDirectoryContents();
+}
+
+// Apply file search filter
+function applyFileSearch() {
+    if (!fileSearchQuery) {
+        filteredContents = [...directoryContents];
+    } else {
+        filteredContents = directoryContents.filter(item =>
+            item.name.toLowerCase().includes(fileSearchQuery)
+        );
+    }
+}
+
+// Update navigation button states
+function updateNavigationState() {
+    if (backBtn) {
+        backBtn.disabled = !canGoBack;
+        backBtn.title = canGoBack ? 'Back' : 'No previous directory';
+    }
+
+    if (forwardBtn) {
+        forwardBtn.disabled = !canGoForward;
+        forwardBtn.title = canGoForward ? 'Forward' : 'No next directory';
+    }
+}
+
+// Update directory display elements
+function updateDirectoryDisplay() {
+    // Update working directory indicator
+    if (cwdPath) {
+        // We'll get the home path from the backend instead of using require('os')
+        const displayPath = currentDirectory || '~';
+        cwdPath.textContent = displayPath;
+        cwdPath.title = currentDirectory || '';
+    }
+
+    // Update breadcrumb
+    updateBreadcrumb();
+
+    // Update file count
+    if (fileCount) {
+        const total = directoryContents.length;
+        const filtered = filteredContents.length;
+        if (fileSearchQuery && filtered !== total) {
+            fileCount.textContent = `${filtered} of ${total} items`;
+        } else {
+            fileCount.textContent = `${total} items`;
+        }
+    }
+}
+
+// Update breadcrumb navigation
+function updateBreadcrumb() {
+    if (!breadcrumb || !currentDirectory) return;
+
+    const segments = currentDirectory.split('/').filter(Boolean);
+    const breadcrumbHtml = [];
+
+    // Add root segment
+    breadcrumbHtml.push(`
+        <span class="breadcrumb-segment" data-path="/">
+            <span class="breadcrumb-icon">💾</span>
+            <span class="breadcrumb-text">Root</span>
+        </span>
+    `);
+
+    // Add path segments
+    let currentPath = '';
+    segments.forEach((segment, index) => {
+        currentPath += '/' + segment;
+        const isLast = index === segments.length - 1;
+
+        breadcrumbHtml.push(`
+            <span class="breadcrumb-separator">/</span>
+            <span class="breadcrumb-segment ${isLast ? 'current' : ''}" data-path="${currentPath}">
+                <span class="breadcrumb-text">${segment}</span>
+            </span>
+        `);
+    });
+
+    breadcrumb.innerHTML = breadcrumbHtml.join('');
+
+    // Add click handlers for breadcrumb navigation
+    breadcrumb.querySelectorAll('.breadcrumb-segment').forEach(segment => {
+        if (!segment.classList.contains('current')) {
+            segment.style.cursor = 'pointer';
+            segment.addEventListener('click', () => {
+                const path = segment.dataset.path;
+                if (path) navigateToDirectory(path);
+            });
+        }
+    });
+}
+
+// Render quick access shortcuts
+function renderQuickAccess() {
+    if (!quickAccessList || !commonDirectories) return;
+
+    const quickAccessHtml = commonDirectories.map(dir => `
+        <div class="quick-access-item" data-path="${dir.path}" title="${dir.path}">
+            <span class="quick-access-icon">${dir.icon}</span>
+            <span class="quick-access-name">${dir.name}</span>
+        </div>
+    `).join('');
+
+    quickAccessList.innerHTML = quickAccessHtml;
+
+    // Add click handlers
+    quickAccessList.querySelectorAll('.quick-access-item').forEach(item => {
+        item.addEventListener('click', () => {
+            const path = item.dataset.path;
+            if (path) navigateToDirectory(path);
+        });
+    });
+}
+
+// Render directory contents
+function renderDirectoryContents() {
+    if (!fileList) return;
+
+    if (filteredContents.length === 0) {
+        const emptyMessage = fileSearchQuery
+            ? `No files match "${fileSearchQuery}"`
+            : 'This directory is empty';
+
+        fileList.innerHTML = `
+            <div class="empty-directory">
+                <div class="empty-icon">📂</div>
+                <div class="empty-message">${emptyMessage}</div>
+            </div>
+        `;
+        return;
+    }
+
+    const fileListHtml = filteredContents.map(item => {
+        const icon = getFileIcon(item);
+        const sizeText = item.isDirectory ? '' : formatFileSize(item.size);
+        const modifiedText = formatModifiedDate(item.modified);
+
+        return `
+            <div class="file-item ${item.isDirectory ? 'directory' : 'file'}"
+                 data-path="${item.path}"
+                 data-is-directory="${item.isDirectory}"
+                 title="${item.path}">
+                <div class="file-icon">${icon}</div>
+                <div class="file-info">
+                    <div class="file-name">${item.name}</div>
+                    <div class="file-details">
+                        ${sizeText && `<span class="file-size">${sizeText}</span>`}
+                        <span class="file-modified">${modifiedText}</span>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    fileList.innerHTML = fileListHtml;
+
+    // Add click handlers
+    fileList.querySelectorAll('.file-item').forEach(item => {
+        item.addEventListener('click', () => {
+            const path = item.dataset.path;
+            const isDirectory = item.dataset.isDirectory === 'true';
+
+            if (isDirectory) {
+                navigateToDirectory(path);
+            } else {
+                // For files, we could potentially open them or show info
+                updateStatus(`Selected file: ${path}`);
+            }
+        });
+    });
+}
+
+// Helper functions
+function getFileIcon(item) {
+    if (item.isDirectory) {
+        return '📁';
+    }
+
+    const ext = item.name.split('.').pop()?.toLowerCase();
+    const iconMap = {
+        // Text files
+        'txt': '📄', 'md': '📄', 'readme': '📄',
+        // Code files
+        'js': '📄', 'ts': '📄', 'py': '🐍', 'html': '🌐', 'css': '🎨',
+        'json': '📄', 'xml': '📄', 'yaml': '📄', 'yml': '📄',
+        // Images
+        'png': '🖼️', 'jpg': '🖼️', 'jpeg': '🖼️', 'gif': '🖼️', 'svg': '🖼️',
+        // Archives
+        'zip': '📦', 'tar': '📦', 'gz': '📦', '7z': '📦',
+        // Documents
+        'pdf': '📕', 'doc': '📄', 'docx': '📄', 'xls': '📊', 'xlsx': '📊',
+        // Media
+        'mp3': '🎵', 'wav': '🎵', 'mp4': '🎬', 'avi': '🎬', 'mov': '🎬'
+    };
+
+    return iconMap[ext] || '📄';
+}
+
+function formatFileSize(bytes) {
+    if (bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+}
+
+function formatModifiedDate(dateString) {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diff = now - date;
+
+    if (diff < 60000) return 'Just now';
+    if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`;
+    if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`;
+    if (diff < 604800000) return `${Math.floor(diff / 86400000)}d ago`;
+
+    return date.toLocaleDateString();
+}
+
+function showLoadingState(show) {
+    if (loadingState) {
+        loadingState.style.display = show ? 'flex' : 'none';
+    }
+}
+
+function updateStatus(message) {
+    if (statusText) {
+        statusText.textContent = message;
+    }
+    console.log('File browser:', message);
 }
 
 // Initialize the application

@@ -15,9 +15,18 @@ let mainWindow;
 let claudeProcesses = new Map(); // Track running Claude processes
 let sessions = new Map(); // Track conversation sessions
 
+// Working directory management
+let currentWorkingDirectory = os.homedir(); // Start in user's home directory
+let directoryHistory = []; // Navigation history for back/forward
+let historyIndex = -1; // Current position in history
+
+// Model configuration
+let currentModel = ''; // Empty string means default (Sonnet)
+
 // Session storage paths
 const sessionStoragePath = path.join(os.homedir(), '.claude-code-chat', 'sessions.json');
 const recoveryStatePath = path.join(os.homedir(), '.claude-code-chat', 'recovery.json');
+const modelConfigPath = path.join(os.homedir(), '.claude-code-chat', 'model-config.json');
 
 // Checkpoint storage paths
 const checkpointDir = path.join(process.cwd(), '.claude-checkpoints');
@@ -329,6 +338,7 @@ async function createWindow() {
 // App event handlers
 app.whenReady().then(async () => {
   await createWindow();
+  await loadModelConfig();
   await loadSessions();
   await recoverInterruptedSessions();
 
@@ -592,6 +602,51 @@ async function recoverInterruptedSessions() {
   }
 }
 
+// Model configuration management
+async function loadModelConfig() {
+  try {
+    const dir = path.dirname(modelConfigPath);
+    await fs.mkdir(dir, { recursive: true });
+
+    const data = await fs.readFile(modelConfigPath, 'utf8');
+    const config = JSON.parse(data);
+
+    currentModel = config.model || '';
+
+    // Set the environment variable
+    if (currentModel) {
+      process.env.ANTHROPIC_MODEL = currentModel;
+      console.log('Model loaded from config:', currentModel);
+    } else {
+      delete process.env.ANTHROPIC_MODEL;
+      console.log('Using default model (Sonnet)');
+    }
+  } catch (error) {
+    // File doesn't exist or is invalid, use default
+    console.log('No model config found, using default (Sonnet)');
+    currentModel = '';
+    delete process.env.ANTHROPIC_MODEL;
+  }
+}
+
+async function saveModelConfig() {
+  try {
+    const dir = path.dirname(modelConfigPath);
+    await fs.mkdir(dir, { recursive: true });
+
+    const config = {
+      model: currentModel,
+      updatedAt: new Date().toISOString()
+    };
+
+    await fs.writeFile(modelConfigPath, JSON.stringify(config, null, 2));
+    console.log('Model config saved:', currentModel || 'Default (Sonnet)');
+  } catch (error) {
+    console.error('Failed to save model config:', error);
+    throw error;
+  }
+}
+
 // Check if Claude Code CLI is available
 async function checkClaudeCliAvailable() {
   return new Promise((resolve) => {
@@ -685,6 +740,36 @@ ipcMain.handle('set-api-key', async (event, apiKey) => {
   } catch (error) {
     throw new Error(`Failed to verify API key: ${error.message}`);
   }
+});
+
+ipcMain.handle('get-current-model', async () => {
+  return currentModel;
+});
+
+ipcMain.handle('set-current-model', async (event, model) => {
+  if (model !== undefined && typeof model !== 'string') {
+    throw new Error('Invalid model specification');
+  }
+
+  const validModels = ['', 'claude-3-5-haiku-20241022', 'claude-opus-4-20250514'];
+  if (!validModels.includes(model)) {
+    throw new Error(`Invalid model: ${model}. Valid models are: ${validModels.join(', ')}`);
+  }
+
+  currentModel = model || '';
+
+  // Update environment variable
+  if (currentModel) {
+    process.env.ANTHROPIC_MODEL = currentModel;
+  } else {
+    delete process.env.ANTHROPIC_MODEL;
+  }
+
+  // Save to persistent storage
+  await saveModelConfig();
+
+  console.log('Model updated to:', currentModel || 'Default (Sonnet)');
+  return currentModel;
 });
 
 ipcMain.handle('get-sessions', async () => {
@@ -841,7 +926,7 @@ ipcMain.handle('send-message', async (event, sessionId, message) => {
   const claudeProcess = spawn('claude', claudeArgs, {
     stdio: ['pipe', 'pipe', 'pipe'],
     env: { ...process.env },
-    cwd: process.cwd(),
+    cwd: currentWorkingDirectory, // Use the configurable working directory
     detached: false,
     shell: false
   });
@@ -1330,6 +1415,299 @@ ipcMain.handle('has-file-changes', async (event, sessionId, messageId) => {
   } catch (error) {
     console.error('Failed to check file changes:', error);
     return false;
+  }
+});
+
+// ============================================================================
+// File System & Working Directory Management IPC Handlers
+// ============================================================================
+
+// Helper function to get directory contents with file info
+async function getDirectoryContents(dirPath) {
+  try {
+    const entries = await fs.readdir(dirPath, { withFileTypes: true });
+    const contents = [];
+
+    for (const entry of entries) {
+      try {
+        const fullPath = path.join(dirPath, entry.name);
+        const stats = await fs.stat(fullPath);
+
+        contents.push({
+          name: entry.name,
+          path: fullPath,
+          isDirectory: entry.isDirectory(),
+          isFile: entry.isFile(),
+          size: stats.size,
+          modified: stats.mtime,
+          permissions: {
+            readable: true, // We'll assume readable if we can stat it
+            writable: false // We'll check this separately if needed
+          }
+        });
+      } catch (statError) {
+        // Skip files we can't stat (permission issues, etc.)
+        console.warn(`Could not stat ${entry.name}:`, statError.message);
+      }
+    }
+
+    // Sort: directories first, then files, both alphabetically
+    contents.sort((a, b) => {
+      if (a.isDirectory && !b.isDirectory) return -1;
+      if (!a.isDirectory && b.isDirectory) return 1;
+      return a.name.toLowerCase().localeCompare(b.name.toLowerCase());
+    });
+
+    return contents;
+  } catch (error) {
+    throw new Error(`Cannot read directory ${dirPath}: ${error.message}`);
+  }
+}
+
+// Helper function to validate directory path
+async function validateDirectory(dirPath) {
+  try {
+    const stats = await fs.stat(dirPath);
+    return stats.isDirectory();
+  } catch (error) {
+    return false;
+  }
+}
+
+// Helper function to update directory history
+function updateDirectoryHistory(newPath) {
+  // Remove any history after current index (for new navigation)
+  directoryHistory = directoryHistory.slice(0, historyIndex + 1);
+
+  // Add new path if it's different from current
+  if (directoryHistory.length === 0 || directoryHistory[historyIndex] !== newPath) {
+    directoryHistory.push(newPath);
+    historyIndex = directoryHistory.length - 1;
+  }
+}
+
+// Get directory contents
+ipcMain.handle('get-directory-contents', async (event, dirPath) => {
+  try {
+    const targetPath = dirPath || currentWorkingDirectory;
+    const isValid = await validateDirectory(targetPath);
+
+    if (!isValid) {
+      throw new Error(`Invalid directory: ${targetPath}`);
+    }
+
+    const contents = await getDirectoryContents(targetPath);
+    return {
+      success: true,
+      path: targetPath,
+      contents: contents
+    };
+  } catch (error) {
+    console.error('Failed to get directory contents:', error);
+    return {
+      success: false,
+      error: error.message,
+      path: dirPath
+    };
+  }
+});
+
+// Navigate to directory
+ipcMain.handle('navigate-to-directory', async (event, dirPath) => {
+  try {
+    const resolvedPath = path.resolve(dirPath);
+    const isValid = await validateDirectory(resolvedPath);
+
+    if (!isValid) {
+      throw new Error(`Cannot navigate to: ${resolvedPath}`);
+    }
+
+    // Update working directory and history
+    currentWorkingDirectory = resolvedPath;
+    updateDirectoryHistory(resolvedPath);
+
+    // Get contents of new directory
+    const contents = await getDirectoryContents(resolvedPath);
+
+    console.log('Navigated to directory:', resolvedPath);
+
+    return {
+      success: true,
+      path: resolvedPath,
+      contents: contents,
+      canGoBack: historyIndex > 0,
+      canGoForward: historyIndex < directoryHistory.length - 1
+    };
+  } catch (error) {
+    console.error('Failed to navigate to directory:', error);
+    return {
+      success: false,
+      error: error.message,
+      path: dirPath
+    };
+  }
+});
+
+// Get current working directory
+ipcMain.handle('get-current-directory', async () => {
+  try {
+    const contents = await getDirectoryContents(currentWorkingDirectory);
+    return {
+      success: true,
+      path: currentWorkingDirectory,
+      contents: contents,
+      canGoBack: historyIndex > 0,
+      canGoForward: historyIndex < directoryHistory.length - 1
+    };
+  } catch (error) {
+    console.error('Failed to get current directory:', error);
+    return {
+      success: false,
+      error: error.message,
+      path: currentWorkingDirectory
+    };
+  }
+});
+
+// Get user's home directory
+ipcMain.handle('get-home-directory', async () => {
+  return {
+    success: true,
+    path: os.homedir()
+  };
+});
+
+// Get common directories (macOS-optimized)
+ipcMain.handle('get-common-directories', async () => {
+  const homeDir = os.homedir();
+  const commonDirs = [
+    { name: 'Home', path: homeDir, icon: '🏠' },
+    { name: 'Desktop', path: path.join(homeDir, 'Desktop'), icon: '🖥️' },
+    { name: 'Documents', path: path.join(homeDir, 'Documents'), icon: '📄' },
+    { name: 'Downloads', path: path.join(homeDir, 'Downloads'), icon: '⬇️' },
+    { name: 'Applications', path: '/Applications', icon: '📦' },
+    { name: 'Root', path: '/', icon: '💾' }
+  ];
+
+  // Filter to only include existing directories
+  const validDirs = [];
+  for (const dir of commonDirs) {
+    if (await validateDirectory(dir.path)) {
+      validDirs.push(dir);
+    }
+  }
+
+  return {
+    success: true,
+    directories: validDirs
+  };
+});
+
+// Navigate back in history
+ipcMain.handle('navigate-back', async () => {
+  if (historyIndex > 0) {
+    historyIndex--;
+    currentWorkingDirectory = directoryHistory[historyIndex];
+
+    try {
+      const contents = await getDirectoryContents(currentWorkingDirectory);
+      return {
+        success: true,
+        path: currentWorkingDirectory,
+        contents: contents,
+        canGoBack: historyIndex > 0,
+        canGoForward: historyIndex < directoryHistory.length - 1
+      };
+    } catch (error) {
+      // Revert on error
+      historyIndex++;
+      currentWorkingDirectory = directoryHistory[historyIndex];
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+  }
+
+  return {
+    success: false,
+    error: 'No previous directory in history'
+  };
+});
+
+// Navigate forward in history
+ipcMain.handle('navigate-forward', async () => {
+  if (historyIndex < directoryHistory.length - 1) {
+    historyIndex++;
+    currentWorkingDirectory = directoryHistory[historyIndex];
+
+    try {
+      const contents = await getDirectoryContents(currentWorkingDirectory);
+      return {
+        success: true,
+        path: currentWorkingDirectory,
+        contents: contents,
+        canGoBack: historyIndex > 0,
+        canGoForward: historyIndex < directoryHistory.length - 1
+      };
+    } catch (error) {
+      // Revert on error
+      historyIndex--;
+      currentWorkingDirectory = directoryHistory[historyIndex];
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+  }
+
+  return {
+    success: false,
+    error: 'No next directory in history'
+  };
+});
+
+// Navigate up one directory level
+ipcMain.handle('navigate-up', async () => {
+  const parentPath = path.dirname(currentWorkingDirectory);
+
+  // Don't go up if we're already at root
+  if (parentPath === currentWorkingDirectory) {
+    return {
+      success: false,
+      error: 'Already at root directory'
+    };
+  }
+
+  // Navigate to parent directory
+  try {
+    const resolvedPath = path.resolve(parentPath);
+    const isValid = await validateDirectory(resolvedPath);
+
+    if (!isValid) {
+      throw new Error(`Cannot navigate to: ${resolvedPath}`);
+    }
+
+    // Update working directory and history
+    currentWorkingDirectory = resolvedPath;
+    updateDirectoryHistory(resolvedPath);
+
+    // Get contents of new directory
+    const contents = await getDirectoryContents(resolvedPath);
+
+    return {
+      success: true,
+      path: resolvedPath,
+      contents: contents,
+      canGoBack: historyIndex > 0,
+      canGoForward: historyIndex < directoryHistory.length - 1
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: error.message,
+      path: parentPath
+    };
   }
 });
 
