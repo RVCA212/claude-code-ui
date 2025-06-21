@@ -13,11 +13,17 @@ contextBridge.exposeInMainWorld('electronAPI', {
   deleteSession: (sessionId) => ipcRenderer.invoke('delete-session', sessionId),
   updateSessionTitle: (sessionId, newTitle) => ipcRenderer.invoke('update-session-title', sessionId, newTitle),
   getSessionContext: (sessionId) => ipcRenderer.invoke('get-session-context', sessionId),
-  resumeSession: (sessionId) => ipcRenderer.invoke('resume-session', sessionId),
+  // resumeSession removed - now handled automatically in sendMessage
   
   // Messaging
   sendMessage: (sessionId, message) => ipcRenderer.invoke('send-message', sessionId, message),
   stopMessage: (sessionId) => ipcRenderer.invoke('stop-message', sessionId),
+  
+  // Checkpointing
+  revertToMessage: (sessionId, messageId) => ipcRenderer.invoke('revert-to-message', sessionId, messageId),
+  unrevertFromMessage: (sessionId, messageId) => ipcRenderer.invoke('unrevert-from-message', sessionId, messageId),
+  getMessageCheckpoints: (sessionId, messageId) => ipcRenderer.invoke('get-message-checkpoints', sessionId, messageId),
+  hasFileChanges: (sessionId, messageId) => ipcRenderer.invoke('has-file-changes', sessionId, messageId),
   
   // File system operations
   getCurrentDirectory: () => ipcRenderer.invoke('get-current-directory'),

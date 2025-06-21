@@ -537,10 +537,10 @@ pre code {
 }
 
 .conversation-actions {
+  position: relative;
   display: flex;
   align-items: center;
   gap: var(--space-8);
-  -webkit-app-region: no-drag;
 }
 
 .conversation-title {
@@ -750,6 +750,53 @@ pre code {
   color: var(--color-text-secondary);
   margin-top: var(--space-4);
   padding: 0 var(--space-4);
+}
+
+.message-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  margin-top: var(--space-4);
+  padding: 0 var(--space-4);
+}
+
+.revert-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: var(--space-4);
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-standard);
+  opacity: 0.6;
+}
+
+.revert-btn:hover {
+  background-color: var(--color-error);
+  border-color: var(--color-error);
+  color: white;
+  opacity: 1;
+  transform: translateY(-1px);
+}
+
+.revert-btn:active {
+  transform: translateY(0);
+}
+
+.revert-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.revert-btn svg {
+  width: 14px;
+  height: 14px;
 }
 
 .message-content pre {
@@ -1604,4 +1651,220 @@ pre code {
   margin-bottom: 0;
   padding-bottom: 0;
   border-bottom: none;
+}
+
+/* DImmed messages after revert */
+.message.invalidated .message-content,
+.conversation-turn.invalidated .conversation-content {
+  opacity: 0.4;
+  filter: grayscale(80%);
+}
+
+/* Inline editing state */
+.message .message-content.editing {
+  background-color: var(--color-background);
+  color: var(--color-text);
+  border: 1px dashed var(--color-primary);
+}
+
+/* Unrevert hover state */
+.messages-container.has-reverted-message {
+  cursor: help;
+}
+
+.messages-container.has-reverted-message:hover {
+  background: linear-gradient(
+    to bottom,
+    transparent 0%,
+    transparent var(--unrevert-trigger-top, 50%),
+    rgba(var(--color-success-rgb), 0.05) var(--unrevert-trigger-top, 50%),
+    rgba(var(--color-success-rgb), 0.1) 100%
+  );
+}
+
+/* Visual indicator for revert state */
+.message.user .message-content.editing::after {
+  content: "Click below this message to restore changes";
+  display: block;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  margin-top: var(--space-8);
+  font-style: italic;
+  opacity: 0.7;
+}
+
+/* Enhanced visual feedback for reverted state */
+.conversation-turn.user .conversation-content.editing::after {
+  content: "Click below this message to restore changes";
+  display: block;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  margin-top: var(--space-8);
+  font-style: italic;
+  opacity: 0.7;
+}
+
+/* === Task Logs Dropdown === */
+.task-logs-container {
+  margin-bottom: var(--space-12);
+}
+
+.task-logs-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  background: var(--color-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-6) var(--space-12);
+  cursor: pointer;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  transition: all var(--duration-fast) var(--ease-standard);
+  text-align: left;
+}
+
+.task-logs-toggle:hover {
+  background: var(--color-secondary-hover);
+  border-color: var(--color-border);
+}
+
+.task-logs-toggle:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: var(--focus-ring);
+}
+
+.task-logs-label {
+  font-weight: var(--font-weight-medium);
+  font-size: var(--font-size-sm);
+}
+
+.task-logs-icon {
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xs);
+  transition: transform var(--duration-fast) var(--ease-standard);
+  opacity: 0.7;
+}
+
+.task-logs-toggle.expanded .task-logs-icon {
+  transform: rotate(180deg);
+}
+
+.task-logs-content {
+  border: 1px solid var(--color-border);
+  border-top: none;
+  border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+  background: var(--color-background);
+  padding: var(--space-8);
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.task-logs-content .thinking-section,
+.task-logs-content .tool-call {
+  margin-bottom: var(--space-8);
+}
+
+.task-logs-content .thinking-section:last-child,
+.task-logs-content .tool-call:last-child {
+  margin-bottom: 0;
+}
+
+/* Make task logs content more compact */
+.task-logs-content .thinking-header {
+  font-size: var(--font-size-xs);
+  padding: var(--space-6) var(--space-8);
+}
+
+.task-logs-content .thinking-content {
+  max-height: 150px;
+  padding: var(--space-8);
+}
+
+.task-logs-content .tool-header {
+  font-size: var(--font-size-xs);
+  padding: var(--space-6) var(--space-8);
+}
+
+.task-logs-content .tool-summary {
+  font-size: var(--font-size-xs);
+  padding: var(--space-6) var(--space-8);
+}
+
+/* Subtle scrollbar for task logs content */
+.task-logs-content::-webkit-scrollbar {
+  width: 4px;
+}
+
+.task-logs-content::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.task-logs-content::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: var(--radius-full);
+}
+
+/* Conversation Actions positioning */
+.conversation-actions {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+}
+
+/* History Button */
+.history-btn {
+  background: var(--color-secondary);
+  border: none;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  transition: background-color var(--duration-fast) var(--ease-standard);
+  -webkit-app-region: no-drag;
+}
+
+.history-btn svg {
+  color: #fff;
+}
+
+.history-btn:hover {
+  background: var(--color-secondary-hover);
+}
+
+/* History Dropdown */
+.history-dropdown {
+  position: absolute;
+  top: calc(100% + var(--space-8));
+  right: 0;
+  width: 260px;
+  max-height: 400px;
+  overflow-y: auto;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-base);
+  box-shadow: var(--shadow-lg);
+  z-index: 1000;
+}
+
+/* Ensure conversation items fit within dropdown */
+.history-dropdown .conversation-item {
+  width: 100%;
+  max-width: 100%;
+}
+
+/* Adjust dropdown scrollbar */
+.history-dropdown::-webkit-scrollbar {
+  width: 6px;
+}
+
+.history-dropdown::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: var(--radius-full);
 }

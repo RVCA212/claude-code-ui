@@ -3,6 +3,8 @@ let sessions = [];
 let currentSessionId = null;
 let sessionToDelete = null;
 let isStreaming = false;
+let editingMessageId = null;
+let currentRevertMessageId = null; // Track which message is currently reverted
 
 // DOM elements
 const settingsModal = document.getElementById('settingsModal');
@@ -21,7 +23,7 @@ const stopBtn = document.getElementById('stopBtn');
 const newConversationBtn = document.getElementById('newConversationBtn');
 const conversationTitle = document.getElementById('conversationTitle');
 const editTitleBtn = document.getElementById('editTitleBtn');
-const continueBtn = document.getElementById('continueBtn');
+// const continueBtn = document.getElementById('continueBtn'); // Removed for seamless UX
 const conversationStatus = document.getElementById('conversationStatus');
 const conversationContext = document.getElementById('conversationContext');
 const inputArea = document.getElementById('inputArea');
@@ -30,6 +32,10 @@ const sessionInfo = document.getElementById('sessionInfo');
 const deleteModal = document.getElementById('deleteModal');
 const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
 const cancelDeleteBtn = document.getElementById('cancelDeleteBtn');
+
+// History dropdown elements
+const historyBtn = document.getElementById('historyBtn');
+const historyDropdown = document.getElementById('historyDropdown');
 
 // Initialize application
 async function init() {
@@ -104,8 +110,7 @@ function setupEventListeners() {
     conversationTitle.addEventListener('keydown', handleTitleKeydown);
     conversationTitle.addEventListener('blur', saveTitleEdit);
 
-    // Conversation continuation
-    continueBtn.addEventListener('click', continueConversation);
+    // Conversation continuation removed for seamless UX
 
     // Delete modal
     confirmDeleteBtn.addEventListener('click', confirmDelete);
@@ -117,11 +122,40 @@ function setupEventListeners() {
     // Keyboard shortcuts
     document.addEventListener('keydown', handleGlobalKeydown);
 
+    // Click detection for unrevert functionality
+    messagesContainer.addEventListener('click', handleMessagesContainerClick);
+
     // API key input
     apiKeyInput.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') {
             e.preventDefault();
             saveSettings();
+        }
+    });
+
+    // History dropdown toggle
+    if (historyBtn) {
+        historyBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            toggleHistoryDropdown();
+        });
+    }
+
+    // Prevent clicks inside dropdown from closing it
+    if (historyDropdown) {
+        historyDropdown.addEventListener('click', (e) => {
+            e.stopPropagation();
+        });
+    }
+
+    // Close dropdown when clicking outside
+    document.addEventListener('click', (e) => {
+        if (historyDropdown && historyDropdown.style.display === 'block') {
+            const withinDropdown = historyDropdown.contains(e.target);
+            const isButton = historyBtn && historyBtn.contains(e.target);
+            if (!withinDropdown && !isButton) {
+                historyDropdown.style.display = 'none';
+            }
         }
     });
 }
@@ -169,7 +203,10 @@ function setupIPCListeners() {
     // Listen for session creation
     window.electronAPI.onSessionCreated((event, newSession) => {
         console.log('Session created:', newSession);
-        sessions.unshift(newSession);
+        // Avoid adding duplicate sessions if we already inserted it locally
+        if (!sessions.some(s => s.id === newSession.id)) {
+            sessions.unshift(newSession);
+        }
         renderSessions();
     });
 
@@ -254,6 +291,35 @@ function handleGlobalKeydown(e) {
     if ((e.ctrlKey || e.metaKey) && e.key === 'n') {
         e.preventDefault();
         createNewSession();
+    }
+}
+
+// Handle clicks in messages container for unrevert functionality
+function handleMessagesContainerClick(e) {
+    // Only handle if we have a reverted message and not currently editing
+    if (!currentRevertMessageId || editingMessageId) return;
+
+    // Don't trigger if clicking on interactive elements
+    if (e.target.closest('button, input, textarea, .revert-btn, .message-actions')) return;
+
+    // Don't trigger if clicking inside the editable message itself
+    const editableMessage = document.querySelector(`[data-message-id="${currentRevertMessageId}"] .message-content`);
+    if (editableMessage && editableMessage.contains(e.target)) return;
+
+    // Find the reverted message element
+    const revertedMessageEl = document.querySelector(`[data-message-id="${currentRevertMessageId}"]`);
+    if (!revertedMessageEl) return;
+
+    // Check if click is below the reverted message
+    const revertedMessageRect = revertedMessageEl.getBoundingClientRect();
+    const clickY = e.clientY;
+    const revertedMessageBottom = revertedMessageRect.bottom;
+
+    // Only trigger unrevert if click is below the reverted message
+    if (clickY > revertedMessageBottom) {
+        e.preventDefault();
+        e.stopPropagation();
+        handleUnrevertFromMessage(currentRevertMessageId);
     }
 }
 
@@ -354,12 +420,23 @@ function createSessionElement(session) {
     return div;
 }
 
+// Reset button state to ensure clean UI
+function resetButtonState() {
+    isStreaming = false;
+    sendBtn.disabled = messageInput.value.trim() === '';
+    sendBtn.style.display = 'flex';
+    stopBtn.style.display = 'none';
+}
+
 // Load session
 async function loadSession(sessionId) {
     const session = sessions.find(s => s.id === sessionId);
     if (!session) return;
 
     currentSessionId = sessionId;
+
+    // Reset button state when switching sessions to prevent state persistence
+    resetButtonState();
 
     // Get full session context from backend
     try {
@@ -382,17 +459,17 @@ async function loadSession(sessionId) {
     // Render messages
     renderMessages(session.messages);
 
-    // Focus input if session is active or can be resumed
-    const statusInfo = session.statusInfo || {};
-    if (statusInfo.status === 'active' || statusInfo.canResume) {
-        messageInput.focus();
-    }
+    // Always focus input for seamless interaction
+    messageInput.focus();
 }
 
 // Update session UI with full context
 async function updateSessionUI(sessionContext) {
     const statusInfo = sessionContext.statusInfo || {};
     const conversationPreview = sessionContext.conversationPreview || {};
+
+    // Restore revert state if session has active revert
+    currentRevertMessageId = sessionContext.currentRevertMessageId || null;
 
     // Update title
     conversationTitle.textContent = sessionContext.title;
@@ -423,14 +500,8 @@ async function updateSessionUI(sessionContext) {
         conversationContext.style.display = 'none';
     }
 
-    // Show continue button for resumable sessions
-    if (statusInfo.canResume && statusInfo.status !== 'active') {
-        continueBtn.style.display = 'inline-flex';
-        inputArea.style.display = 'none'; // Hide input until resumed
-    } else {
-        continueBtn.style.display = 'none';
-        inputArea.style.display = 'block';
-    }
+    // Always show input area for seamless conversation flow
+    inputArea.style.display = 'block';
 
     // Update session info
     if (sessionContext.claudeSessionId) {
@@ -442,13 +513,15 @@ async function updateSessionUI(sessionContext) {
 
 // Fallback basic UI update
 function updateBasicSessionUI(session) {
+    // Restore revert state if session has active revert
+    currentRevertMessageId = session.currentRevertMessageId || null;
+
     conversationTitle.textContent = session.title;
     conversationTitle.contentEditable = 'false';
     editTitleBtn.style.display = 'inline-block';
     inputArea.style.display = 'block';
     conversationStatus.style.display = 'none';
     conversationContext.style.display = 'none';
-    continueBtn.style.display = 'none';
 
     if (session.claudeSessionId) {
         sessionInfo.textContent = `Session: ${session.claudeSessionId.substring(0, 8)}...`;
@@ -477,6 +550,13 @@ function renderMessages(messages) {
         messagesContainer.appendChild(messageEl);
     });
 
+    // Check for revert buttons after all messages are rendered
+    messages.forEach(message => {
+        if (message.type === 'user') {
+            checkAndShowRevertButton(message.id);
+        }
+    });
+
     // Scroll to bottom
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
 }
@@ -484,7 +564,7 @@ function renderMessages(messages) {
 // Create conversation turn container for sequential content
 function createConversationTurn(message) {
     const turnDiv = document.createElement('div');
-    turnDiv.className = `conversation-turn ${message.type || 'assistant'}`;
+    turnDiv.className = `conversation-turn ${message.type || 'assistant'}${message.invalidated ? ' invalidated' : ''}`;
     turnDiv.dataset.conversationId = message.id;
 
     const timestamp = formatTimestamp(message.timestamp || new Date().toISOString());
@@ -755,13 +835,27 @@ function handleStreamingMessage(messageData, isComplete, thinkingContent = null)
         if (document.querySelector(`[data-message-id="${message.id}"]`)) return;
         conversationTurn = createConversationTurn(message);
         messagesContainer.appendChild(conversationTurn);
+
+        // Initialize task logs data on the element
+        conversationTurn._taskLogsData = {
+            thinking: [],
+            toolCalls: [],
+            textResponses: []
+        };
     }
 
     const contentDiv = conversationTurn.querySelector('.conversation-content');
-    contentDiv.innerHTML = ''; // Clear and re-render content
 
-    // Handle thinking content
+    // Only clear and re-render if not complete - preserve task logs when finalizing
+    if (!isComplete) {
+        contentDiv.innerHTML = ''; // Clear and re-render content during streaming
+    }
+
+    // Handle thinking content - store in task logs data
     if (thinkingContent && !isComplete) {
+        if (!conversationTurn._taskLogsData.thinking.some(t => t === thinkingContent)) {
+            conversationTurn._taskLogsData.thinking.push(thinkingContent);
+        }
         addThinkingContent(conversationTurn, thinkingContent);
     }
 
@@ -770,21 +864,38 @@ function handleStreamingMessage(messageData, isComplete, thinkingContent = null)
         // Handle structured content array
         message.content.forEach(contentItem => {
             if (contentItem.type === 'text' && contentItem.text && contentItem.text.trim()) {
-                addTextResponse(conversationTurn, contentItem.text);
+                // Store text responses in task logs data
+                if (!conversationTurn._taskLogsData.textResponses.some(t => t === contentItem.text)) {
+                    conversationTurn._taskLogsData.textResponses.push(contentItem.text);
+                }
+                if (!isComplete) {
+                    addTextResponse(conversationTurn, contentItem.text);
+                }
             } else if (contentItem.type === 'tool_use') {
-                addToolCall(conversationTurn, contentItem);
+                // Store tool calls in task logs data
+                if (!conversationTurn._taskLogsData.toolCalls.some(t => t.id === contentItem.id)) {
+                    conversationTurn._taskLogsData.toolCalls.push(contentItem);
+                }
+                if (!isComplete) {
+                    addToolCall(conversationTurn, contentItem);
+                }
             }
         });
     } else if (message.content && typeof message.content === 'string') {
         // Handle simple string content (backwards compatibility)
         if (message.content.trim()) {
-            addTextResponse(conversationTurn, message.content);
+            if (!conversationTurn._taskLogsData.textResponses.some(t => t === message.content)) {
+                conversationTurn._taskLogsData.textResponses.push(message.content);
+            }
+            if (!isComplete) {
+                addTextResponse(conversationTurn, message.content);
+            }
         }
     }
 
     // When streaming completes
     if (isComplete) {
-        finalizeConversationTurn(conversationTurn);
+        finalizeConversationTurn(conversationTurn, message);
 
         // Update session in local state
         const session = sessions.find(s => s.id === currentSessionId);
@@ -802,15 +913,107 @@ function handleStreamingMessage(messageData, isComplete, thinkingContent = null)
             renderSessions();
         }
 
-        // Update streaming state
-        isStreaming = false;
-        sendBtn.disabled = messageInput.value.trim() === '';
-        sendBtn.style.display = 'flex';
-        stopBtn.style.display = 'none';
+        // Reset button state when streaming completes
+        resetButtonState();
     }
 
     // Scroll to bottom
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
+}
+
+// Create task logs dropdown component
+function createTaskLogsDropdown(taskLogsData) {
+    if (!taskLogsData || (taskLogsData.thinking.length === 0 && taskLogsData.toolCalls.length === 0)) {
+        return null; // No task logs to show
+    }
+
+    const taskLogsContainer = document.createElement('div');
+    taskLogsContainer.className = 'task-logs-container';
+
+    const toggleButton = document.createElement('button');
+    toggleButton.className = 'task-logs-toggle';
+    toggleButton.innerHTML = `
+        <span class="task-logs-label">task logs</span>
+        <span class="task-logs-icon">▼</span>
+    `;
+
+    const contentContainer = document.createElement('div');
+    contentContainer.className = 'task-logs-content';
+    contentContainer.style.display = 'none';
+
+    // Add thinking content if available
+    if (taskLogsData.thinking.length > 0) {
+        const thinkingSection = document.createElement('div');
+        thinkingSection.className = 'thinking-section';
+        thinkingSection.innerHTML = `
+            <div class="thinking-header">
+                <span>Claude's thinking</span>
+            </div>
+            <div class="thinking-content">
+                ${taskLogsData.thinking.map(thought => `<div class="thinking-chunk">${thought}</div>`).join('')}
+            </div>
+        `;
+        contentContainer.appendChild(thinkingSection);
+    }
+
+    // Add tool calls if available
+    taskLogsData.toolCalls.forEach(toolUse => {
+        const toolDiv = document.createElement('div');
+        toolDiv.className = 'tool-call';
+        toolDiv.dataset.toolId = toolUse.id;
+
+        // Use specialized rendering based on tool type
+        const toolContent = renderSpecializedTool(toolUse);
+
+        if (toolContent) {
+            toolDiv.innerHTML = toolContent;
+        } else {
+            // Fallback to generic tool display
+            const toolIcon = getToolIcon(toolUse.name);
+            const inputSummary = formatToolInput(toolUse.input);
+
+            toolDiv.innerHTML = `
+                <div class="tool-header">
+                    <span class="tool-icon">${toolIcon}</span>
+                    <span class="tool-name">${toolUse.name}</span>
+                    <span class="tool-status completed">Completed</span>
+                    <button class="tool-toggle" title="Show details">▶</button>
+                </div>
+                <div class="tool-summary">${inputSummary}</div>
+                <div class="tool-details" style="display: none;">
+                    <div class="tool-input">
+                        <strong>Input:</strong>
+                        <pre><code>${JSON.stringify(toolUse.input, null, 2)}</code></pre>
+                    </div>
+                </div>
+            `;
+
+            // Add toggle functionality
+            const toggleBtn = toolDiv.querySelector('.tool-toggle');
+            toggleBtn.addEventListener('click', () => toggleToolDetails(toggleBtn));
+        }
+
+        contentContainer.appendChild(toolDiv);
+    });
+
+    // Add toggle functionality for main dropdown
+    toggleButton.addEventListener('click', () => {
+        const isExpanded = contentContainer.style.display !== 'none';
+        if (isExpanded) {
+            contentContainer.style.display = 'none';
+            toggleButton.querySelector('.task-logs-icon').textContent = '▼';
+            toggleButton.classList.remove('expanded');
+        } else {
+            contentContainer.style.display = 'block';
+            toggleButton.querySelector('.task-logs-icon').textContent = '▲';
+            toggleButton.classList.add('expanded');
+        }
+    });
+
+    taskLogsContainer.appendChild(toggleButton);
+    taskLogsContainer.appendChild(contentContainer);
+
+    return taskLogsContainer;
 }
 
 // Add text response to conversation turn
@@ -827,28 +1030,40 @@ function addTextResponse(conversationTurn, text) {
 }
 
 // Finalize conversation turn when streaming completes
-function finalizeConversationTurn(conversationTurn) {
-    // Update thinking header if present
-    const thinkingHeader = conversationTurn.querySelector('.thinking-header span');
-    const thinkingToggle = conversationTurn.querySelector('.thinking-toggle');
-    const thinkingContent = conversationTurn.querySelector('.thinking-content');
+function finalizeConversationTurn(conversationTurn, message) {
+    const contentDiv = conversationTurn.querySelector('.conversation-content');
+    const taskLogsData = conversationTurn._taskLogsData;
 
-    if (thinkingHeader && thinkingToggle && thinkingContent) {
-        thinkingHeader.textContent = "Claude's thinking";
-        thinkingToggle.textContent = '▶';
-        thinkingToggle.title = 'Expand thinking';
-        thinkingContent.style.display = 'none';
+    // Clear the content div and rebuild with task logs structure
+    contentDiv.innerHTML = '';
+
+    // Create task logs dropdown if there are tool calls or thinking content
+    const taskLogsDropdown = createTaskLogsDropdown(taskLogsData);
+    if (taskLogsDropdown) {
+        contentDiv.appendChild(taskLogsDropdown);
     }
 
-    // Update tool statuses
-    const toolCalls = conversationTurn.querySelectorAll('.tool-call');
-    toolCalls.forEach(toolCall => {
-        const status = toolCall.querySelector('.tool-status');
-        if (status && status.classList.contains('running')) {
-            status.textContent = 'Completed';
-            status.classList.remove('running');
-            status.classList.add('completed');
+    // Add final text response
+    const finalTextResponses = [];
+    if (message.content && Array.isArray(message.content)) {
+        message.content.forEach(contentItem => {
+            if (contentItem.type === 'text' && contentItem.text && contentItem.text.trim()) {
+                finalTextResponses.push(contentItem.text);
+            }
+        });
+    } else if (message.content && typeof message.content === 'string') {
+        if (message.content.trim()) {
+            finalTextResponses.push(message.content);
         }
+    }
+
+    // Add final response(s) below task logs
+    finalTextResponses.forEach(text => {
+        const responseDiv = document.createElement('div');
+        responseDiv.className = 'assistant-response';
+        const formattedContent = formatMessageContent(text);
+        responseDiv.innerHTML = formattedContent;
+        contentDiv.appendChild(responseDiv);
     });
 }
 
@@ -937,38 +1152,111 @@ function toggleToolDetails(button) {
 // Create message element (legacy compatibility)
 function createMessageElement(message) {
     const div = document.createElement('div');
-    div.className = `message ${message.type}`;
+    div.className = `message ${message.type}${message.invalidated ? ' invalidated' : ''}`;
     div.dataset.messageId = message.id;
 
     const formattedContent = formatMessageContent(message.content);
     const timestamp = formatTimestamp(message.timestamp);
 
-    // Include thinking container for assistant messages
-    const thinkingHtml = message.type === 'assistant' ? `
-        <div class="message-thinking" style="display: none;">
-            <div class="thinking-header">
-                <span>Claude is thinking...</span>
-                <button class="thinking-toggle" title="Collapse thinking">▼</button>
-            </div>
-            <div class="thinking-content"></div>
+    // For assistant messages, check if we can create task logs from the message content
+    let taskLogsHtml = '';
+    if (message.type === 'assistant') {
+        const taskLogsData = extractTaskLogsFromMessage(message);
+        if (taskLogsData.hasLogs) {
+            const taskLogsContainer = createTaskLogsDropdown(taskLogsData);
+            if (taskLogsContainer) {
+                // Convert the DOM element to HTML string for insertion
+                const tempDiv = document.createElement('div');
+                tempDiv.appendChild(taskLogsContainer);
+                taskLogsHtml = tempDiv.innerHTML;
+            }
+        }
+    }
+
+    // Add revert button for user messages
+    const revertHtml = message.type === 'user' ? `
+        <div class="message-actions">
+            <button class="revert-btn" title="Revert file changes made after this message" style="display: none;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M3 7v6a3 3 0 0 0 3 3h12m0-12l-4-4m4 4l-4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            </button>
         </div>
     ` : '';
 
     div.innerHTML = `
-        ${thinkingHtml}
+        ${taskLogsHtml}
         <div class="message-content">${formattedContent}</div>
         <div class="message-timestamp">${timestamp}</div>
+        ${revertHtml}
     `;
 
-    // Add event listener for thinking toggle if it's an assistant message
-    if (message.type === 'assistant') {
-        const toggleBtn = div.querySelector('.thinking-toggle');
-        if (toggleBtn) {
-            toggleBtn.addEventListener('click', () => toggleThinking(toggleBtn));
+    // Re-attach event listeners for task logs if they exist
+    if (message.type === 'assistant' && taskLogsHtml) {
+        const taskLogsToggle = div.querySelector('.task-logs-toggle');
+        if (taskLogsToggle) {
+            taskLogsToggle.addEventListener('click', () => {
+                const contentContainer = div.querySelector('.task-logs-content');
+                const icon = taskLogsToggle.querySelector('.task-logs-icon');
+                const isExpanded = contentContainer.style.display !== 'none';
+
+                if (isExpanded) {
+                    contentContainer.style.display = 'none';
+                    icon.textContent = '▼';
+                    taskLogsToggle.classList.remove('expanded');
+                } else {
+                    contentContainer.style.display = 'block';
+                    icon.textContent = '▲';
+                    taskLogsToggle.classList.add('expanded');
+                }
+            });
         }
+
+        // Re-attach tool toggle event listeners
+        const toolToggles = div.querySelectorAll('.tool-toggle');
+        toolToggles.forEach(toggle => {
+            toggle.addEventListener('click', () => toggleToolDetails(toggle));
+        });
+    }
+
+    // Add event listener for revert button if it's a user message
+    if (message.type === 'user') {
+        const revertBtn = div.querySelector('.revert-btn');
+        if (revertBtn) {
+            revertBtn.addEventListener('click', () => handleRevertToMessage(message.id));
+        }
+
+        // Check if this message has file changes and show revert button
+        checkAndShowRevertButton(message.id);
     }
 
     return div;
+}
+
+// Extract task logs data from a historical message
+function extractTaskLogsFromMessage(message) {
+    const taskLogsData = {
+        thinking: [],
+        toolCalls: [],
+        textResponses: [],
+        hasLogs: false
+    };
+
+    if (message.content && Array.isArray(message.content)) {
+        message.content.forEach(contentItem => {
+            if (contentItem.type === 'thinking' && contentItem.thinking) {
+                taskLogsData.thinking.push(contentItem.thinking);
+                taskLogsData.hasLogs = true;
+            } else if (contentItem.type === 'tool_use') {
+                taskLogsData.toolCalls.push(contentItem);
+                taskLogsData.hasLogs = true;
+            } else if (contentItem.type === 'text' && contentItem.text) {
+                taskLogsData.textResponses.push(contentItem.text);
+            }
+        });
+    }
+
+    return taskLogsData;
 }
 
 // Format message content (basic markdown support)
@@ -1036,9 +1324,13 @@ function updateCurrentSessionUI(session) {
 // Show empty state when no sessions exist
 function showEmptyState() {
     currentSessionId = null;
+    currentRevertMessageId = null; // Clear revert state
+
+    // Reset button state when showing empty state
+    resetButtonState();
+
     conversationTitle.textContent = 'Select a conversation';
     editTitleBtn.style.display = 'none';
-    continueBtn.style.display = 'none';
     conversationStatus.style.display = 'none';
     conversationContext.style.display = 'none';
     inputArea.style.display = 'none';
@@ -1108,10 +1400,7 @@ async function sendMessage() {
         alert(`Failed to send message: ${error.message}`);
 
         // Reset UI state on error
-        isStreaming = false;
-        sendBtn.disabled = false;
-        sendBtn.style.display = 'flex';
-        stopBtn.style.display = 'none';
+        resetButtonState();
     }
 }
 
@@ -1123,10 +1412,7 @@ async function stopMessage() {
         await window.electronAPI.stopMessage(currentSessionId);
 
         // Reset UI state
-        isStreaming = false;
-        sendBtn.disabled = messageInput.value.trim() === '';
-        sendBtn.style.display = 'flex';
-        stopBtn.style.display = 'none';
+        resetButtonState();
 
     } catch (error) {
         console.error('Failed to stop message:', error);
@@ -1137,7 +1423,14 @@ async function stopMessage() {
 async function createNewSession() {
     try {
         const session = await window.electronAPI.createSession('New Conversation');
-        // Don't manually update sessions array - wait for session-created event
+
+        // Immediately add the session locally so it can be loaded right away
+        if (!sessions.some(s => s.id === session.id)) {
+            sessions.unshift(session);
+            renderSessions();
+        }
+
+        // Automatically switch to the newly created conversation
         loadSession(session.id);
     } catch (error) {
         console.error('Failed to create session:', error);
@@ -1265,46 +1558,7 @@ function cancelDelete() {
     deleteModal.style.display = 'none';
 }
 
-// Continue conversation
-async function continueConversation() {
-    if (!currentSessionId) return;
-
-    try {
-        continueBtn.disabled = true;
-        continueBtn.textContent = 'Resuming...';
-
-        const resumedSession = await window.electronAPI.resumeSession(currentSessionId);
-
-        // Update local session data
-        const sessionIndex = sessions.findIndex(s => s.id === currentSessionId);
-        if (sessionIndex >= 0) {
-            sessions[sessionIndex] = resumedSession;
-        }
-
-        // Update UI to show session is active
-        await updateSessionUI(resumedSession);
-
-        // Show input area and focus
-        inputArea.style.display = 'block';
-        continueBtn.style.display = 'none';
-        messageInput.focus();
-
-        // Re-render sessions list to update status
-        renderSessions();
-
-    } catch (error) {
-        console.error('Failed to continue conversation:', error);
-        alert(`Failed to resume conversation: ${error.message}`);
-    } finally {
-        continueBtn.disabled = false;
-        continueBtn.innerHTML = `
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M8 18l6-6-6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-            Continue Conversation
-        `;
-    }
-}
+// Continue conversation function removed - now handled automatically in sendMessage
 
 // Status helper functions
 function getStatusIcon(status, canResume) {
@@ -1321,13 +1575,13 @@ function getStatusIcon(status, canResume) {
 
 function getStatusTooltip(status, canResume) {
     if (status === 'active') {
-        return 'Active conversation - can continue immediately';
+        return 'Active conversation - ready to continue';
     } else if (status === 'historical' && canResume) {
-        return 'Can be resumed - click Continue Conversation';
+        return 'Previous conversation - ready to continue';
     } else if (status === 'archived') {
         return 'Archived conversation';
     } else {
-        return 'Conversation status unknown';
+        return 'Ready to continue';
     }
 }
 
@@ -1353,6 +1607,212 @@ function formatTimestamp(timestamp) {
 function truncateText(text, maxLength) {
     if (text.length <= maxLength) return text;
     return text.substring(0, maxLength) + '...';
+}
+
+// Checkpoint and revert functionality
+async function checkAndShowRevertButton(messageId) {
+    if (!currentSessionId) return;
+
+    try {
+        const hasChanges = await window.electronAPI.hasFileChanges(currentSessionId, messageId);
+        const messageEl = document.querySelector(`[data-message-id="${messageId}"]`);
+        const revertBtn = messageEl?.querySelector('.revert-btn');
+
+        if (revertBtn) {
+            revertBtn.style.display = hasChanges ? 'flex' : 'none';
+        }
+    } catch (error) {
+        console.error('Failed to check file changes:', error);
+    }
+}
+
+async function handleRevertToMessage(messageId) {
+    if (!currentSessionId) return;
+
+    const messageEl = document.querySelector(`[data-message-id="${messageId}"]`);
+    const revertBtn = messageEl?.querySelector('.revert-btn');
+
+    if (!revertBtn) return;
+
+    // Show confirmation dialog
+    const confirmed = confirm('This will revert all file changes made after this message and remove subsequent conversation history. This action cannot be undone. Continue?');
+    if (!confirmed) return;
+
+    // Disable button and show loading state
+    revertBtn.disabled = true;
+    revertBtn.innerHTML = `
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
+            <path d="M12 6v6l4 2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+    `;
+
+    try {
+        const result = await window.electronAPI.revertToMessage(currentSessionId, messageId);
+
+        if (result.success) {
+            // Show success message
+            alert(result.message);
+
+            // Set the current revert state
+            currentRevertMessageId = messageId;
+
+            // Reload the current session to show updated state
+            await loadSession(currentSessionId);
+            // Enter inline edit mode on the reverted user message
+            enterEditMode(messageId);
+        } else {
+            alert(`Failed to revert: ${result.error}`);
+        }
+    } catch (error) {
+        console.error('Failed to revert to message:', error);
+        alert(`Failed to revert: ${error.message}`);
+    } finally {
+        // Restore button state
+        revertBtn.disabled = false;
+        revertBtn.innerHTML = `
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M3 7v6a3 3 0 0 0 3 3h12m0-12l-4-4m4 4l-4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+        `;
+    }
+}
+
+async function handleUnrevertFromMessage(messageId) {
+    if (!currentSessionId) return;
+
+    try {
+        const result = await window.electronAPI.unrevertFromMessage(currentSessionId, messageId);
+
+        if (result.success) {
+            // Show success message
+            alert(result.message);
+
+            // Clear the current revert state
+            currentRevertMessageId = null;
+
+            // Exit edit mode if currently editing
+            if (editingMessageId === messageId) {
+                exitEditMode();
+            }
+
+            // Reload the current session to show updated state
+            await loadSession(currentSessionId);
+        } else {
+            alert(`Failed to unrevert: ${result.error}`);
+        }
+    } catch (error) {
+        console.error('Failed to unrevert from message:', error);
+        alert(`Failed to unrevert: ${error.message}`);
+    }
+}
+
+// ================= Inline Edit Mode =================
+
+function enterEditMode(messageId) {
+    if (editingMessageId) return; // already editing
+    const messageEl = document.querySelector(`[data-message-id="${messageId}"] .message-content`);
+    if (!messageEl) return;
+
+    editingMessageId = messageId;
+
+    messageEl.contentEditable = 'true';
+    messageEl.classList.add('editing');
+    messageEl.dataset.originalContent = messageEl.innerText;
+    messageEl.focus();
+
+    // Disable global input area
+    inputArea.style.pointerEvents = 'none';
+    inputArea.style.opacity = '0.5';
+
+    // Add visual feedback for unrevert functionality
+    if (currentRevertMessageId === messageId) {
+        messagesContainer.classList.add('has-reverted-message');
+        updateUnrevertTriggerPosition(messageId);
+    }
+
+    // Event listeners
+    messageEl.addEventListener('keydown', handleEditKeydown);
+    messageEl.addEventListener('blur', handleEditBlur);
+}
+
+function updateUnrevertTriggerPosition(messageId) {
+    const messageEl = document.querySelector(`[data-message-id="${messageId}"]`);
+    if (!messageEl) return;
+
+    const containerRect = messagesContainer.getBoundingClientRect();
+    const messageRect = messageEl.getBoundingClientRect();
+    const triggerTop = ((messageRect.bottom - containerRect.top) / containerRect.height) * 100;
+
+    messagesContainer.style.setProperty('--unrevert-trigger-top', `${triggerTop}%`);
+}
+
+function exitEditMode() {
+    if (!editingMessageId) return;
+
+    const messageContainer = document.querySelector(`[data-message-id="${editingMessageId}"] .message-content`);
+    if (messageContainer) {
+        messageContainer.contentEditable = 'false';
+        messageContainer.classList.remove('editing');
+        messageContainer.removeEventListener('keydown', handleEditKeydown);
+        messageContainer.removeEventListener('blur', handleEditBlur);
+    }
+
+    // Remove visual feedback for unrevert functionality
+    messagesContainer.classList.remove('has-reverted-message');
+    messagesContainer.style.removeProperty('--unrevert-trigger-top');
+
+    editingMessageId = null;
+    inputArea.style.pointerEvents = '';
+    inputArea.style.opacity = '';
+}
+
+function handleEditKeydown(e) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        commitEditedMessage();
+    } else if (e.key === 'Escape') {
+        e.preventDefault();
+        cancelEdit();
+    }
+}
+
+function handleEditBlur() {
+    // If user clicks outside, cancel the edit
+    cancelEdit();
+}
+
+function commitEditedMessage() {
+    const messageContainer = document.querySelector(`[data-message-id="${editingMessageId}"] .message-content`);
+    if (!messageContainer) return;
+
+    const newText = messageContainer.innerText.trim();
+    if (newText) {
+        // Send modified message to backend – treated as new user message
+        window.electronAPI.sendMessage(currentSessionId, newText).catch(err => console.error('Failed to send edited message', err));
+    }
+    exitEditMode();
+}
+
+function cancelEdit() {
+    const messageContainer = document.querySelector(`[data-message-id="${editingMessageId}"] .message-content`);
+    if (messageContainer) {
+        // Revert text to original
+        messageContainer.innerText = messageContainer.dataset.originalContent || messageContainer.innerText;
+    }
+    exitEditMode();
+}
+
+// ====================================================
+
+// Toggle history dropdown visibility
+function toggleHistoryDropdown() {
+    if (!historyDropdown) return;
+    if (historyDropdown.style.display === 'none' || historyDropdown.style.display === '') {
+        historyDropdown.style.display = 'block';
+    } else {
+        historyDropdown.style.display = 'none';
+    }
 }
 
 // Initialize the application

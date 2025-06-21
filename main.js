@@ -4,6 +4,8 @@ const { spawn } = require('child_process');
 const fs = require('fs').promises;
 const os = require('os');
 const { v4: uuidv4 } = require('uuid');
+const Database = require('better-sqlite3');
+const diff = require('diff');
 
 // Enable live reload for development
 const isDev = process.argv.includes('--dev');
@@ -17,11 +19,244 @@ let sessions = new Map(); // Track conversation sessions
 const sessionStoragePath = path.join(os.homedir(), '.claude-code-chat', 'sessions.json');
 const recoveryStatePath = path.join(os.homedir(), '.claude-code-chat', 'recovery.json');
 
+// Checkpoint storage paths
+const checkpointDir = path.join(process.cwd(), '.claude-checkpoints');
+const checkpointDbPath = path.join(checkpointDir, 'metadata.db');
+const checkpointBlobsDir = path.join(checkpointDir, 'blobs');
+
+// Global checkpoint database reference
+let checkpointDb = null;
+
 const ALL_TOOLS = [
     "Task", "Bash", "Glob", "Grep", "LS", "exit_plan_mode", "Read", "Edit",
     "MultiEdit", "Write", "NotebookRead", "NotebookEdit", "WebFetch",
     "TodoRead", "TodoWrite", "WebSearch"
 ];
+
+// Initialize checkpoint system
+async function initializeCheckpointSystem() {
+  try {
+    // Create checkpoint directories
+    await fs.mkdir(checkpointDir, { recursive: true });
+    await fs.mkdir(checkpointBlobsDir, { recursive: true });
+
+    // Initialize better-sqlite3 database
+    checkpointDb = new Database(checkpointDbPath);
+
+    // Create checkpoints table
+    checkpointDb.exec(`
+      CREATE TABLE IF NOT EXISTS checkpoints (
+        id TEXT PRIMARY KEY,
+        session_id TEXT NOT NULL,
+        message_id TEXT NOT NULL,
+        file_path TEXT NOT NULL,
+        ts DATETIME DEFAULT CURRENT_TIMESTAMP,
+        patch_path TEXT,
+        full_snapshot INTEGER DEFAULT 0,
+        old_content TEXT,
+        new_content TEXT,
+        tool_type TEXT
+      )
+    `);
+
+    console.log('Checkpoint system initialized successfully');
+  } catch (error) {
+    console.error('Failed to initialize checkpoint system:', error);
+    throw error;
+  }
+}
+
+// Create a checkpoint for a file edit
+async function createCheckpoint(toolUse, sessionId, messageId) {
+  if (!checkpointDb) {
+    console.warn('Checkpoint database not initialized, skipping checkpoint');
+    return null;
+  }
+
+  try {
+    // Handle different tool types
+    if (toolUse.name === 'MultiEdit') {
+      // MultiEdit has multiple edits in an array
+      const { file_path, edits } = toolUse.input;
+      const checkpointPromises = [];
+
+      for (const edit of edits || []) {
+        const singleEditToolUse = {
+          name: 'Edit',
+          input: {
+            file_path,
+            old_string: edit.old_string,
+            new_string: edit.new_string,
+            replace_all: edit.replace_all
+          }
+        };
+        checkpointPromises.push(createSingleCheckpoint(singleEditToolUse, sessionId, messageId));
+      }
+
+      return Promise.all(checkpointPromises);
+    } else if (toolUse.name === 'Write') {
+      // Write tool creates or overwrites files
+      const { file_path, content } = toolUse.input;
+
+      // Read existing file content if it exists
+      let existingContent = '';
+      try {
+        existingContent = await fs.readFile(file_path, 'utf8');
+      } catch (err) {
+        // File doesn't exist, that's fine
+      }
+
+      const writeToolUse = {
+        name: 'Write',
+        input: {
+          file_path,
+          old_string: existingContent,
+          new_string: content || ''
+        }
+      };
+      return createSingleCheckpoint(writeToolUse, sessionId, messageId);
+    } else {
+      // Single edit
+      return createSingleCheckpoint(toolUse, sessionId, messageId);
+    }
+  } catch (error) {
+    console.error('Failed to create checkpoint:', error);
+    return null;
+  }
+}
+
+async function createSingleCheckpoint(toolUse, sessionId, messageId) {
+  try {
+    const { file_path, old_string, new_string } = toolUse.input;
+    const checkpointId = uuidv4();
+
+    // Read current file content for backup
+    let currentContent = '';
+    try {
+      currentContent = await fs.readFile(file_path, 'utf8');
+    } catch (err) {
+      console.log('File does not exist yet, treating as new file creation');
+    }
+
+    // Create unified diff
+    const patch = diff.createPatch(
+      path.basename(file_path),
+      old_string || '',
+      new_string || '',
+      'before',
+      'after'
+    );
+
+    // Write patch to blob storage
+    const patchPath = path.join(checkpointBlobsDir, `${checkpointId}.patch`);
+    const tempPatchPath = patchPath + '.tmp';
+
+    await fs.writeFile(tempPatchPath, patch);
+    await fs.rename(tempPatchPath, patchPath);
+
+    // Store checkpoint in database
+    const stmt = checkpointDb.prepare(`
+      INSERT INTO checkpoints
+      (id, session_id, message_id, file_path, patch_path, full_snapshot, old_content, new_content, tool_type)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    stmt.run([
+      checkpointId,
+      sessionId,
+      messageId,
+      file_path,
+      path.relative(checkpointDir, patchPath),
+      old_string === '' ? 1 : 0, // Full snapshot for new files
+      old_string || '',
+      new_string || '',
+      toolUse.name
+    ]);
+
+    console.log('Checkpoint created:', checkpointId, 'for', file_path);
+    return checkpointId;
+  } catch (error) {
+    console.error('Failed to create checkpoint:', error);
+    return null;
+  }
+}
+
+// Get checkpoints for a session up to a specific message
+async function getCheckpointsToRevert(sessionId, messageId) {
+  if (!checkpointDb) {
+    return [];
+  }
+
+  try {
+    const stmt = checkpointDb.prepare(`
+      SELECT * FROM checkpoints
+      WHERE session_id = ? AND message_id >= ?
+      ORDER BY ts DESC
+    `);
+
+    return stmt.all([sessionId, messageId]);
+  } catch (error) {
+    console.error('Failed to get checkpoints:', error);
+    return [];
+  }
+}
+
+// Revert files to a checkpoint
+async function revertToCheckpoint(sessionId, messageId) {
+  try {
+    const checkpoints = await getCheckpointsToRevert(sessionId, messageId);
+    const revertedFiles = [];
+
+    // Group checkpoints by file and revert in reverse chronological order
+    const fileGroups = {};
+    checkpoints.forEach(checkpoint => {
+      if (!fileGroups[checkpoint.file_path]) {
+        fileGroups[checkpoint.file_path] = [];
+      }
+      fileGroups[checkpoint.file_path].push(checkpoint);
+    });
+
+    for (const [filePath, checkpointList] of Object.entries(fileGroups)) {
+      // Get the most recent checkpoint for this file
+      const latestCheckpoint = checkpointList[0];
+
+      try {
+        // Create backup before reverting
+        const backupPath = path.join(checkpointBlobsDir, path.basename(filePath) + '.' + Date.now() + '.bak');
+        try {
+          await fs.copyFile(filePath, backupPath);
+        } catch (err) {
+          console.log('Could not create backup, file may not exist:', filePath);
+        }
+
+        // Revert to the old content
+        if (latestCheckpoint.full_snapshot) {
+          // For new files, we simply delete them or restore to old content
+          if (latestCheckpoint.old_content === '') {
+            await fs.unlink(filePath);
+            console.log('Deleted newly created file:', filePath);
+          } else {
+            await fs.writeFile(filePath, latestCheckpoint.old_content);
+            console.log('Restored file from full snapshot:', filePath);
+          }
+        } else {
+          // For edits, restore the old content
+          await fs.writeFile(filePath, latestCheckpoint.old_content);
+          console.log('Restored file content:', filePath);
+        }
+
+        revertedFiles.push(filePath);
+      } catch (error) {
+        console.error('Failed to revert file:', filePath, error);
+      }
+    }
+
+    return revertedFiles;
+  } catch (error) {
+    console.error('Failed to revert to checkpoint:', error);
+    throw error;
+  }
+}
 
 async function createWindow() {
   // Create the browser window
@@ -96,6 +331,14 @@ app.whenReady().then(async () => {
   await createWindow();
   await loadSessions();
   await recoverInterruptedSessions();
+
+  // Try to initialize checkpoint system, but don't fail if it doesn't work
+  try {
+    await initializeCheckpointSystem();
+  } catch (error) {
+    console.warn('Checkpoint system failed to initialize, running without checkpointing:', error.message);
+    checkpointDb = null;
+  }
 
   // Send initial data to renderer
   if (mainWindow) {
@@ -371,7 +614,7 @@ function checkApiKey() {
 
 // Helper function to determine if a session can be resumed
 function canResumeSession(session) {
-  return session.claudeSessionId && 
+  return session.claudeSessionId &&
          (session.status === 'active' || session.status === 'historical') &&
          session.messages && session.messages.length > 0;
 }
@@ -520,38 +763,20 @@ ipcMain.handle('get-session-context', async (event, sessionId) => {
   if (!session) {
     throw new Error('Session not found');
   }
-  
+
   return {
     ...session,
     statusInfo: getSessionStatusInfo(session),
     conversationPreview: {
       lastUserMessage: session.lastUserMessage,
-      lastAssistantMessage: session.lastAssistantMessage ? 
-        session.lastAssistantMessage.substring(0, 200) + (session.lastAssistantMessage.length > 200 ? '...' : '') : 
+      lastAssistantMessage: session.lastAssistantMessage ?
+        session.lastAssistantMessage.substring(0, 200) + (session.lastAssistantMessage.length > 200 ? '...' : '') :
         null
     }
   };
 });
 
-ipcMain.handle('resume-session', async (event, sessionId) => {
-  const session = sessions.get(sessionId);
-  if (!session) {
-    throw new Error('Session not found');
-  }
-  
-  if (!canResumeSession(session)) {
-    throw new Error('Session cannot be resumed');
-  }
-  
-  // Mark session as active when resuming
-  session.status = 'active';
-  await saveSession(sessionId);
-  
-  return {
-    ...session,
-    statusInfo: getSessionStatusInfo(session)
-  };
-});
+// resume-session handler removed - resumption now handled automatically in send-message
 
 ipcMain.handle('send-message', async (event, sessionId, message) => {
   const session = sessions.get(sessionId);
@@ -567,9 +792,15 @@ ipcMain.handle('send-message', async (event, sessionId, message) => {
     timestamp: new Date().toISOString()
   });
 
-  // Update session's last user message and ensure status is active
+  // Smart conversation state management
   session.lastUserMessage = message;
   session.status = 'active';
+
+  // Determine conversation type for logging
+  const conversationType = session.claudeSessionId ?
+    (session.status === 'historical' ? 'resuming' : 'continuing') :
+    'new';
+  console.log(`Smart conversation detection: ${conversationType} conversation for session ${sessionId}`);
 
   console.log('User message saved to session:', userMessage.id);
 
@@ -737,6 +968,20 @@ ipcMain.handle('send-message', async (event, sessionId, message) => {
                 }
               }
 
+              // Check for tool_use blocks and create checkpoints
+              if (assistantPayload.content && Array.isArray(assistantPayload.content)) {
+                for (const block of assistantPayload.content) {
+                  if (block.type === 'tool_use' && (block.name === 'Edit' || block.name === 'MultiEdit' || block.name === 'Write')) {
+                    console.log('Detected file modification tool, creating checkpoint:', block.name);
+                    try {
+                      await createCheckpoint(block, sessionId, assistantMessage.id);
+                    } catch (error) {
+                      console.error('Failed to create checkpoint for tool use:', error);
+                    }
+                  }
+                }
+              }
+
               // Update assistant message with structured content by accumulating blocks
               assistantMessage.id = assistantPayload.id || assistantMessage.id;
               if (assistantPayload.content && Array.isArray(assistantPayload.content)) {
@@ -833,7 +1078,7 @@ ipcMain.handle('send-message', async (event, sessionId, message) => {
               assistantText = textBlocks.map(block => block.text || '').join('\n');
             }
             session.lastAssistantMessage = assistantText;
-            
+
             // Mark as historical after successful completion (can still be resumed)
             session.status = 'historical';
             await saveSession(sessionId);
@@ -943,6 +1188,149 @@ ipcMain.handle('stop-message', async (event, sessionId) => {
     return true;
   }
   return false;
+});
+
+// Revert files back to their state before a checkpoint
+async function unrevertFromCheckpoint(sessionId, messageId) {
+  try {
+    const checkpoints = await getCheckpointsToRevert(sessionId, messageId);
+    const restoredFiles = [];
+
+    // Group checkpoints by file and restore to their "new content" state
+    const fileGroups = {};
+    checkpoints.forEach(checkpoint => {
+      if (!fileGroups[checkpoint.file_path]) {
+        fileGroups[checkpoint.file_path] = [];
+      }
+      fileGroups[checkpoint.file_path].push(checkpoint);
+    });
+
+    for (const [filePath, checkpointList] of Object.entries(fileGroups)) {
+      // Get the most recent checkpoint for this file
+      const latestCheckpoint = checkpointList[0];
+
+      try {
+        // Create backup before unreverting
+        const backupPath = path.join(checkpointBlobsDir, path.basename(filePath) + '.' + Date.now() + '.unrevert-bak');
+        try {
+          await fs.copyFile(filePath, backupPath);
+        } catch (err) {
+          console.log('Could not create backup, file may not exist:', filePath);
+        }
+
+        // Restore to the new content (post-edit state)
+        if (latestCheckpoint.full_snapshot && latestCheckpoint.new_content !== '') {
+          // For new files, restore to the full new content
+          await fs.writeFile(filePath, latestCheckpoint.new_content);
+          console.log('Restored file from new content snapshot:', filePath);
+        } else if (latestCheckpoint.new_content !== '') {
+          // For edits, restore to the new content
+          await fs.writeFile(filePath, latestCheckpoint.new_content);
+          console.log('Restored file to post-edit state:', filePath);
+        } else if (latestCheckpoint.full_snapshot && latestCheckpoint.new_content === '') {
+          // Special case: new file that was created then reverted, recreate it
+          await fs.writeFile(filePath, '');
+          console.log('Recreated empty file:', filePath);
+        }
+
+        restoredFiles.push(filePath);
+      } catch (error) {
+        console.error('Failed to unrevert file:', filePath, error);
+      }
+    }
+
+    return restoredFiles;
+  } catch (error) {
+    console.error('Failed to unrevert from checkpoint:', error);
+    throw error;
+  }
+}
+
+// Checkpoint IPC handlers
+ipcMain.handle('revert-to-message', async (event, sessionId, messageId) => {
+  try {
+    console.log('Reverting session', sessionId, 'to message', messageId);
+    const revertedFiles = await revertToCheckpoint(sessionId, messageId);
+
+    // Mark messages after the revert point as invalidated so the UI can dim them
+    const session = sessions.get(sessionId);
+    if (session && Array.isArray(session.messages)) {
+      const messageIndex = session.messages.findIndex(m => m.id === messageId);
+      if (messageIndex >= 0) {
+        for (let i = messageIndex + 1; i < session.messages.length; i++) {
+          session.messages[i].invalidated = true;
+        }
+        // Mark the session as having an active revert
+        session.currentRevertMessageId = messageId;
+        await saveSession(sessionId);
+      }
+    }
+
+    return {
+      success: true,
+      revertedFiles,
+      message: `Successfully reverted ${revertedFiles.length} files`
+    };
+  } catch (error) {
+    console.error('Failed to revert to message:', error);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+});
+
+ipcMain.handle('unrevert-from-message', async (event, sessionId, messageId) => {
+  try {
+    console.log('Unreverting session', sessionId, 'from message', messageId);
+    const restoredFiles = await unrevertFromCheckpoint(sessionId, messageId);
+
+    // Remove invalidated flags from messages after the revert point
+    const session = sessions.get(sessionId);
+    if (session && Array.isArray(session.messages)) {
+      const messageIndex = session.messages.findIndex(m => m.id === messageId);
+      if (messageIndex >= 0) {
+        for (let i = messageIndex + 1; i < session.messages.length; i++) {
+          delete session.messages[i].invalidated;
+        }
+        // Clear the current revert state
+        delete session.currentRevertMessageId;
+        await saveSession(sessionId);
+      }
+    }
+
+    return {
+      success: true,
+      restoredFiles,
+      message: `Successfully restored ${restoredFiles.length} files`
+    };
+  } catch (error) {
+    console.error('Failed to unrevert from message:', error);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+});
+
+ipcMain.handle('get-message-checkpoints', async (event, sessionId, messageId) => {
+  try {
+    const checkpoints = await getCheckpointsToRevert(sessionId, messageId);
+    return checkpoints;
+  } catch (error) {
+    console.error('Failed to get checkpoints:', error);
+    return [];
+  }
+});
+
+ipcMain.handle('has-file-changes', async (event, sessionId, messageId) => {
+  try {
+    const checkpoints = await getCheckpointsToRevert(sessionId, messageId);
+    return checkpoints.length > 0;
+  } catch (error) {
+    console.error('Failed to check file changes:', error);
+    return false;
+  }
 });
 
 // Handle app closing

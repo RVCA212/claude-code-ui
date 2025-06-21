@@ -3,7 +3,6 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Claude Code Chat</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -55,9 +54,9 @@
                 </button>
             </div>
 
-            <!-- Conversations View -->
-            <div class="conversations-list" id="conversationsList">
-                <!-- Conversations will be populated by JavaScript -->
+            <!-- Conversations View (now empty – history moved to header) -->
+            <div class="conversations-list">
+                <!-- Reserved for future sidebar content -->
             </div>
         </div>
 
@@ -72,18 +71,28 @@
                     <div class="conversation-context" id="conversationContext" style="display: none;"></div>
                 </div>
                 <div class="conversation-actions">
-                    <button class="btn btn--secondary continue-btn" id="continueBtn" style="display: none;">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M8 18l6-6-6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                        </svg>
-                        Continue Conversation
-                    </button>
                     <button class="edit-title-btn" id="editTitleBtn" style="display: none;">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                             <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                             <path d="m18.5 2.5 3 3L12 15l-4 1 1-4 9.5-9.5z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                         </svg>
                     </button>
+
+                    <!-- History Button -->
+                    <button class="history-btn" id="historyBtn" title="Conversation history">
+                        <!-- Clock/history icon -->
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <circle cx="12" cy="12" r="9" stroke="#fff" stroke-width="2"/>
+                            <polyline points="12 7 12 12 15 14" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </button>
+
+                    <!-- History Dropdown -->
+                    <div class="history-dropdown" id="historyDropdown" style="display: none;">
+                        <div class="conversations-list" id="conversationsList">
+                            <!-- Conversations will be populated by JavaScript -->
+                        </div>
+                    </div>
                 </div>
             </div>
 
