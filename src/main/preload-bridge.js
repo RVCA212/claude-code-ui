@@ -39,6 +39,12 @@ class PreloadBridge {
       navigateForward: () => ipcRenderer.invoke('navigate-forward'),
       navigateUp: () => ipcRenderer.invoke('navigate-up'),
 
+      // File editor operations
+      readFile: (filePath) => ipcRenderer.invoke('read-file', filePath),
+      writeFile: (filePath, content) => ipcRenderer.invoke('write-file', filePath, content),
+      watchFile: (filePath) => ipcRenderer.invoke('watch-file', filePath),
+      unwatchFile: (filePath) => ipcRenderer.invoke('unwatch-file', filePath),
+
       // MCP server management
       getMcpServers: () => ipcRenderer.invoke('get-mcp-servers'),
       saveMcpServer: (server) => ipcRenderer.invoke('save-mcp-server', server),
@@ -52,6 +58,7 @@ class PreloadBridge {
       onSessionUpdated: (callback) => ipcRenderer.on('session-updated', callback),
       onSessionDeleted: (callback) => ipcRenderer.on('session-deleted', callback),
       onSessionCreated: (callback) => ipcRenderer.on('session-created', callback),
+      onFileChanged: (callback) => ipcRenderer.on('file-changed', callback),
 
       // Remove listeners
       removeAllListeners: (channel) => ipcRenderer.removeAllListeners(channel)

@@ -4,40 +4,234 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="style.css">
-    <!-- Sidebar toggle styles -->
+    <!-- Global header styles -->
     <style>
-        /* Small button that lives in the title-bar padding and toggles the sidebar */
-        .sidebar-toggle-btn {
-            position: absolute;
-            top: 8px; /* Keep clear of traffic-light window controls */
-            left: 80px; /* Space after the traffic lights (approx.) */
-            background: transparent;
-            border: none;
-            padding: 4px;
-            cursor: pointer;
-            z-index: 2000; /* Above everything */
-            color: inherit;
-            -webkit-app-region: no-drag; /* Allow click events inside draggable title bar */
+        body {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
         }
 
-        .sidebar-toggle-btn svg {
+        /* Global header bar that spans the entire app */
+        .global-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            height: 44px;
+            background: var(--color-surface);
+            border-bottom: 1px solid var(--color-border);
+            padding: 0 var(--space-12);
+            -webkit-app-region: drag; /* Make header draggable for window movement */
+            z-index: 2000;
+            position: relative;
+        }
+
+        .global-header-left {
+            display: flex;
+            align-items: center;
+            gap: var(--space-12);
+        }
+
+        .global-header-center {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .global-header-right {
+            display: flex;
+            align-items: center;
+            gap: var(--space-8);
+        }
+
+        /* Sidebar toggle button in global header */
+        .global-sidebar-toggle-btn {
+            background: transparent;
+            border: none;
+            padding: var(--space-6);
+            cursor: pointer;
+            color: var(--color-text-secondary);
+            border-radius: var(--radius-sm);
+            transition: all var(--duration-fast) var(--ease-standard);
+            -webkit-app-region: no-drag; /* Allow click events */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .global-sidebar-toggle-btn:hover {
+            background: var(--color-secondary);
+            color: var(--color-text);
+        }
+
+        .global-sidebar-toggle-btn svg {
             display: block;
+        }
+
+        /* App title in global header */
+        .global-app-title {
+            font-size: var(--font-size-sm);
+            font-weight: var(--font-weight-medium);
+            color: var(--color-text-secondary);
+            margin: 0;
+            -webkit-app-region: no-drag;
+        }
+
+        /* Status indicator */
+        .global-status-indicator {
+            font-size: var(--font-size-xs);
+            color: var(--color-text-secondary);
+            display: flex;
+            align-items: center;
+            gap: var(--space-4);
+        }
+
+        .global-status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--color-success);
+        }
+
+        /* Remove old sidebar toggle styles since we moved it to global header */
+        .sidebar-toggle-btn {
+            display: none !important;
+        }
+
+        /* Update sidebar padding to not account for macOS buttons since they're handled by global header */
+        .sidebar {
+            padding-top: 0 !important;
         }
 
         /* Utility class added by JS when the sidebar is hidden */
         .sidebar.hidden {
             display: none !important;
         }
+
+        /* Chat sidebar hidden state */
+        .chat-sidebar.hidden {
+            display: none !important;
+        }
+
+        /* Ensure proper layout for sidebars with fixed bottom elements */
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            overflow: hidden;
+        }
+
+        .file-browser {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            overflow: hidden;
+        }
+
+        .file-list-container {
+            flex: 1;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .file-list {
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .file-browser-status {
+            flex-shrink: 0;
+        }
+
+        .chat-sidebar {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            overflow: hidden;
+        }
+
+        .main-chat {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            overflow: hidden;
+        }
+
+        .chat-header {
+            flex-shrink: 0;
+        }
+
+        .messages-container {
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .input-area {
+            flex-shrink: 0;
+        }
+
+        .quick-access {
+            flex-shrink: 0;
+        }
+
+        .breadcrumb-container {
+            flex-shrink: 0;
+        }
+
+        .file-list-header {
+            flex-shrink: 0;
+        }
+
+        .file-search {
+            flex-shrink: 0;
+        }
+
+        .app-content {
+            display: flex;
+            flex: 1;
+        }
     </style>
 </head>
 <body>
-    <!-- Toggle button lives outside the flex layout so it is always visible -->
-    <button id="sidebarToggleBtn" class="sidebar-toggle-btn" title="Hide Sidebar">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M4 6h16M4 12h16M4 18h16" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-    </button>
+    <!-- Global Header Bar -->
+    <div class="global-header">
+
+        <div class="global-header-center">
+            <!-- Center section can be used for breadcrumbs or current file info -->
+        </div>
+
+        <div class="global-header-right">
+            <!-- Settings Button -->
+            <button id="globalSettingsBtn" class="global-header-btn" title="Settings">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    <circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            </button>
+
+            <!-- Left Sidebar Toggle Button (VSCode style) -->
+            <button id="globalSidebarToggleBtn" class="global-header-btn sidebar-toggle" title="Toggle File Explorer">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M10 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-8l-2-2z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            </button>
+
+            <!-- Right Sidebar Toggle Button (Chat) -->
+            <button id="globalChatToggleBtn" class="global-header-btn sidebar-toggle" title="Toggle Chat">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            </button>
+        </div>
+    </div>
+
+    <!-- App Content Container -->
     <div class="app">
+    <div class="app-content">
         <!-- Settings Modal -->
         <div class="modal-overlay" id="settingsModal" style="display: none;">
             <div class="modal">
@@ -207,8 +401,14 @@
             </div>
         </div>
 
-        <!-- Main Chat Area -->
-        <div class="main-chat">
+        <!-- File Editor Container -->
+        <div class="editor-container" id="editorContainer">
+            <!-- File editor will be rendered here -->
+        </div>
+
+        <!-- Chat Sidebar (relocated main chat) -->
+        <div class="chat-sidebar" id="chatSidebar">
+            <div class="main-chat">
             <div class="chat-header">
                 <div class="conversation-header-info">
                     <div class="conversation-title-container">
@@ -231,14 +431,6 @@
                     <button class="header-action-btn" id="newConversationBtn" title="New Conversation">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                             <path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                        </svg>
-                    </button>
-
-                    <!-- Settings Button -->
-                    <button class="header-action-btn" id="settingsBtn" title="Settings">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                            <circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                         </svg>
                     </button>
 
@@ -289,7 +481,7 @@
                 <div class="input-container">
                     <textarea
                         id="messageInput"
-                        placeholder="Type your message... (Enter to send, Shift+Enter for new line)"
+                        placeholder="Type here..."
                         rows="1"
                         aria-expanded="false"
                         aria-autocomplete="list"
@@ -318,6 +510,8 @@
                 </div>
             </div>
         </div>
+        </div>
+    </div>
     </div>
 
     <!-- Delete Confirmation Modal -->
@@ -332,12 +526,40 @@
         </div>
     </div>
 
+    <!-- Configure Monaco Environment FIRST to prevent worker creation -->
+    <script>
+      // CRITICAL: Set this before Monaco loads to completely disable workers
+      self.MonacoEnvironment = {
+        getWorker: function (workerId, label) {
+          // Return null to disable all workers completely
+          console.log('Monaco requesting worker for:', label, '- returning null to disable');
+          return null;
+        }
+      };
+    </script>
+
+    <!-- Load Monaco Editor CSS and JS -->
+    <link rel="stylesheet" data-name="vs/editor/editor.main" href="../node_modules/monaco-editor/min/vs/editor/editor.main.css">
+    <script src="../node_modules/monaco-editor/min/vs/loader.js"></script>
+    <script>
+      // Configure require paths after loader is available
+      if (window.require) {
+        window.require.config({
+          paths: {
+            vs: '../node_modules/monaco-editor/min/vs'
+          }
+        });
+      }
+    </script>
+
     <!-- Load utility modules first -->
     <script src="../src/renderer/utils/dom-utils.js"></script>
     <script src="../src/renderer/utils/message-utils.js"></script>
 
     <!-- Load component modules -->
     <script src="../src/renderer/components/file-browser.js"></script>
+    <script src="../src/renderer/components/file-editor.js"></script>
+    <script src="../src/renderer/components/chat-sidebar.js"></script>
     <script src="../src/renderer/components/session-manager.js"></script>
     <script src="../src/renderer/components/message-component.js"></script>
     <script src="../src/renderer/components/settings-component.js"></script>
@@ -345,5 +567,112 @@
 
     <!-- Load main app -->
     <script src="app.js"></script>
+
+        <!-- Global Header Enhancement Script -->
+    <script>
+      // Global header functionality
+      class GlobalHeader {
+        constructor() {
+          this.headerCenter = document.querySelector('.global-header-center');
+          this.sidebarToggleBtn = document.getElementById('globalSidebarToggleBtn');
+          this.chatToggleBtn = document.getElementById('globalChatToggleBtn');
+          this.settingsBtn = document.getElementById('globalSettingsBtn');
+
+          this.init();
+        }
+
+        init() {
+          // Set up button event listeners
+          if (this.sidebarToggleBtn) {
+            this.sidebarToggleBtn.addEventListener('click', () => this.toggleLeftSidebar());
+          }
+
+          if (this.chatToggleBtn) {
+            this.chatToggleBtn.addEventListener('click', () => this.toggleRightSidebar());
+          }
+
+          // Settings button is handled by SettingsComponent, skip here to avoid conflicts
+
+          // Listen for file editor events to show current file in header
+          document.addEventListener('fileOpened', (event) => {
+            this.showFileInfo(event.detail);
+          });
+
+          document.addEventListener('fileClosed', () => {
+            this.clearFileInfo();
+          });
+
+          // Initialize button states
+          this.updateButtonStates();
+        }
+
+        toggleLeftSidebar() {
+          // Use the existing file browser toggle functionality
+          if (window.fileBrowser) {
+            window.fileBrowser.toggleSidebarVisibility();
+            this.updateButtonStates();
+          }
+        }
+
+        toggleRightSidebar() {
+          // Toggle the chat sidebar
+          const chatSidebar = document.getElementById('chatSidebar');
+          if (chatSidebar) {
+            chatSidebar.classList.toggle('hidden');
+            this.updateButtonStates();
+          }
+        }
+
+
+
+        updateButtonStates() {
+          // Update left sidebar button state
+          const sidebar = document.querySelector('.sidebar');
+          if (this.sidebarToggleBtn && sidebar) {
+            if (sidebar.classList.contains('hidden')) {
+              this.sidebarToggleBtn.classList.remove('active');
+            } else {
+              this.sidebarToggleBtn.classList.add('active');
+            }
+          }
+
+          // Update right sidebar button state
+          const chatSidebar = document.getElementById('chatSidebar');
+          if (this.chatToggleBtn && chatSidebar) {
+            if (chatSidebar.classList.contains('hidden')) {
+              this.chatToggleBtn.classList.remove('active');
+            } else {
+              this.chatToggleBtn.classList.add('active');
+            }
+          }
+        }
+
+        showFileInfo(fileInfo) {
+          if (!this.headerCenter || !fileInfo) return;
+
+          const breadcrumb = document.createElement('div');
+          breadcrumb.className = 'global-breadcrumb';
+          breadcrumb.innerHTML = `
+            <span class="global-breadcrumb-item">${fileInfo.icon || '📄'}</span>
+            <span class="global-breadcrumb-separator">/</span>
+            <span class="global-breadcrumb-item" title="${fileInfo.path}">${fileInfo.name}</span>
+          `;
+
+          this.headerCenter.innerHTML = '';
+          this.headerCenter.appendChild(breadcrumb);
+        }
+
+        clearFileInfo() {
+          if (this.headerCenter) {
+            this.headerCenter.innerHTML = '';
+          }
+        }
+      }
+
+      // Initialize global header when DOM is loaded
+      document.addEventListener('DOMContentLoaded', () => {
+        window.globalHeader = new GlobalHeader();
+      });
+    </script>
 </body>
 </html>

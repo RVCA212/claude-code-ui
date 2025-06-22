@@ -15,6 +15,8 @@ class AppComponent {
       this.components.sessionManager = new SessionManager();
       this.components.messageComponent = new MessageComponent(this.components.sessionManager);
       this.components.fileBrowser = new FileBrowser();
+      this.components.fileEditor = new FileEditorComponent();
+      this.components.chatSidebar = new ChatSidebarComponent();
       
       // Set up cross-component communication
       this.setupComponentCommunication();
@@ -34,11 +36,23 @@ class AppComponent {
     window.messageComponent = this.components.messageComponent;
     window.settingsComponent = this.components.settings;
     window.fileBrowser = this.components.fileBrowser;
+    window.fileEditor = this.components.fileEditor;
+    window.chatSidebar = this.components.chatSidebar;
 
     // Set up custom event listeners for component communication
     document.addEventListener('sessionChanged', (e) => {
       this.handleSessionChange(e.detail);
     });
+
+    // Set up file change notifications
+    if (window.electronAPI && window.electronAPI.onFileChanged) {
+      window.electronAPI.onFileChanged((event, data) => {
+        this.handleFileChanged(data);
+      });
+    }
+
+    // Set up cross-component integration
+    this.setupCrossComponentIntegration();
 
     // Set up periodic status updates
     this.setupPeriodicUpdates();
@@ -130,6 +144,76 @@ class AppComponent {
     if (this.components.messageComponent?.getIsStreaming()) {
       e.preventDefault();
       e.returnValue = 'You have an active conversation. Are you sure you want to leave?';
+    }
+
+    // Warn if there are unsaved files
+    if (this.components.fileEditor?.isEditorDirty()) {
+      e.preventDefault();
+      e.returnValue = 'You have unsaved changes. Are you sure you want to leave?';
+    }
+  }
+
+  handleFileChanged(data) {
+    // Handle file change notifications from the main process
+    console.log('File changed:', data);
+    
+    // If the changed file is currently open in the editor, notify the user
+    if (this.components.fileEditor) {
+      const currentFile = this.components.fileEditor.getCurrentFile();
+      if (currentFile && currentFile.path === data.path) {
+        // File was changed externally, offer to reload
+        if (confirm('The file has been changed externally. Would you like to reload it?')) {
+          this.components.fileEditor.openFile(data.path);
+        }
+      }
+    }
+  }
+
+  setupCrossComponentIntegration() {
+    // Set up integration between components
+
+    // Monitor message activity to update chat sidebar
+    if (this.components.messageComponent && this.components.chatSidebar) {
+      const originalSendMessage = this.components.messageComponent.sendMessage.bind(this.components.messageComponent);
+      this.components.messageComponent.sendMessage = (...args) => {
+        this.components.chatSidebar.notifyMessageActivity();
+        return originalSendMessage(...args);
+      };
+    }
+
+    // Set up file editor and file browser integration
+    if (this.components.fileEditor && this.components.fileBrowser) {
+      // The file browser handleFileClick already calls fileEditor.openFile
+      // We could add more integration here if needed
+    }
+
+    // Handle window resize for responsive layout
+    window.addEventListener('resize', () => {
+      this.handleLayoutResize();
+    });
+  }
+
+  handleLayoutResize() {
+    // Handle responsive layout changes
+    const width = window.innerWidth;
+    
+    // Auto-collapse chat sidebar on very small screens
+    if (width < 900 && this.components.chatSidebar && 
+        typeof this.components.chatSidebar.isCollapsed === 'function' && 
+        !this.components.chatSidebar.isCollapsed()) {
+      if (typeof this.components.chatSidebar.forceCollapse === 'function') {
+        this.components.chatSidebar.forceCollapse();
+      }
+    }
+    
+    // Auto-expand on larger screens if no file is open
+    if (width > 1200 && this.components.chatSidebar && 
+        typeof this.components.chatSidebar.isCollapsed === 'function' && 
+        this.components.chatSidebar.isCollapsed()) {
+      const currentFile = this.components.fileEditor?.getCurrentFile();
+      if (!currentFile && typeof this.components.chatSidebar.forceExpand === 'function') {
+        this.components.chatSidebar.forceExpand();
+      }
     }
   }
 

@@ -307,6 +307,245 @@ class FileOperations {
   setCurrentWorkingDirectory(dirPath) {
     this.currentWorkingDirectory = dirPath;
   }
+
+  // Security helper to validate file path is within workspace
+  validateFilePath(filePath) {
+    const resolvedPath = path.resolve(filePath);
+    const workspaceRoot = path.resolve(this.currentWorkingDirectory);
+    
+    // Check if the file is within the current workspace
+    if (!resolvedPath.startsWith(workspaceRoot)) {
+      throw new Error('File access denied: Path is outside workspace');
+    }
+    
+    return resolvedPath;
+  }
+
+  // Check if file is binary
+  async isBinaryFile(filePath) {
+    try {
+      // Read first 1024 bytes to check for binary content
+      const buffer = await fs.readFile(filePath, { encoding: null });
+      const chunk = buffer.slice(0, Math.min(1024, buffer.length));
+      
+      // Check for null bytes which typically indicate binary files
+      for (let i = 0; i < chunk.length; i++) {
+        if (chunk[i] === 0) {
+          return true;
+        }
+      }
+      
+      // Additional checks for common binary file signatures
+      const fileExt = path.extname(filePath).toLowerCase();
+      const binaryExtensions = ['.png', '.jpg', '.jpeg', '.gif', '.svg', '.ico', '.zip', '.tar', '.gz', '.exe', '.dll', '.so', '.dmg', '.app'];
+      
+      return binaryExtensions.includes(fileExt);
+    } catch (error) {
+      // If we can't read the file, assume it might be binary for safety
+      return true;
+    }
+  }
+
+  // Read file content
+  async readFile(filePath) {
+    try {
+      const validatedPath = this.validateFilePath(filePath);
+      
+      // Check if file exists and is readable
+      await fs.access(validatedPath, fs.constants.R_OK);
+      
+      // Check if file is binary
+      const isBinary = await this.isBinaryFile(validatedPath);
+      
+      if (isBinary) {
+        return {
+          success: false,
+          error: 'Cannot read binary file',
+          isBinary: true,
+          path: filePath
+        };
+      }
+      
+      // Read text file
+      const content = await fs.readFile(validatedPath, 'utf-8');
+      
+      // Check file size (limit to 5MB for safety)
+      const stats = await fs.stat(validatedPath);
+      if (stats.size > 5 * 1024 * 1024) {
+        return {
+          success: false,
+          error: 'File too large (>5MB)',
+          path: filePath
+        };
+      }
+      
+      console.log('File read successfully:', filePath);
+      
+      return {
+        success: true,
+        content: content,
+        path: filePath,
+        size: stats.size,
+        modified: stats.mtime
+      };
+      
+    } catch (error) {
+      console.error('Failed to read file:', error);
+      return {
+        success: false,
+        error: error.message,
+        path: filePath
+      };
+    }
+  }
+
+  // Write file content
+  async writeFile(filePath, content) {
+    try {
+      const validatedPath = this.validateFilePath(filePath);
+      
+      // Check if parent directory exists
+      const parentDir = path.dirname(validatedPath);
+      try {
+        await fs.access(parentDir, fs.constants.W_OK);
+      } catch (error) {
+        throw new Error(`Parent directory not writable: ${parentDir}`);
+      }
+      
+      // Create backup if file exists
+      let backupPath = null;
+      try {
+        await fs.access(validatedPath, fs.constants.F_OK);
+        backupPath = `${validatedPath}.backup.${Date.now()}`;
+        await fs.copyFile(validatedPath, backupPath);
+      } catch (error) {
+        // File doesn't exist, no backup needed
+      }
+      
+      // Write the file
+      await fs.writeFile(validatedPath, content, 'utf-8');
+      
+      // Clean up backup after successful write
+      if (backupPath) {
+        setTimeout(async () => {
+          try {
+            await fs.unlink(backupPath);
+          } catch (error) {
+            // Backup cleanup failed, not critical
+          }
+        }, 5000);
+      }
+      
+      console.log('File written successfully:', filePath);
+      
+      return {
+        success: true,
+        path: filePath,
+        backup: backupPath
+      };
+      
+    } catch (error) {
+      console.error('Failed to write file:', error);
+      return {
+        success: false,
+        error: error.message,
+        path: filePath
+      };
+    }
+  }
+
+  // File watching functionality
+  watchFile(filePath, callback) {
+    try {
+      const validatedPath = this.validateFilePath(filePath);
+      
+      if (!this.fileWatchers) {
+        this.fileWatchers = new Map();
+      }
+      
+      // Don't create duplicate watchers
+      if (this.fileWatchers.has(validatedPath)) {
+        return {
+          success: true,
+          message: 'File already being watched',
+          path: filePath
+        };
+      }
+      
+      const watcher = fs.watch(validatedPath, (eventType, filename) => {
+        if (eventType === 'change') {
+          callback({
+            type: 'file-changed',
+            path: filePath,
+            timestamp: Date.now()
+          });
+        }
+      });
+      
+      this.fileWatchers.set(validatedPath, watcher);
+      
+      console.log('Started watching file:', filePath);
+      
+      return {
+        success: true,
+        message: 'File watching started',
+        path: filePath
+      };
+      
+    } catch (error) {
+      console.error('Failed to watch file:', error);
+      return {
+        success: false,
+        error: error.message,
+        path: filePath
+      };
+    }
+  }
+
+  // Stop watching file
+  unwatchFile(filePath) {
+    try {
+      const validatedPath = this.validateFilePath(filePath);
+      
+      if (!this.fileWatchers || !this.fileWatchers.has(validatedPath)) {
+        return {
+          success: false,
+          error: 'File not being watched',
+          path: filePath
+        };
+      }
+      
+      const watcher = this.fileWatchers.get(validatedPath);
+      watcher.close();
+      this.fileWatchers.delete(validatedPath);
+      
+      console.log('Stopped watching file:', filePath);
+      
+      return {
+        success: true,
+        message: 'File watching stopped',
+        path: filePath
+      };
+      
+    } catch (error) {
+      console.error('Failed to unwatch file:', error);
+      return {
+        success: false,
+        error: error.message,
+        path: filePath
+      };
+    }
+  }
+
+  // Clean up all file watchers
+  cleanupWatchers() {
+    if (this.fileWatchers) {
+      for (const watcher of this.fileWatchers.values()) {
+        watcher.close();
+      }
+      this.fileWatchers.clear();
+    }
+  }
 }
 
 module.exports = FileOperations;

@@ -41,7 +41,10 @@ class CheckpointManager {
       console.log('Checkpoint system initialized successfully');
     } catch (error) {
       console.error('Failed to initialize checkpoint system:', error);
-      throw error;
+      console.log('Checkpoint system failed to initialize, running without checkpointing:', error.message);
+      // Set checkpointDb to null to indicate checkpoint system is disabled
+      this.checkpointDb = null;
+      // Don't throw the error - allow the app to continue without checkpointing
     }
   }
 

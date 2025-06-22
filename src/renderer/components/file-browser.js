@@ -18,8 +18,8 @@ class FileBrowser {
     // Reference to the containing sidebar so we can show/hide it
     this.sidebarContainer = document.querySelector('.sidebar');
 
-    // Sidebar toggle button located in the title-bar area
-    this.sidebarToggleBtn = document.getElementById('sidebarToggleBtn');
+    // Sidebar toggle button located in the global header
+    this.sidebarToggleBtn = document.getElementById('globalSidebarToggleBtn');
 
     this.initializeElements();
     this.setupEventListeners();
@@ -383,9 +383,16 @@ class FileBrowser {
     if (isDirectory) {
       this.navigateToDirectory(path);
     } else {
-      // For files, we might want to open them or show file info
+      // Open file in the editor
       console.log('File clicked:', path);
-      // You could implement file preview or selection here
+
+      // Get the file editor component and open the file
+      const fileEditor = window.app?.getComponent('fileEditor');
+      if (fileEditor) {
+        fileEditor.openFile(path);
+      } else {
+        console.error('File editor component not available');
+      }
     }
   }
 
@@ -521,7 +528,12 @@ class FileBrowser {
 
     // Update tooltip text
     if (this.sidebarToggleBtn) {
-      this.sidebarToggleBtn.title = isHidden ? 'Show Sidebar' : 'Hide Sidebar';
+      this.sidebarToggleBtn.title = isHidden ? 'Show File Explorer' : 'Hide File Explorer';
+    }
+
+    // Update global header button states
+    if (window.globalHeader) {
+      window.globalHeader.updateButtonStates();
     }
   }
 }

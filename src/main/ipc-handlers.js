@@ -294,6 +294,29 @@ class IPCHandlers {
     ipcMain.handle('navigate-up', async () => {
       return await this.fileOperations.navigateUp();
     });
+
+    // File editor operations
+    ipcMain.handle('read-file', async (event, filePath) => {
+      return await this.fileOperations.readFile(filePath);
+    });
+
+    ipcMain.handle('write-file', async (event, filePath, content) => {
+      return await this.fileOperations.writeFile(filePath, content);
+    });
+
+    ipcMain.handle('watch-file', async (event, filePath) => {
+      const callback = (data) => {
+        // Send file change notification to renderer
+        if (this.mainWindow && !this.mainWindow.isDestroyed()) {
+          this.mainWindow.webContents.send('file-changed', data);
+        }
+      };
+      return this.fileOperations.watchFile(filePath, callback);
+    });
+
+    ipcMain.handle('unwatch-file', async (event, filePath) => {
+      return await this.fileOperations.unwatchFile(filePath);
+    });
   }
 
   // Session event notifications

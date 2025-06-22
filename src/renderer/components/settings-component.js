@@ -11,7 +11,7 @@ class SettingsComponent {
   initializeElements() {
     // Settings modal elements
     this.settingsModal = document.getElementById('settingsModal');
-    this.settingsBtn = document.getElementById('settingsBtn');
+    this.settingsBtn = document.getElementById('globalSettingsBtn'); // Updated to use global settings button
     this.saveSettingsBtn = document.getElementById('saveSettingsBtn');
     this.cancelSettingsBtn = document.getElementById('cancelSettingsBtn');
 

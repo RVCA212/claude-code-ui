@@ -1,3 +1,7 @@
+Testing this shit output
+
+
+
 The Claude Code SDK enables running Claude Code as a subprocess, providing a way to build AI-powered coding assistants and tools that leverage Claude’s capabilities.
 
 The SDK is available for command line, TypeScript, and Python usage.
@@ -119,7 +123,7 @@ The SDK leverages all the CLI options available in Claude Code. Here are the key
 
 Flag
 
-Description
+Descripton
 
 Example
 

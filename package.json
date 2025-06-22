@@ -8,8 +8,8 @@
     "dev": "electron . --dev",
     "build": "electron-builder",
     "install-claude": "npm install -g @anthropic-ai/claude-code",
-    "rebuild": "electron-rebuild",
-    "postinstall": "electron-rebuild"
+    "rebuild": "electron-builder install-app-deps --arch=arm64",
+    "postinstall": "electron-builder install-app-deps --arch=arm64"
   },
   "keywords": [
     "electron",
@@ -27,8 +27,10 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.27.0",
+    "@monaco-editor/loader": "^1.5.0",
     "better-sqlite3": "^11.10.0",
     "diff": "^5.1.0",
+    "monaco-editor": "^0.52.2",
     "node-pty": "^1.0.0",
     "uuid": "^9.0.1"
   },

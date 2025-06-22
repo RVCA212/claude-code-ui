@@ -319,12 +319,20 @@ pre code {
   margin-top: var(--space-4);
 }
 
+/* Remove old .app styles since we now use .app-content */
 .app {
   display: flex;
-  height: 100vh;
+  flex: 1; /* Let the app container grow to fill available space */
+  min-height: 0; /* Prevents flex children from overflowing their container */
   font-family: var(--font-family-base);
   color: var(--color-text);
   background-color: var(--color-background);
+}
+
+.app-content {
+  display: flex;
+  flex: 1;
+   /* Remove explicit height - let flex: 1 handle the sizing */
 }
 
 /* Sidebar Styles */
@@ -335,8 +343,8 @@ pre code {
   display: flex;
   flex-direction: column;
   border-right: 1px solid var(--color-border);
-  /* Removed global drag region so inner controls stay interactive. Draggability is still provided by .sidebar-header. */
-  padding-top: 32px; /* Reserve space for macOS window buttons */
+  /* Removed global drag region so inner controls stay interactive. */
+  /* No padding-top needed - global header handles spacing now */
 }
 
 .conversations-list {
@@ -472,7 +480,7 @@ pre code {
   align-items: flex-start;
   justify-content: space-between;
   gap: var(--space-12);
-  -webkit-app-region: drag; /* Make chat header draggable */
+  /* Removed drag region - handled by global header now */
 }
 
 .conversation-header-info {
@@ -1721,7 +1729,7 @@ pre code {
 .file-browser {
   display: flex;
   flex-direction: column;
-  height: 100vh;
+  height: 100%;
   background: var(--color-surface);
   border-radius: 8px;
   overflow: hidden;
@@ -2631,4 +2639,423 @@ pre code {
 .conversation-history-sidebar .conversations-list {
   flex: 1;
   overflow-y: auto;
+}
+
+/* File Editor Styles */
+.editor-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--color-surface);
+  border-right: 1px solid var(--color-border);
+  min-width: 400px;
+}
+
+.editor-wrapper {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.editor-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-12) var(--space-16);
+  background-color: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+  -webkit-app-region: drag;
+}
+
+.file-info {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  flex: 1;
+  min-width: 0;
+  -webkit-app-region: no-drag;
+}
+
+.file-icon {
+  font-size: var(--font-size-base);
+  flex-shrink: 0;
+}
+
+.file-name {
+  font-weight: var(--font-weight-medium);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dirty-indicator {
+  color: var(--color-warning);
+  font-weight: bold;
+  margin-left: var(--space-4);
+}
+
+.editor-actions {
+  display: flex;
+  gap: var(--space-8);
+  -webkit-app-region: no-drag;
+}
+
+.editor-btn {
+  background: none;
+  border: none;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  padding: var(--space-6);
+  border-radius: var(--radius-sm);
+  transition: all var(--duration-fast) var(--ease-standard);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.editor-btn:hover {
+  background-color: var(--color-secondary-hover);
+  color: var(--color-text);
+}
+
+.editor-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.editor-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+.editor-placeholder {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  color: var(--color-text-secondary);
+  padding: var(--space-48);
+}
+
+.placeholder-icon {
+  font-size: 4rem;
+  margin-bottom: var(--space-16);
+  opacity: 0.3;
+}
+
+.placeholder-text h3 {
+  margin-bottom: var(--space-8);
+  color: var(--color-text);
+}
+
+.placeholder-text p {
+  margin: 0;
+  max-width: 400px;
+}
+
+.editor-loading {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-16);
+}
+
+.loading-spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid var(--color-border);
+  border-top: 3px solid var(--color-primary);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.loading-text {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.editor-error {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: var(--space-32);
+  gap: var(--space-16);
+}
+
+.error-icon {
+  font-size: 3rem;
+  color: var(--color-error);
+}
+
+.error-text {
+  color: var(--color-error);
+  font-weight: var(--font-weight-medium);
+}
+
+.retry-btn {
+  background: var(--color-primary);
+  color: var(--color-btn-primary-text);
+  border: none;
+  padding: var(--space-8) var(--space-16);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: var(--font-size-sm);
+  transition: background-color var(--duration-fast) var(--ease-standard);
+}
+
+.retry-btn:hover {
+  background: var(--color-primary-hover);
+}
+
+/* Chat Sidebar Styles */
+.chat-sidebar .main-chat {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Responsive adjustments for smaller screens */
+@media (max-width: 1200px) {
+  .chat-sidebar {
+    width: 350px;
+    min-width: 300px;
+  }
+}
+
+@media (max-width: 1000px) {
+  .editor-container {
+    min-width: 300px;
+  }
+
+  .chat-sidebar {
+    width: 300px;
+    min-width: 280px;
+  }
+}
+
+/* Monaco Editor container styling */
+#monacoEditor {
+  height: 100%;
+  width: 100%;
+}
+
+/* Override Monaco theme to match app theme */
+.monaco-editor {
+  background-color: var(--color-background) !important;
+}
+
+.monaco-editor .margin {
+  background-color: var(--color-surface) !important;
+}
+
+/* ===================== Three-Column Layout Adjustments ===================== */
+
+/* 1. Chat sidebar maintains its original fixed width behavior */
+.chat-sidebar {
+  width: 400px;
+  background-color: var(--color-background);
+  display: flex;
+  flex-direction: column;
+  border-left: 1px solid var(--color-border);
+  min-width: 350px;
+  max-width: 500px;
+  flex-shrink: 0; /* Prevent shrinking */
+}
+
+/* 2. Hide the file-editor pane unless a file is actively open */
+.editor-container:not(.active) {
+  display: none; /* Remain hidden until the "active" class is added */
+}
+
+/* 3. When active, the editor takes up the remaining space between sidebar and chat */
+.editor-container.active {
+  display: flex;
+  flex: 1; /* Fill remaining space between file browser and chat sidebar */
+  min-width: 400px; /* Ensure minimum usable width */
+}
+
+/* 4. When editor is not active, chat sidebar expands to fill remaining space */
+.app:not(.editor-active) .chat-sidebar {
+  flex: 1; /* Allow chat to grow when editor is not active */
+  width: auto;
+  min-width: 400px;
+  max-width: none;
+}
+
+/* 5. When editor is active, apply proper spacing to the app container */
+.app.editor-active .chat-sidebar {
+  flex: 0 0 400px; /* Fixed width when editor is active */
+}
+
+/* Layout adjustments when sidebars are hidden */
+.app-content .sidebar.hidden + .editor-container {
+  /* When left sidebar is hidden, editor expands */
+}
+
+.app-content .chat-sidebar.hidden ~ * {
+  /* When right sidebar is hidden, other elements can expand */
+}
+
+.app-content .sidebar.hidden + .editor-container + .chat-sidebar.hidden {
+  /* When both sidebars are hidden, editor takes full width */
+}
+
+/* Global Header Styles */
+.global-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 44px;
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+  padding: 0 var(--space-12);
+  -webkit-app-region: drag; /* Make header draggable for window movement */
+  z-index: 2000;
+  position: relative;
+  box-shadow: var(--shadow-xs);
+}
+
+.global-header-left {
+  display: flex;
+  align-items: center;
+  gap: var(--space-12);
+}
+
+.global-header-center {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.global-header-right {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+}
+
+/* Global header buttons (VSCode style) */
+.global-header-btn {
+  background: transparent;
+  border: none;
+  padding: var(--space-6);
+  cursor: pointer;
+  color: var(--color-text-secondary);
+  border-radius: var(--radius-sm);
+  transition: all var(--duration-fast) var(--ease-standard);
+  -webkit-app-region: no-drag; /* Allow click events */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+}
+
+.global-header-btn:hover {
+  background: var(--color-secondary);
+  color: var(--color-text);
+}
+
+.global-header-btn:focus-visible {
+  outline: var(--focus-outline);
+  outline-offset: 2px;
+}
+
+.global-header-btn svg {
+  display: block;
+}
+
+/* Active state for sidebar toggles */
+.global-header-btn.sidebar-toggle.active {
+  background: var(--color-primary);
+  color: var(--color-btn-primary-text);
+}
+
+.global-header-btn.sidebar-toggle.active:hover {
+  background: var(--color-primary-hover);
+}
+
+/* App title in global header */
+.global-app-title {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-secondary);
+  margin: 0;
+  -webkit-app-region: no-drag;
+  user-select: none;
+}
+
+/* Status indicator */
+.global-status-indicator {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  -webkit-app-region: no-drag;
+  user-select: none;
+}
+
+.global-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--color-success);
+  flex-shrink: 0;
+  transition: background var(--duration-fast) var(--ease-standard);
+}
+
+.global-status-dot.warning {
+  background: var(--color-warning);
+}
+
+.global-status-dot.error {
+  background: var(--color-error);
+}
+
+.global-status-dot.info {
+  background: var(--color-info);
+}
+
+/* Breadcrumb in global header center (when file is open) */
+.global-breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  max-width: 400px;
+  overflow: hidden;
+}
+
+.global-breadcrumb-item {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.global-breadcrumb-separator {
+  color: var(--color-text-secondary);
+  opacity: 0.5;
+}
+
+/* Adjust main app container to account for global header */
+.app-content {
+  display: flex;
+  flex: 1;
+  /* Remove explicit height - let flex: 1 handle the sizing */
 }
