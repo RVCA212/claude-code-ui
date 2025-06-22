@@ -12,18 +12,18 @@ document.addEventListener('DOMContentLoaded', () => {
 async function initializeApp() {
   try {
     console.log('Initializing Claude Code Chat...');
-    
+
     // Create the main app component which coordinates everything
     app = new AppComponent();
-    
+
     // Make app globally available for debugging
     window.app = app;
-    
+
     // Set up global error handling
     setupGlobalErrorHandling();
-    
+
     console.log('Claude Code Chat initialized successfully');
-    
+
   } catch (error) {
     console.error('Failed to initialize application:', error);
     showInitializationError(error);

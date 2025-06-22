@@ -10,11 +10,26 @@ class FileBrowser {
     this.fileSearchQuery = '';
     this.isQuickAccessCollapsed = true; // Start minimized by default
     this.homeDirectory = '~'; // Default to '~'
+    this.isHistoryView = false; // Sidebar starts in file view mode
+
+    // Root element of file browser for easy child toggling
+    this.root = document.querySelector('.file-browser');
+
+    // Reference to the containing sidebar so we can show/hide it
+    this.sidebarContainer = document.querySelector('.sidebar');
+
+    // Sidebar toggle button located in the title-bar area
+    this.sidebarToggleBtn = document.getElementById('sidebarToggleBtn');
 
     this.initializeElements();
     this.setupEventListeners();
     this.applyInitialQuickAccessState();
     this.loadInitialDirectory();
+
+    // Attach listener for sidebar hide/show
+    if (this.sidebarToggleBtn) {
+      this.sidebarToggleBtn.addEventListener('click', () => this.toggleSidebarVisibility());
+    }
   }
 
   initializeElements() {
@@ -24,6 +39,10 @@ class FileBrowser {
     this.upBtn = document.getElementById('upBtn');
     this.homeBtn = document.getElementById('homeBtn');
     this.refreshBtn = document.getElementById('refreshBtn');
+
+    // Toggle sidebar view button & history container
+    this.toggleViewBtn = document.getElementById('toggleSidebarViewBtn');
+    this.conversationHistorySidebar = document.getElementById('conversationHistorySidebar');
 
     // Display elements
     this.breadcrumb = document.getElementById('breadcrumb');
@@ -58,6 +77,11 @@ class FileBrowser {
     }
     if (this.refreshBtn) {
       this.refreshBtn.addEventListener('click', () => this.refreshDirectory());
+    }
+
+    // Toggle sidebar view (history / file)
+    if (this.toggleViewBtn) {
+      this.toggleViewBtn.addEventListener('click', () => this.toggleSidebarView());
     }
 
     // Search input
@@ -448,6 +472,57 @@ class FileBrowser {
       }));
 
     return matches;
+  }
+
+  /* -------------------------- Sidebar View Toggle ------------------------- */
+
+  toggleSidebarView() {
+    this.setSidebarView(!this.isHistoryView);
+  }
+
+  setSidebarView(showHistory) {
+    this.isHistoryView = showHistory;
+
+    // Update button label
+    if (this.toggleViewBtn) {
+      this.toggleViewBtn.textContent = showHistory ? 'File View' : 'History';
+    }
+
+    // Show/hide conversation history container
+    if (this.conversationHistorySidebar) {
+      this.conversationHistorySidebar.style.display = showHistory ? 'flex' : 'none';
+    }
+
+    // Show/hide other children of file-browser (except status bar and history container)
+    if (this.root) {
+      Array.from(this.root.children).forEach(child => {
+        if (child.classList.contains('file-browser-status') || child.id === 'conversationHistorySidebar') {
+          return; // Always keep visible
+        }
+        child.style.display = showHistory ? 'none' : '';
+      });
+    }
+
+    // Ensure conversation list is up to date when entering history view
+    if (showHistory) {
+      window.sessionManager?.renderSessions();
+    }
+  }
+
+  /**
+   * Hide or show the entire sidebar container.
+   * When hidden, only the top-left toggle button remains visible so the user
+   * can bring the sidebar back.
+   */
+  toggleSidebarVisibility() {
+    if (!this.sidebarContainer) return;
+
+    const isHidden = this.sidebarContainer.classList.toggle('hidden');
+
+    // Update tooltip text
+    if (this.sidebarToggleBtn) {
+      this.sidebarToggleBtn.title = isHidden ? 'Show Sidebar' : 'Hide Sidebar';
+    }
   }
 }
 

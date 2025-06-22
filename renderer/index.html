@@ -4,8 +4,39 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="style.css">
+    <!-- Sidebar toggle styles -->
+    <style>
+        /* Small button that lives in the title-bar padding and toggles the sidebar */
+        .sidebar-toggle-btn {
+            position: absolute;
+            top: 8px; /* Keep clear of traffic-light window controls */
+            left: 80px; /* Space after the traffic lights (approx.) */
+            background: transparent;
+            border: none;
+            padding: 4px;
+            cursor: pointer;
+            z-index: 2000; /* Above everything */
+            color: inherit;
+            -webkit-app-region: no-drag; /* Allow click events inside draggable title bar */
+        }
+
+        .sidebar-toggle-btn svg {
+            display: block;
+        }
+
+        /* Utility class added by JS when the sidebar is hidden */
+        .sidebar.hidden {
+            display: none !important;
+        }
+    </style>
 </head>
 <body>
+    <!-- Toggle button lives outside the flex layout so it is always visible -->
+    <button id="sidebarToggleBtn" class="sidebar-toggle-btn" title="Hide Sidebar">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M4 6h16M4 12h16M4 18h16" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+    </button>
     <div class="app">
         <!-- Settings Modal -->
         <div class="modal-overlay" id="settingsModal" style="display: none;">
@@ -86,13 +117,6 @@
         <div class="sidebar">
             <!-- File Browser -->
             <div class="file-browser">
-                <!-- Breadcrumb Navigation -->
-                <div class="breadcrumb-container">
-                    <div class="breadcrumb" id="breadcrumb">
-                        <!-- Breadcrumb segments will be populated by JavaScript -->
-                    </div>
-                </div>
-
                 <!-- Quick Access Shortcuts -->
                 <div class="quick-access">
                     <div class="quick-access-header" id="quickAccessHeader">
@@ -105,6 +129,13 @@
                     </div>
                     <div class="quick-access-list" id="quickAccessList">
                         <!-- Quick access items will be populated by JavaScript -->
+                    </div>
+                </div>
+
+                <!-- Breadcrumb Navigation -->
+                <div class="breadcrumb-container">
+                    <div class="breadcrumb" id="breadcrumb">
+                        <!-- Breadcrumb segments will be populated by JavaScript -->
                     </div>
                 </div>
 
@@ -164,9 +195,14 @@
                     </div>
                 </div>
 
+                <!-- Conversation History Sidebar (hidden by default) -->
+                <div class="conversation-history-sidebar" id="conversationHistorySidebar" style="display:none;">
+                    <div class="conversations-list" id="sidebarConversationsList"></div>
+                </div>
+
                 <!-- Status Bar -->
                 <div class="file-browser-status">
-                    <div class="status-text" id="statusText">Ready</div>
+                    <button class="history-toggle-btn" id="toggleSidebarViewBtn" title="Toggle History/File View">History</button>
                 </div>
             </div>
         </div>
@@ -188,15 +224,6 @@
                     </div>
                     <div class="conversation-status" id="conversationStatus" style="display: none;"></div>
                     <div class="conversation-context" id="conversationContext" style="display: none;"></div>
-                </div>
-
-                <!-- Model Selection Dropdown -->
-                <div class="model-selection-container">
-                    <select class="model-select" id="modelSelect">
-                        <option value="">Claude 4 Sonnet (Default)</option>
-                        <option value="claude-3-5-haiku-20241022">Claude 3.5 Haiku</option>
-                        <option value="claude-opus-4-20250514">Claude Opus 4</option>
-                    </select>
                 </div>
 
                 <div class="conversation-actions">
@@ -280,8 +307,14 @@
                     </button>
                 </div>
                 <div class="input-info">
-                    <span class="char-counter" id="charCounter">0 characters</span>
-                    <span class="session-info" id="sessionInfo"></span>
+                    <select class="model-select" id="modelSelect">
+                        <option value="">Claude 4 Sonnet</option>
+                        <option value="claude-3-5-haiku-20241022">Claude 3.5 Haiku</option>
+                        <option value="claude-opus-4-20250514">Claude Opus 4</option>
+                    </select>
+                    <div class="input-metrics">
+                        <span class="session-info" id="sessionInfo"></span>
+                    </div>
                 </div>
             </div>
         </div>

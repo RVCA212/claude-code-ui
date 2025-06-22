@@ -23,6 +23,9 @@ class SessionManager {
     this.historyBtn = document.getElementById('historyBtn');
     this.historyDropdown = document.getElementById('historyDropdown');
 
+    // Sidebar conversation list element (for sidebar history view)
+    this.sidebarConversationsList = document.getElementById('sidebarConversationsList');
+
     // Delete modal elements
     this.deleteModal = document.getElementById('deleteModal');
     this.confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
@@ -213,11 +216,15 @@ class SessionManager {
     if (!this.conversationsList) return;
 
     if (this.sessions.length === 0) {
-      this.conversationsList.innerHTML = `
+      const emptyHTML = `
         <div class="empty-state">
           <p>No conversations yet. Create your first conversation to get started!</p>
         </div>
       `;
+      this.conversationsList.innerHTML = emptyHTML;
+      if (this.sidebarConversationsList) {
+        this.sidebarConversationsList.innerHTML = emptyHTML;
+      }
       return;
     }
 
@@ -255,6 +262,10 @@ class SessionManager {
 
     this.conversationsList.innerHTML = sessionsHTML;
 
+    if (this.sidebarConversationsList) {
+      this.sidebarConversationsList.innerHTML = sessionsHTML;
+    }
+
     // Also update history dropdown
     if (this.historyDropdown) {
       const dropdownHTML = `
@@ -268,10 +279,13 @@ class SessionManager {
 
   updateSessionSelection() {
     // Update visual selection in conversations list
-    const items = this.conversationsList?.querySelectorAll('.conversation-item');
-    items?.forEach(item => {
-      const sessionId = item.getAttribute('onclick')?.match(/'([^']+)'/)?.[1];
-      item.classList.toggle('active', sessionId === this.currentSessionId);
+    const allLists = [this.conversationsList, this.sidebarConversationsList, this.historyDropdown];
+    allLists.forEach(listEl => {
+      const items = listEl?.querySelectorAll('.conversation-item');
+      items?.forEach(item => {
+        const sessionId = item.getAttribute('onclick')?.match(/'([^']+)'/)?.[1];
+        item.classList.toggle('active', sessionId === this.currentSessionId);
+      });
     });
   }
 
@@ -327,17 +341,7 @@ class SessionManager {
   }
 
   createContextHTML(preview) {
-    if (!preview.lastUserMessage && !preview.lastAssistantMessage) {
-      return '';
-    }
-
-    return `
-      <div class="conversation-preview-card">
-        <div class="preview-title">Recent Messages</div>
-        ${preview.lastUserMessage ? `<div class="preview-user">You: ${DOMUtils.escapeHTML(preview.lastUserMessage.substring(0, 100))}${preview.lastUserMessage.length > 100 ? '...' : ''}</div>` : ''}
-        ${preview.lastAssistantMessage ? `<div class="preview-assistant">Claude: ${DOMUtils.escapeHTML(preview.lastAssistantMessage.substring(0, 100))}${preview.lastAssistantMessage.length > 100 ? '...' : ''}</div>` : ''}
-      </div>
-    `;
+    return '';
   }
 
   getStatusIcon(status) {
