@@ -1,0 +1,142 @@
+/* Chat Sidebar Styles */
+.chat-sidebar {
+  flex: 0 0 var(--chat-sidebar-width);
+  width: var(--chat-sidebar-width);
+  min-width: var(--chat-sidebar-min-width);
+  max-width: var(--chat-sidebar-max-width);
+  background-color: var(--color-surface);
+  border-left: 1px solid var(--color-border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Main Chat Area */
+.main-chat {
+  flex: 1;
+  width: 100%;
+  min-width: 0; /* Allow content to shrink */
+  display: flex;
+  flex-direction: column;
+  background-color: var(--color-surface);
+  overflow: hidden; /* Prevent overflow */
+}
+
+.chat-header {
+  padding: var(--space-16) var(--space-24);
+  border-bottom: 1px solid var(--color-border);
+  background-color: var(--color-surface);
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-12);
+  /* Removed drag region - handled by global header now */
+}
+
+.conversation-header-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.conversation-title-container {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+}
+
+.conversation-actions {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+}
+
+.conversation-title {
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-semibold);
+  margin: 0;
+  outline: none;
+  border: 1px solid transparent;
+  padding: var(--space-4) var(--space-8);
+  border-radius: var(--radius-sm);
+  transition: border-color var(--duration-fast) var(--ease-standard);
+  -webkit-app-region: no-drag; /* Allow text selection and editing */
+}
+
+.conversation-title[contenteditable="true"] {
+  border-color: var(--color-primary);
+  background-color: var(--color-background);
+}
+
+.edit-title-btn {
+  background: none;
+  border: none;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  padding: var(--space-4);
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  transition: all var(--duration-fast) var(--ease-standard);
+  -webkit-app-region: no-drag; /* Make edit button clickable */
+  flex-shrink: 0;
+}
+
+.edit-title-btn:hover {
+  color: var(--color-primary);
+  background-color: var(--color-secondary);
+}
+
+.edit-title-btn svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* Messages Container */
+.messages-container {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-16);
+  background-color: var(--color-surface);
+}
+
+/* Empty State */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: var(--space-32);
+  color: var(--color-text-secondary);
+}
+
+.empty-state h3 {
+  color: var(--color-text);
+  margin-bottom: var(--space-16);
+}
+
+.empty-state p {
+  margin-bottom: var(--space-24);
+}
+
+.features-info h4 {
+  color: var(--color-text);
+  margin-bottom: var(--space-12);
+}
+
+.features-info ul {
+  text-align: left;
+  list-style: none;
+  padding: 0;
+}
+
+.features-info li {
+  margin-bottom: var(--space-8);
+}

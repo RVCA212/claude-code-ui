@@ -1,0 +1,111 @@
+/* Message Component Styles */
+.message {
+  margin-bottom: var(--space-16);
+  padding: var(--space-16);
+  border-radius: var(--radius-base);
+  border: 1px solid var(--color-border);
+  background: var(--color-background);
+}
+
+.message.user {
+  background: var(--color-primary);
+  color: var(--color-btn-primary-text);
+  margin-left: var(--space-32);
+}
+
+.message.assistant {
+  background: var(--color-surface);
+  color: var(--color-text);
+  margin-right: var(--space-32);
+}
+
+.message-content {
+  line-height: var(--line-height-normal);
+}
+
+.message-content p {
+  margin-bottom: var(--space-12);
+}
+
+.message-content p:last-child {
+  margin-bottom: 0;
+}
+
+.message-content code {
+  background: var(--color-secondary);
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-family-mono);
+}
+
+.message-content pre {
+  background: var(--color-secondary);
+  padding: var(--space-12);
+  border-radius: var(--radius-base);
+  overflow-x: auto;
+  margin: var(--space-12) 0;
+}
+
+/* Tool Call Styles */
+.tool-call {
+  margin: var(--space-12) 0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-base);
+  background: var(--color-background);
+}
+
+.tool-call-header {
+  padding: var(--space-8) var(--space-12);
+  background: var(--color-secondary);
+  border-bottom: 1px solid var(--color-border);
+  font-weight: var(--font-weight-medium);
+  font-size: var(--font-size-sm);
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+}
+
+.tool-call-content {
+  padding: var(--space-12);
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-sm);
+  white-space: pre-wrap;
+  overflow-x: auto;
+}
+
+/* Streaming indicator */
+.typing-indicator {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  padding: var(--space-12);
+  color: var(--color-text-secondary);
+  font-style: italic;
+}
+
+.typing-dots {
+  display: flex;
+  gap: var(--space-4);
+}
+
+.typing-dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--color-text-secondary);
+  animation: typing 1.4s infinite ease-in-out;
+}
+
+.typing-dot:nth-child(1) { animation-delay: -0.32s; }
+.typing-dot:nth-child(2) { animation-delay: -0.16s; }
+
+@keyframes typing {
+  0%, 80%, 100% {
+    transform: scale(0);
+    opacity: 0.5;
+  }
+  40% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}

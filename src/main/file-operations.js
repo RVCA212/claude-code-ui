@@ -312,12 +312,12 @@ class FileOperations {
   validateFilePath(filePath) {
     const resolvedPath = path.resolve(filePath);
     const workspaceRoot = path.resolve(this.currentWorkingDirectory);
-    
+
     // Check if the file is within the current workspace
     if (!resolvedPath.startsWith(workspaceRoot)) {
       throw new Error('File access denied: Path is outside workspace');
     }
-    
+
     return resolvedPath;
   }
 
@@ -327,18 +327,18 @@ class FileOperations {
       // Read first 1024 bytes to check for binary content
       const buffer = await fs.readFile(filePath, { encoding: null });
       const chunk = buffer.slice(0, Math.min(1024, buffer.length));
-      
+
       // Check for null bytes which typically indicate binary files
       for (let i = 0; i < chunk.length; i++) {
         if (chunk[i] === 0) {
           return true;
         }
       }
-      
+
       // Additional checks for common binary file signatures
       const fileExt = path.extname(filePath).toLowerCase();
       const binaryExtensions = ['.png', '.jpg', '.jpeg', '.gif', '.svg', '.ico', '.zip', '.tar', '.gz', '.exe', '.dll', '.so', '.dmg', '.app'];
-      
+
       return binaryExtensions.includes(fileExt);
     } catch (error) {
       // If we can't read the file, assume it might be binary for safety
@@ -350,13 +350,13 @@ class FileOperations {
   async readFile(filePath) {
     try {
       const validatedPath = this.validateFilePath(filePath);
-      
+
       // Check if file exists and is readable
       await fs.access(validatedPath, fs.constants.R_OK);
-      
+
       // Check if file is binary
       const isBinary = await this.isBinaryFile(validatedPath);
-      
+
       if (isBinary) {
         return {
           success: false,
@@ -365,10 +365,10 @@ class FileOperations {
           path: filePath
         };
       }
-      
+
       // Read text file
       const content = await fs.readFile(validatedPath, 'utf-8');
-      
+
       // Check file size (limit to 5MB for safety)
       const stats = await fs.stat(validatedPath);
       if (stats.size > 5 * 1024 * 1024) {
@@ -378,9 +378,9 @@ class FileOperations {
           path: filePath
         };
       }
-      
+
       console.log('File read successfully:', filePath);
-      
+
       return {
         success: true,
         content: content,
@@ -388,7 +388,7 @@ class FileOperations {
         size: stats.size,
         modified: stats.mtime
       };
-      
+
     } catch (error) {
       console.error('Failed to read file:', error);
       return {
@@ -403,7 +403,7 @@ class FileOperations {
   async writeFile(filePath, content) {
     try {
       const validatedPath = this.validateFilePath(filePath);
-      
+
       // Check if parent directory exists
       const parentDir = path.dirname(validatedPath);
       try {
@@ -411,7 +411,7 @@ class FileOperations {
       } catch (error) {
         throw new Error(`Parent directory not writable: ${parentDir}`);
       }
-      
+
       // Create backup if file exists
       let backupPath = null;
       try {
@@ -421,10 +421,10 @@ class FileOperations {
       } catch (error) {
         // File doesn't exist, no backup needed
       }
-      
+
       // Write the file
       await fs.writeFile(validatedPath, content, 'utf-8');
-      
+
       // Clean up backup after successful write
       if (backupPath) {
         setTimeout(async () => {
@@ -435,15 +435,15 @@ class FileOperations {
           }
         }, 5000);
       }
-      
+
       console.log('File written successfully:', filePath);
-      
+
       return {
         success: true,
         path: filePath,
         backup: backupPath
       };
-      
+
     } catch (error) {
       console.error('Failed to write file:', error);
       return {
@@ -458,11 +458,11 @@ class FileOperations {
   watchFile(filePath, callback) {
     try {
       const validatedPath = this.validateFilePath(filePath);
-      
+
       if (!this.fileWatchers) {
         this.fileWatchers = new Map();
       }
-      
+
       // Don't create duplicate watchers
       if (this.fileWatchers.has(validatedPath)) {
         return {
@@ -471,7 +471,7 @@ class FileOperations {
           path: filePath
         };
       }
-      
+
       const watcher = fs.watch(validatedPath, (eventType, filename) => {
         if (eventType === 'change') {
           callback({
@@ -481,17 +481,17 @@ class FileOperations {
           });
         }
       });
-      
+
       this.fileWatchers.set(validatedPath, watcher);
-      
+
       console.log('Started watching file:', filePath);
-      
+
       return {
         success: true,
         message: 'File watching started',
         path: filePath
       };
-      
+
     } catch (error) {
       console.error('Failed to watch file:', error);
       return {
@@ -506,7 +506,7 @@ class FileOperations {
   unwatchFile(filePath) {
     try {
       const validatedPath = this.validateFilePath(filePath);
-      
+
       if (!this.fileWatchers || !this.fileWatchers.has(validatedPath)) {
         return {
           success: false,
@@ -514,19 +514,19 @@ class FileOperations {
           path: filePath
         };
       }
-      
+
       const watcher = this.fileWatchers.get(validatedPath);
       watcher.close();
       this.fileWatchers.delete(validatedPath);
-      
+
       console.log('Stopped watching file:', filePath);
-      
+
       return {
         success: true,
         message: 'File watching stopped',
         path: filePath
       };
-      
+
     } catch (error) {
       console.error('Failed to unwatch file:', error);
       return {
@@ -545,6 +545,153 @@ class FileOperations {
       }
       this.fileWatchers.clear();
     }
+  }
+
+  // Recursively search for files by name prefix
+  async searchFilesByPrefix(query, maxResults = 50) {
+    try {
+      const results = [];
+      const searchStartPath = this.currentWorkingDirectory;
+
+      console.log(`Searching for files with prefix "${query}" in ${searchStartPath}`);
+
+      await this._searchFilesRecursive(searchStartPath, query.toLowerCase(), results, maxResults, 0, 5); // Max depth of 5
+
+      // Sort results by relevance: exact matches first, then by file name length, then alphabetically
+      results.sort((a, b) => {
+        const aName = a.name.toLowerCase();
+        const bName = b.name.toLowerCase();
+        const queryLower = query.toLowerCase();
+
+        // Exact prefix match gets highest priority
+        const aExactPrefix = aName.startsWith(queryLower) ? 1 : 0;
+        const bExactPrefix = bName.startsWith(queryLower) ? 1 : 0;
+
+        if (aExactPrefix !== bExactPrefix) {
+          return bExactPrefix - aExactPrefix;
+        }
+
+        // Then by name length (shorter names first)
+        if (aName.length !== bName.length) {
+          return aName.length - bName.length;
+        }
+
+        // Finally alphabetically
+        return aName.localeCompare(bName);
+      });
+
+      return {
+        success: true,
+        results: results.slice(0, maxResults),
+        query: query,
+        searchPath: searchStartPath
+      };
+
+    } catch (error) {
+      console.error('Failed to search files:', error);
+      return {
+        success: false,
+        error: error.message,
+        results: [],
+        query: query
+      };
+    }
+  }
+
+  // Helper method for recursive file searching
+  async _searchFilesRecursive(dirPath, query, results, maxResults, currentDepth, maxDepth) {
+    // Stop if we've found enough results or reached max depth
+    if (results.length >= maxResults || currentDepth >= maxDepth) {
+      return;
+    }
+
+    try {
+      const entries = await fs.readdir(dirPath, { withFileTypes: true });
+
+      for (const entry of entries) {
+        // Skip hidden files and common directories to ignore
+        if (entry.name.startsWith('.') ||
+            entry.name === 'node_modules' ||
+            entry.name === '.git' ||
+            entry.name === 'dist' ||
+            entry.name === 'build') {
+          continue;
+        }
+
+        const fullPath = path.join(dirPath, entry.name);
+
+        if (entry.isFile()) {
+          // Check if filename matches query
+          const fileName = entry.name.toLowerCase();
+          if (fileName.includes(query)) {
+            try {
+              const stats = await fs.stat(fullPath);
+
+              // Determine file icon based on extension
+              const icon = this._getFileIcon(entry.name);
+
+              results.push({
+                name: entry.name,
+                path: fullPath,
+                relativePath: path.relative(this.currentWorkingDirectory, fullPath),
+                isFile: true,
+                isDirectory: false,
+                size: stats.size,
+                modified: stats.mtime,
+                icon: icon
+              });
+
+              // Stop if we've reached max results
+              if (results.length >= maxResults) {
+                return;
+              }
+            } catch (statError) {
+              // Skip files we can't stat
+              continue;
+            }
+          }
+        } else if (entry.isDirectory()) {
+          // Recursively search subdirectories
+          await this._searchFilesRecursive(fullPath, query, results, maxResults, currentDepth + 1, maxDepth);
+        }
+      }
+    } catch (error) {
+      // Skip directories we can't read
+      console.warn(`Could not read directory ${dirPath}:`, error.message);
+    }
+  }
+
+  // Helper method to get file icon based on extension
+  _getFileIcon(fileName) {
+    const ext = path.extname(fileName).toLowerCase();
+    const iconMap = {
+      '.js': 'codicon-symbol-method',
+      '.ts': 'codicon-symbol-method',
+      '.jsx': 'codicon-symbol-method',
+      '.tsx': 'codicon-symbol-method',
+      '.html': 'codicon-symbol-structure',
+      '.css': 'codicon-symbol-color',
+      '.scss': 'codicon-symbol-color',
+      '.less': 'codicon-symbol-color',
+      '.json': 'codicon-symbol-misc',
+      '.md': 'codicon-symbol-text',
+      '.txt': 'codicon-symbol-text',
+      '.py': 'codicon-symbol-method',
+      '.java': 'codicon-symbol-method',
+      '.cpp': 'codicon-symbol-method',
+      '.c': 'codicon-symbol-method',
+      '.h': 'codicon-symbol-method',
+      '.xml': 'codicon-symbol-structure',
+      '.yml': 'codicon-symbol-misc',
+      '.yaml': 'codicon-symbol-misc',
+      '.png': 'codicon-symbol-color',
+      '.jpg': 'codicon-symbol-color',
+      '.jpeg': 'codicon-symbol-color',
+      '.gif': 'codicon-symbol-color',
+      '.svg': 'codicon-symbol-color'
+    };
+
+    return iconMap[ext] || 'codicon-symbol-file';
   }
 }
 

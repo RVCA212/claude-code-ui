@@ -1,0 +1,21 @@
+Index: file-browser.js
+===================================================================
+--- file-browser.js	before
++++ file-browser.js	after
+@@ -5,7 +5,15 @@
+         this.filterContents();
+         this.updateClearButton();
+       });
+       
++      // Add Enter key handler for selecting top result
++      this.fileSearchInput.addEventListener('keydown', (e) => {
++        if (e.key === 'Enter') {
++          e.preventDefault();
++          this.selectTopSearchResult();
++        }
++      });
++      
+       // Add clear button functionality
+       this.addClearButton();
+     }
+\ No newline at end of file

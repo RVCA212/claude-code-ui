@@ -1,0 +1,16 @@
+Index: file-browser.js
+===================================================================
+--- file-browser.js	before
++++ file-browser.js	after
+@@ -2,6 +2,10 @@
+     if (this.fileSearchInput) {
+       this.fileSearchInput.addEventListener('input', (e) => {
+         this.fileSearchQuery = e.target.value.toLowerCase();
+         this.filterContents();
++        this.updateClearButton();
+       });
++      
++      // Add clear button functionality
++      this.addClearButton();
+     }
+\ No newline at end of file

@@ -1,0 +1,12 @@
+/* Sidebar Styles */
+.sidebar {
+  flex: 0 0 var(--sidebar-width);
+  width: var(--sidebar-width);
+  background-color: #2f3136;
+  color: #dcddde;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--color-border);
+  /* Removed global drag region so inner controls stay interactive. */
+  /* No padding-top needed - global header handles spacing now */
+}

@@ -1,0 +1,67 @@
+```
+src/
+├── main/                           # Main process modules: core Electron app functionality
+│   ├── checkpoint-manager.js        # Advanced file modification tracking and reversion system
+│   │                                # - SQLite-based metadata storage
+│   │                                # - Diff-based change tracking
+│   │                                # - Atomic saves with backup protection
+│   ├── claude-process-manager.js    # Comprehensive Claude CLI process lifecycle management
+│   │                                # - Streaming JSON response handling
+│   │                                # - Process creation and cleanup
+│   │                                # - Error recovery mechanisms
+│   ├── file-operations.js           # Secure file system navigation and interaction
+│   │                                # - Cross-platform file system operations
+│   │                                # - Safe file path handling
+│   ├── ipc-handlers.js              # Centralized inter-process communication
+│   │                                # - Type-safe API definitions
+│   │                                # - Event coordination between modules
+│   │                                # - Secure command routing
+│   ├── main.js                      # Primary Electron application entry point
+│   │                                # - Initializes application lifecycle
+│   │                                # - Coordinates main process modules
+│   ├── model-config.js              # Intelligent model configuration management
+│   │                                # - Dynamic model selection
+│   │                                # - Configuration persistence
+│   ├── preload-bridge.js            # Secure communication bridge between processes
+│   │                                # - Controlled API exposure
+│   │                                # - No direct Node.js access in renderer
+│   └── session-manager.js           # Comprehensive session state management
+│                                    # - Conversation state persistence
+│                                    # - Session recovery mechanisms
+│                                    # - Atomic session saves
+│
+├── renderer/                        # Renderer process: user interface and interactions
+│   ├── app.js                       # Renderer process main application coordinator
+│   │                                # - Initializes UI components
+│   │                                # - Manages global application state
+│   ├── components/                  # Modular, reusable UI components
+│   │   ├── app-component.js         # Global application component
+│   │   │                            # - Coordinates UI components
+│   │   │                            # - Manages global events and shortcuts
+│   │   ├── file-browser.js          # Advanced file system browser
+│   │   │                            # - Directory navigation
+│   │   │                            # - File search and filtering
+│   │   ├── message-component.js     # Intelligent message rendering
+│   │   │                            # - Streaming response handling
+│   │   │                            # - Message formatting and interactions
+│   │   ├── session-manager.js       # Renderer-side session management
+│   │   │                            # - Session list rendering
+│   │   │                            # - Session title and action management
+│   │   └── settings-component.js    # Comprehensive settings management
+│   │                                # - Configuration modal
+│   │                                # - API key verification
+│   │                                # - Model and preference selection
+│   └── utils/                       # Utility modules for renderer process
+│       ├── dom-utils.js             # Safe and efficient DOM manipulation
+│       │                            # - Element creation and management
+│       │                            # - Cross-browser compatibility
+│       └── message-utils.js         # Advanced message processing
+│                                    # - Markdown-like text formatting
+│                                    # - Tool call rendering
+│                                    # - Thinking section display
+│
+└── shared/                          # Shared resources across processes
+    └── api-definitions.js           # Type-safe API contract between processes
+                                     # - Ensures type consistency
+                                     # - Facilitates secure communication
+```

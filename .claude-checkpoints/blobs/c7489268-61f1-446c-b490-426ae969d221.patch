@@ -1,0 +1,13 @@
+Index: file-browser.js
+===================================================================
+--- file-browser.js	before
++++ file-browser.js	after
+@@ -1,5 +1,8 @@
+   handleFileClick(path, isDirectory) {
++    // Clear search input when a file/folder is selected
++    this.clearSearchInput();
++    
+     if (isDirectory) {
+       this.navigateToDirectory(path);
+     } else {
+       // Open file in the editor

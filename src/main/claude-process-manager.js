@@ -81,6 +81,18 @@ class ClaudeProcessManager {
       throw new Error('Session not found');
     }
 
+    // Capture working directory for the session if this is the first message
+    if (!session.cwd && session.messages.length === 0) {
+      const currentCwd = this.fileOperations.getCurrentWorkingDirectory();
+      try {
+        await this.sessionManager.setSessionCwd(sessionId, currentCwd);
+        console.log(`Captured working directory for new session ${sessionId}: ${currentCwd}`);
+      } catch (error) {
+        console.error('Failed to capture working directory for session:', error);
+        // Continue with message sending even if cwd capture fails
+      }
+    }
+
     // Add user message to session and save immediately
     const userMessage = await this.sessionManager.addMessageToSession(sessionId, {
       id: uuidv4(),
@@ -175,6 +187,7 @@ class ClaudeProcessManager {
   // Handle Claude process execution
   async handleClaudeProcess(claudeProcess, sessionId) {
     const session = this.sessionManager.getSession(sessionId);
+    const cwd = this.fileOperations.getCurrentWorkingDirectory();
 
     return new Promise((resolve, reject) => {
       let output = '';
@@ -301,7 +314,8 @@ class ClaudeProcessManager {
                   sessionId,
                   message: assistantMessage,
                   isComplete: false,
-                  thinkingContent: thinkingContent
+                  thinkingContent: thinkingContent,
+                  cwd: cwd
                 });
               }
             } else if (parsed.type === 'message' && parsed.role === 'user') {
@@ -399,7 +413,8 @@ class ClaudeProcessManager {
             this.mainWindow.webContents.send('message-stream', {
               sessionId,
               message: assistantMessage,
-              isComplete: true
+              isComplete: true,
+              cwd: cwd
             });
 
             // Clear recovery state on successful completion

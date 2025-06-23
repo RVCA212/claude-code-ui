@@ -13,6 +13,9 @@ class MessageComponent {
     this.selectedMentionIndex = 0;
     this.mentionMatches = [];
 
+    // Directory mismatch modal
+    this.directoryMismatchModal = new DirectoryMismatchModal();
+
     this.initializeElements();
     this.setupEventListeners();
   }
@@ -125,6 +128,62 @@ class MessageComponent {
     }
 
     try {
+      // Pre-send validation: check directory mismatch
+      const validationResult = await window.electronAPI.validateSendDirectory(sessionId);
+
+      if (!validationResult.success) {
+        this.showError('Failed to validate directory: ' + validationResult.error);
+        return;
+      }
+
+      // Handle directory mismatch cases
+      if (!validationResult.canSend) {
+        if (validationResult.mismatchReason === 'original_directory_missing') {
+          // Original directory is missing, show warning and fall back to existing logic
+          this.sessionManager.showDirectoryChangeWarning(
+            validationResult.sessionCwd,
+            'Original directory no longer exists'
+          );
+          // Continue with send - this will likely start a new conversation
+        } else if (validationResult.mismatchReason === 'directory_changed') {
+          // Directory changed but original still exists - show modal
+          const shouldShowModal = DirectoryMismatchModal.shouldShowModal();
+
+          if (shouldShowModal) {
+            // Show modal and wait for user decision
+            this.directoryMismatchModal.show({
+              draftMessage: message,
+              currentDirectory: validationResult.currentCwd,
+              originalDirectory: validationResult.sessionCwd,
+              onCancel: () => {
+                // Do nothing - keep draft message in input
+                console.log('User cancelled directory mismatch modal');
+              },
+              onCreateNewChat: (draftMessage) => {
+                this.handleCreateNewChatWithDraft(draftMessage);
+              }
+            });
+            return; // Stop here - don't send the message
+          } else {
+            // Modal suppressed - automatically create new chat
+            this.handleCreateNewChatWithDraft(message);
+            return;
+          }
+        }
+      }
+
+      // Validation passed or handled - proceed with sending
+      await this.proceedWithSendMessage(message, sessionId);
+
+    } catch (error) {
+      console.error('Failed to send message:', error);
+      this.setStreaming(false);
+      this.showError('Failed to send message');
+    }
+  }
+
+  async proceedWithSendMessage(message, sessionId) {
+    try {
       // Add user message to UI immediately
       this.addUserMessage(message);
 
@@ -139,9 +198,29 @@ class MessageComponent {
       await window.electronAPI.sendMessage(sessionId, message);
 
     } catch (error) {
-      console.error('Failed to send message:', error);
+      console.error('Failed to proceed with send message:', error);
       this.setStreaming(false);
       this.showError('Failed to send message');
+    }
+  }
+
+  async handleCreateNewChatWithDraft(draftMessage) {
+    try {
+      // This will create a session and select it.
+      const newSession = await this.sessionManager.createNewSession();
+
+      if (newSession) {
+        // Set the draft message in the input
+        if (this.messageInput) {
+          this.messageInput.value = draftMessage;
+          this.handleInputChange(); // Update UI state
+          this.messageInput.focus();
+        }
+        console.log('Created new chat with draft message ready to send');
+      }
+    } catch (error) {
+      console.error('Failed to create new chat with draft:', error);
+      this.showError('Failed to create new conversation');
     }
   }
 
@@ -158,7 +237,7 @@ class MessageComponent {
   }
 
   handleMessageStream(data) {
-    const { sessionId, message, isComplete, thinkingContent } = data;
+    const { sessionId, message, isComplete, thinkingContent, cwd } = data;
 
     // Only process streams for the current session
     if (sessionId !== this.sessionManager.getCurrentSessionId()) {
@@ -167,9 +246,9 @@ class MessageComponent {
 
     if (isComplete) {
       this.setStreaming(false);
-      this.finalizeAssistantMessage(message);
+      this.finalizeAssistantMessage(message, cwd);
     } else {
-      this.updateStreamingMessage(message, thinkingContent);
+      this.updateStreamingMessage(message, thinkingContent, cwd);
     }
   }
 
@@ -191,11 +270,27 @@ class MessageComponent {
       return;
     }
 
+    // Reset current revert state
+    this.currentRevertMessageId = null;
+    this.removeUnrevertClickHandler();
+
+    // Check if session has an active revert state
+    if (context.currentRevertMessageId) {
+      this.currentRevertMessageId = context.currentRevertMessageId;
+    }
+
     const messagesHTML = context.messages.map(message =>
-      this.createMessageHTML(message, context.id)
+      this.createMessageHTML(message, context.id, context.cwd)
     ).join('');
 
     this.messagesContainer.innerHTML = messagesHTML;
+
+    // Restore revert state UI if needed
+    if (this.currentRevertMessageId) {
+      this.makeMessageEditable(this.currentRevertMessageId);
+      this.setupUnrevertClickHandler();
+    }
+
     this.scrollToBottom();
   }
 
@@ -220,7 +315,7 @@ class MessageComponent {
     }
   }
 
-  createMessageHTML(message, sessionId) {
+  createMessageHTML(message, sessionId, cwd) {
     const timestamp = DOMUtils.formatTimestamp(message.timestamp);
     const messageId = message.id;
     const isInvalidated = message.invalidated;
@@ -236,7 +331,7 @@ class MessageComponent {
         </div>
       `;
     } else if (message.type === 'assistant') {
-      const contentHTML = MessageUtils.createMessageHTML(message);
+      const contentHTML = MessageUtils.createMessageHTML(message, cwd);
 
       return `
         <div class="conversation-turn assistant ${isInvalidated ? 'invalidated' : ''}" id="message-${messageId}">
@@ -252,19 +347,38 @@ class MessageComponent {
   }
 
   createMessageActions(message, sessionId) {
-    return `
-      <div class="message-actions">
-        <button class="revert-btn"
-                onclick="messageComponent.revertToMessage('${sessionId}', '${message.id}')"
-                title="Restore checkpoint - revert files to this point">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M3 7v6h6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-            <path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-          Restore checkpoint
-        </button>
-      </div>
-    `;
+    const isReverted = this.currentRevertMessageId === message.id;
+    
+    if (isReverted) {
+      // Show send button for reverted/editable message
+      return `
+        <div class="message-actions">
+          <button class="send-edited-btn"
+                  onclick="window.messageComponent.sendEditedMessage('${sessionId}', '${message.id}')"
+                  title="Send edited message to continue conversation">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="m22 2-7 20-4-9-9-4 20-7z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            Send
+          </button>
+        </div>
+      `;
+    } else {
+      // Show restore checkpoint button for normal messages
+      return `
+        <div class="message-actions">
+          <button class="revert-btn"
+                  onclick="revertToMessage('${sessionId}', '${message.id}')"
+                  title="Restore checkpoint - revert files to this point">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M3 7v6h6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            Restore checkpoint
+          </button>
+        </div>
+      `;
+    }
   }
 
   addUserMessage(content) {
@@ -294,7 +408,7 @@ class MessageComponent {
     this.scrollToBottom();
   }
 
-  updateStreamingMessage(message, thinkingContent) {
+  updateStreamingMessage(message, thinkingContent, cwd) {
     if (!this.messagesContainer) return;
 
     // Remove existing streaming message if any
@@ -304,7 +418,7 @@ class MessageComponent {
     }
 
     // Create streaming message with inline tool calls
-    const contentHTML = this.createStreamingMessageHTML(message, thinkingContent);
+    const contentHTML = this.createStreamingMessageHTML(message, thinkingContent, cwd);
     const messageHTML = `
       <div class="conversation-turn assistant streaming-message" id="streaming-message">
         <div class="conversation-content">
@@ -318,12 +432,12 @@ class MessageComponent {
     this.scrollToBottom();
   }
 
-  createStreamingMessageHTML(message, thinkingContent) {
+  createStreamingMessageHTML(message, thinkingContent, cwd) {
     const { orderedContent, thinking } = MessageUtils.parseMessageContent(message.content);
 
     if (!orderedContent || orderedContent.length === 0) {
       // Fallback to regular message HTML for simple content
-      return MessageUtils.createMessageHTML(message);
+      return MessageUtils.createMessageHTML(message, cwd);
     }
 
     let html = '<div class="assistant-response inline-response streaming">';
@@ -336,7 +450,7 @@ class MessageComponent {
       } else if (block.type === 'tool_use') {
         // During streaming, show tool calls as "in_progress" unless they have output
         const status = block.output ? 'completed' : 'in_progress';
-        html += MessageUtils.createInlineToolCall(block, status);
+        html += MessageUtils.createInlineToolCall(block, status, cwd);
       }
     });
 
@@ -351,7 +465,7 @@ class MessageComponent {
     return html;
   }
 
-  finalizeAssistantMessage(message) {
+  finalizeAssistantMessage(message, cwd) {
     if (!this.messagesContainer) return;
 
     // Remove streaming message
@@ -362,7 +476,7 @@ class MessageComponent {
 
     // Add final message
     const sessionId = this.sessionManager.getCurrentSessionId();
-    const finalMessageHTML = this.createMessageHTML(message, sessionId);
+    const finalMessageHTML = this.createMessageHTML(message, sessionId, cwd);
 
     this.messagesContainer.insertAdjacentHTML('beforeend', finalMessageHTML);
     this.scrollToBottom();
@@ -375,6 +489,8 @@ class MessageComponent {
         console.log('Reverted successfully:', result.message);
         this.currentRevertMessageId = messageId;
         this.markMessagesAsInvalidated(messageId);
+        this.makeMessageEditable(messageId);
+        this.setupUnrevertClickHandler();
       } else {
         this.showError(result.error || 'Failed to revert');
       }
@@ -391,6 +507,8 @@ class MessageComponent {
         console.log('Unreverted successfully:', result.message);
         this.currentRevertMessageId = null;
         this.unmarkMessagesAsInvalidated(messageId);
+        this.makeMessageNonEditable(messageId);
+        this.removeUnrevertClickHandler();
       } else {
         this.showError(result.error || 'Failed to unrevert');
       }
@@ -566,32 +684,18 @@ class MessageComponent {
     }
   }
 
-  searchAndShowMentions() {
+  async searchAndShowMentions() {
     if (!this.mentionQuery && this.mentionQuery !== '') {
       this.hideMentionDropdown();
       return;
     }
 
-    // Get file browser instance
-    const fileBrowser = window.fileBrowser;
-    if (!fileBrowser) {
-      console.debug('File browser not available for mention search');
-      this.hideMentionDropdown();
-      return;
-    }
-
-    // Ensure file browser has content to search
-    if (!fileBrowser.getFilteredContents || typeof fileBrowser.searchFilesByPrefix !== 'function') {
-      console.warn('File browser search method not available');
-      this.hideMentionDropdown();
-      return;
-    }
-
     try {
-      // Search for matching files
-      this.mentionMatches = fileBrowser.searchFilesByPrefix(this.mentionQuery);
+      // Use the new recursive file search API
+      const searchResult = await window.electronAPI.searchFilesByPrefix(this.mentionQuery, 20); // Limit to 20 results for dropdown
 
-      if (this.mentionMatches.length > 0) {
+      if (searchResult.success && searchResult.results.length > 0) {
+        this.mentionMatches = searchResult.results;
         this.selectedMentionIndex = 0;
         this.showMentionDropdown();
       } else {
@@ -610,14 +714,19 @@ class MessageComponent {
     const itemsHTML = this.mentionMatches.map((match, index) => {
       const isSelected = index === this.selectedMentionIndex;
       const highlightedName = this.highlightMentionQuery(match.name, this.mentionQuery);
+      const relativePath = match.relativePath || match.name;
+      const pathDisplay = relativePath !== match.name ? `<span class="file-mention-path">${DOMUtils.escapeHTML(relativePath)}</span>` : '';
 
       return `
         <div class="file-mention-item ${isSelected ? 'selected' : ''}"
              data-index="${index}"
              role="option"
              aria-selected="${isSelected}">
-          <span class="file-mention-icon">${match.icon}</span>
-          <span class="file-mention-name">${highlightedName}</span>
+          <span class="file-mention-icon codicon ${match.icon}"></span>
+          <div class="file-mention-details">
+            <span class="file-mention-name">${highlightedName}</span>
+            ${pathDisplay}
+          </div>
         </div>
       `;
     }).join('');
@@ -686,13 +795,13 @@ class MessageComponent {
     const mentionInfo = DOMUtils.extractMentionQuery(text, DOMUtils.getCursorPosition(this.messageInput));
     if (!mentionInfo) return;
 
-    // Replace the mention with the selected file path (relative path + trailing space)
+    // Replace the mention with the selected file path (use relative path if available, otherwise filename)
     const beforeMention = text.substring(0, mentionInfo.start);
     const afterMention = text.substring(mentionInfo.end);
-    const relativePath = selectedMatch.name; // Use just the filename for simplicity
+    const filePath = selectedMatch.relativePath || selectedMatch.name;
 
-    const newText = beforeMention + '@' + relativePath + ' ' + afterMention;
-    const newCursorPos = beforeMention.length + relativePath.length + 2; // +2 for '@' and space
+    const newText = beforeMention + '@' + filePath + ' ' + afterMention;
+    const newCursorPos = beforeMention.length + filePath.length + 2; // +2 for '@' and space
 
     this.messageInput.value = newText;
     DOMUtils.setCursorPosition(this.messageInput, newCursorPos);
@@ -731,6 +840,133 @@ class MessageComponent {
     }
 
     return escapedFilename;
+  }
+
+  // Make a message editable after revert
+  makeMessageEditable(messageId) {
+    const messageElement = document.getElementById(`message-${messageId}`);
+    if (!messageElement) return;
+
+    const messageContent = messageElement.querySelector('.message-content');
+    if (!messageContent) return;
+
+    // Get the original text content
+    const originalText = messageContent.textContent;
+    
+    // Replace with editable textarea
+    messageContent.innerHTML = `
+      <textarea class="editable-message" id="edit-${messageId}" rows="3">${DOMUtils.escapeHTML(originalText)}</textarea>
+    `;
+    
+    // Add editable class to message for styling
+    messageElement.classList.add('message-editable');
+    
+    // Auto-resize the textarea and focus it
+    const textarea = messageContent.querySelector('.editable-message');
+    if (textarea) {
+      DOMUtils.autoResizeTextarea(textarea);
+      textarea.focus();
+      textarea.addEventListener('input', () => DOMUtils.autoResizeTextarea(textarea));
+    }
+
+    // Re-render the message actions to show send button
+    this.updateMessageActions(messageElement, messageId);
+  }
+
+  // Make a message non-editable (restore normal view)
+  makeMessageNonEditable(messageId) {
+    const messageElement = document.getElementById(`message-${messageId}`);
+    if (!messageElement) return;
+
+    const messageContent = messageElement.querySelector('.message-content');
+    const textarea = messageContent?.querySelector('.editable-message');
+    if (!textarea) return;
+
+    // Get the current text from textarea
+    const currentText = textarea.value;
+    
+    // Replace with normal text display
+    messageContent.innerHTML = DOMUtils.escapeHTML(currentText);
+    
+    // Remove editable class
+    messageElement.classList.remove('message-editable');
+
+    // Re-render the message actions to show restore button
+    this.updateMessageActions(messageElement, messageId);
+  }
+
+  // Update message actions for a specific message
+  updateMessageActions(messageElement, messageId) {
+    const actionsContainer = messageElement.querySelector('.message-actions');
+    if (!actionsContainer) return;
+
+    const sessionId = this.sessionManager.getCurrentSessionId();
+    const message = { id: messageId }; // Minimal message object for actions
+    
+    actionsContainer.innerHTML = this.createMessageActions(message, sessionId).replace('<div class="message-actions">', '').replace('</div>', '');
+  }
+
+  // Send the edited message to continue the conversation
+  async sendEditedMessage(sessionId, messageId) {
+    const textarea = document.getElementById(`edit-${messageId}`);
+    if (!textarea) return;
+
+    const editedMessage = textarea.value.trim();
+    if (!editedMessage) {
+      this.showError('Please enter a message');
+      return;
+    }
+
+    try {
+      // Send the edited message while keeping files in reverted state
+      // This allows Claude to process the message with the reverted codebase
+      await this.proceedWithSendMessage(editedMessage, sessionId);
+      
+    } catch (error) {
+      console.error('Failed to send edited message:', error);
+      this.showError('Failed to send edited message');
+    }
+  }
+
+  // Set up click handler to unrevert when clicking below reverted message
+  setupUnrevertClickHandler() {
+    if (this.unrevertClickHandler) {
+      this.removeUnrevertClickHandler();
+    }
+    
+    this.unrevertClickHandler = (event) => {
+      if (!this.currentRevertMessageId) return;
+      
+      // Check if click is on a message below the reverted one
+      const clickedMessage = event.target.closest('.conversation-turn');
+      if (!clickedMessage) return;
+      
+      const clickedMessageId = clickedMessage.id.replace('message-', '');
+      const revertedElement = document.getElementById(`message-${this.currentRevertMessageId}`);
+      
+      if (revertedElement && this.isElementAfter(revertedElement, clickedMessage)) {
+        const sessionId = this.sessionManager.getCurrentSessionId();
+        this.unrevertFromMessage(sessionId, this.currentRevertMessageId);
+      }
+    };
+    
+    if (this.messagesContainer) {
+      this.messagesContainer.addEventListener('click', this.unrevertClickHandler);
+    }
+  }
+
+  // Remove unrevert click handler
+  removeUnrevertClickHandler() {
+    if (this.unrevertClickHandler && this.messagesContainer) {
+      this.messagesContainer.removeEventListener('click', this.unrevertClickHandler);
+      this.unrevertClickHandler = null;
+    }
+  }
+
+  // Check if element A comes before element B in the DOM
+  isElementAfter(elementA, elementB) {
+    const position = elementA.compareDocumentPosition(elementB);
+    return (position & Node.DOCUMENT_POSITION_FOLLOWING) !== 0;
   }
 }
 

@@ -1,0 +1,13 @@
+Index: file-browser.js
+===================================================================
+--- file-browser.js	before
++++ file-browser.js	after
+@@ -1,5 +1,8 @@
+   async navigateUp() {
++    // Clear search input when navigating up
++    this.clearSearchInput();
++    
+     try {
+       this.showLoading(true);
+       const result = await window.electronAPI.navigateUp();
+       if (result.success) {

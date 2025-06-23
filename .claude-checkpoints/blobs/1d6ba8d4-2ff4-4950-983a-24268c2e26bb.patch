@@ -1,0 +1,11 @@
+Index: tree.md
+===================================================================
+--- tree.md	before
++++ tree.md	after
+@@ -1,2 +1,2 @@
+-└── shared
+-    └── api-definitions.js           # Shared API definitions between main and renderer processes
+\ No newline at end of file
++└── shared                           # Cross-process shared definitions and interfaces
++    └── api-definitions.js           # Type-safe API contracts between main and renderer processes
+\ No newline at end of file

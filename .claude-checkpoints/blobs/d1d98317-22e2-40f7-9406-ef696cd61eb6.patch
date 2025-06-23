@@ -1,0 +1,32 @@
+Index: file-browser.js
+===================================================================
+--- file-browser.js	before
++++ file-browser.js	after
+@@ -1,3 +1,26 @@
++  /* -------------------------- Search Methods ------------------------- */
++
++  selectTopSearchResult() {
++    if (!this.filteredContents || this.filteredContents.length === 0) {
++      return;
++    }
++    
++    // Get the first item from filtered results
++    const topResult = this.filteredContents[0];
++    
++    // Select it using the existing handleFileClick method
++    this.handleFileClick(topResult.path, topResult.isDirectory);
++  }
++
++  clearSearchInput() {
++    if (this.fileSearchInput) {
++      this.fileSearchInput.value = '';
++      this.fileSearchQuery = '';
++      this.filterContents();
++      this.updateClearButton();
++    }
++  }
++
+   /* -------------------------- Clear Button Methods ------------------------- */
+ 
+   addClearButton() {
+\ No newline at end of file

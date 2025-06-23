@@ -7,6 +7,10 @@ class SessionManager {
 
     this.initializeElements();
     this.setupEventListeners();
+    // this.loadSessions();
+  }
+
+  init() {
     this.loadSessions();
   }
 
@@ -90,7 +94,6 @@ class SessionManager {
     window.electronAPI.onSessionCreated((event, session) => {
       this.sessions.unshift(session);
       this.renderSessions();
-      this.selectSession(session.id);
     });
 
     window.electronAPI.onSessionUpdated((event, session) => {
@@ -142,9 +145,13 @@ class SessionManager {
     try {
       const title = 'New Conversation';
       const session = await window.electronAPI.createSession(title);
-      // Session will be added via the onSessionCreated event
+      // onSessionCreated will add to list and re-render.
+      // We must explicitly select the session now.
+      await this.selectSession(session.id);
+      return session;
     } catch (error) {
       console.error('Failed to create new session:', error);
+      return null;
     }
   }
 
@@ -163,6 +170,43 @@ class SessionManager {
       // Load session context
       const context = await window.electronAPI.getSessionContext(sessionId);
       this.updateSessionInfo(context);
+
+      // Restore working directory if the session has one
+      if (context.cwdInfo && context.cwdInfo.hasWorkingDirectory) {
+        console.log(`Restoring working directory for session ${sessionId}: ${context.cwdInfo.path}`);
+
+        try {
+          const restoreResult = await window.electronAPI.restoreSessionCwd(sessionId);
+
+          if (restoreResult.success) {
+            console.log(`Successfully restored working directory: ${restoreResult.path}`);
+
+            // Tell the file browser to navigate to the restored directory
+            // This ensures it loads the directory contents properly
+            if (window.fileBrowser && typeof window.fileBrowser.navigateToDirectory === 'function') {
+              try {
+                await window.fileBrowser.navigateToDirectory(restoreResult.path);
+                console.log('File browser navigated to restored directory');
+              } catch (err) {
+                console.warn('File browser navigation failed:', err);
+                // Fallback to direct update
+                if (typeof window.fileBrowser.updateDirectory === 'function') {
+                  window.fileBrowser.updateDirectory(restoreResult);
+                }
+              }
+            }
+
+          } else {
+            console.warn(`Failed to restore working directory: ${restoreResult.error}`);
+            this.showDirectoryChangeWarning(context.cwdInfo.path, restoreResult.error);
+          }
+        } catch (error) {
+          console.error('Error restoring working directory:', error);
+          this.showDirectoryChangeWarning(context.cwdInfo.path, error.message);
+        }
+      } else {
+        console.log(`Session ${sessionId} has no working directory set`);
+      }
 
       // Notify other components about session change
       this.notifySessionChange(sessionId, context);
@@ -235,6 +279,11 @@ class SessionManager {
       const preview = this.getSessionPreview(session);
       const timestamp = DOMUtils.formatTimestamp(session.lastActivity || session.updatedAt);
 
+      // Add working directory info if available
+      const cwdDisplay = session.statusInfo?.hasWorkingDirectory
+        ? `<span class="conversation-cwd" title="Working directory: ${session.statusInfo.workingDirectory}">📁 ${this.getDisplayPath(session.statusInfo.workingDirectory)}</span>`
+        : '';
+
       return `
         <div class="conversation-item ${isActive ? 'active' : ''}"
              onclick="sessionManager.selectSession('${session.id}')">
@@ -247,6 +296,7 @@ class SessionManager {
             <div class="conversation-meta">
               <span class="conversation-timestamp">${timestamp}</span>
               <span class="message-count">${session.messages?.length || 0} msgs</span>
+              ${cwdDisplay}
             </div>
           </div>
           <button class="delete-conversation-btn"
@@ -332,11 +382,17 @@ class SessionManager {
     const statusClass = statusInfo.status || 'active';
     const statusIcon = this.getStatusIcon(statusClass);
 
+    // Add working directory badge if available
+    const cwdBadge = statusInfo.hasWorkingDirectory
+      ? `<div class="cwd-badge" title="Working directory: ${statusInfo.workingDirectory}">📁 ${this.getDisplayPath(statusInfo.workingDirectory)}</div>`
+      : '';
+
     return `
       <div class="status-badge ${statusClass}">
         ${statusIcon} ${statusClass}
       </div>
       <div class="message-count-badge">${statusInfo.messageCount} messages</div>
+      ${cwdBadge}
     `;
   }
 
@@ -454,6 +510,53 @@ class SessionManager {
       detail: { sessionId, context }
     });
     document.dispatchEvent(event);
+  }
+
+  // Show warning when directory change fails
+  showDirectoryChangeWarning(path, error) {
+    let notification = document.getElementById('cwdChangeNotification');
+    if (!notification) {
+      notification = document.createElement('div');
+      notification.id = 'cwdChangeNotification';
+      notification.className = 'cwd-notification warning';
+      document.body.appendChild(notification);
+    }
+
+    const displayPath = path.startsWith('/Users/') ? path.replace(/^\/Users\/[^\/]+/, '~') : path;
+    notification.innerHTML = `
+      <div class="notification-content">
+        <div class="notification-icon">⚠️</div>
+        <div class="notification-text">
+          <strong>Directory Unavailable</strong><br>
+          <code>${DOMUtils.escapeHTML(displayPath)}</code><br>
+          <small>${DOMUtils.escapeHTML(error)}</small>
+        </div>
+      </div>
+    `;
+    notification.className = 'cwd-notification warning show';
+
+    // Auto-hide after 5 seconds for warnings
+    setTimeout(() => {
+      notification.classList.remove('show');
+    }, 5000);
+  }
+
+  // Notify file browser about directory change
+  notifyDirectoryChange(directoryResult) {
+    const event = new CustomEvent('directoryChanged', {
+      detail: directoryResult
+    });
+    document.dispatchEvent(event);
+  }
+
+  // Helper to get display path (replace home directory with ~)
+  getDisplayPath(path) {
+    if (!path) return '';
+
+    // Get just the directory name for display
+    const parts = path.split('/');
+    const dirName = parts[parts.length - 1] || parts[parts.length - 2] || path;
+    return dirName;
   }
 }
 

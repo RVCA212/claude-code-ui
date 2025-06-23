@@ -1,0 +1,9 @@
+Index: message-utils.js
+===================================================================
+--- message-utils.js	before
++++ message-utils.js	after
+@@ -1,1 +1,1 @@
+-      'Grep': 'codicon-find',
+\ No newline at end of file
++      'Grep': 'codicon-search',
+\ No newline at end of file

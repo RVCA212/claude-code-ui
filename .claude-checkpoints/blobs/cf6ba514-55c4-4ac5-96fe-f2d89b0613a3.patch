@@ -1,0 +1,51 @@
+Index: file-browser.js
+===================================================================
+--- file-browser.js	before
++++ file-browser.js	after
+@@ -1,4 +1,46 @@
++  /* -------------------------- Clear Button Methods ------------------------- */
++
++  addClearButton() {
++    if (!this.fileSearchInput) return;
++
++    // Create wrapper if it doesn't exist
++    let wrapper = this.fileSearchInput.parentElement;
++    if (!wrapper.classList.contains('search-input-wrapper')) {
++      wrapper = document.createElement('div');
++      wrapper.className = 'search-input-wrapper';
++      this.fileSearchInput.parentNode.insertBefore(wrapper, this.fileSearchInput);
++      wrapper.appendChild(this.fileSearchInput);
++    }
++
++    // Create clear button
++    this.clearButton = document.createElement('button');
++    this.clearButton.className = 'search-clear-btn';
++    this.clearButton.innerHTML = '<span class="codicon codicon-close"></span>';
++    this.clearButton.style.display = 'none';
++    this.clearButton.title = 'Clear search';
++    
++    this.clearButton.addEventListener('click', () => {
++      this.fileSearchInput.value = '';
++      this.fileSearchQuery = '';
++      this.filterContents();
++      this.updateClearButton();
++      this.fileSearchInput.focus();
++    });
++
++    wrapper.appendChild(this.clearButton);
++  }
++
++  updateClearButton() {
++    if (!this.clearButton) return;
++    
++    if (this.fileSearchQuery && this.fileSearchQuery.length > 0) {
++      this.clearButton.style.display = 'flex';
++    } else {
++      this.clearButton.style.display = 'none';
++    }
++  }
++
+   /* -------------------------- Sidebar View Toggle ------------------------- */
+ 
+   toggleSidebarView() {
+     this.setSidebarView(!this.isHistoryView);

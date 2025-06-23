@@ -1,27 +1,29 @@
+tree structure of our app
+
 ```
 src/
-├── main
-│   ├── checkpoint-manager.js        # Manages saving and restoring application checkpoints
-│   ├── claude-process-manager.js    # Handles Claude CLI process creation and management
-│   ├── file-operations.js           # Provides file-related operations for the main process
-│   ├── ipc-handlers.js              # Manages inter-process communication handlers
-│   ├── main.js                      # Main entry point for the Electron application
-│   ├── model-config.js              # Handles model configuration settings
-│   ├── preload-bridge.js            # Bridges between main and renderer processes
-│   └── session-manager.js           # Manages application sessions
+├── main                            # Main process modules for core application functionality
+│   ├── checkpoint-manager.js        # Advanced file modification tracking with SQLite-based metadata storage
+│   ├── claude-process-manager.js    # Manages Claude CLI process lifecycle, streaming, and error recovery
+│   ├── file-operations.js           # Comprehensive file system navigation and operations
+│   ├── ipc-handlers.js              # Centralized, type-safe inter-process communication routing
+│   ├── main.js                      # Main entry point and process coordinator
+│   ├── model-config.js              # Manages model configuration and API settings
+│   ├── preload-bridge.js            # Secure bridge with controlled API exposure between processes
+│   └── session-manager.js           # Handles session storage, persistence, and state recovery
 
-├── renderer
-│   ├── app.js                       # Renderer process main application logic
-│   ├── components
-│   │   ├── app-component.js         # Main application component
-│   │   ├── file-browser.js          # Component for browsing files
-│   │   ├── message-component.js     # Handles message rendering and interactions
-│   │   ├── session-manager.js       # Manages UI-side session state
-│   │   └── settings-component.js    # Application settings UI component
-│   └── utils
-│       ├── dom-utils.js             # Utility functions for DOM manipulation
-│       └── message-utils.js         # Utility functions for message handling
+├── renderer                         # Renderer process for user interface and interactions
+│   ├── app.js                       # Renderer entry point and component coordinator
+│   ├── components                   # Modular, reusable UI components
+│   │   ├── app-component.js         # Global UI coordinator with event handling
+│   │   ├── file-browser.js          # Advanced directory navigation with search and filtering 
+│   │   ├── message-component.js     # Streaming message display with revert functionality
+│   │   ├── session-manager.js       # Session list management and interaction
+│   │   └── settings-component.js    # Comprehensive configuration and API management
+│   └── utils                        # Shared utility functions for UI operations
+│       ├── dom-utils.js             # Safe and efficient DOM manipulation
+│       └── message-utils.js         # Advanced message parsing and formatting
 
-└── shared
-    └── api-definitions.js           # Shared API definitions between main and renderer processes
+└── shared                           # Cross-process shared definitions and interfaces
+    └── api-definitions.js           # Type-safe API contracts between main and renderer processes
 ```

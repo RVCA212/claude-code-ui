@@ -30,6 +30,11 @@ class FileBrowser {
     if (this.sidebarToggleBtn) {
       this.sidebarToggleBtn.addEventListener('click', () => this.toggleSidebarVisibility());
     }
+
+    // Listen for directory changes from session switching
+    document.addEventListener('directoryChanged', (event) => {
+      this.handleDirectoryChange(event.detail);
+    });
   }
 
   initializeElements() {
@@ -89,7 +94,19 @@ class FileBrowser {
       this.fileSearchInput.addEventListener('input', (e) => {
         this.fileSearchQuery = e.target.value.toLowerCase();
         this.filterContents();
+        this.updateClearButton();
       });
+
+      // Add Enter key handler for selecting top result
+      this.fileSearchInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          this.selectTopSearchResult();
+        }
+      });
+
+      // Add clear button functionality
+      this.addClearButton();
     }
 
     // Quick access toggle
@@ -147,6 +164,9 @@ class FileBrowser {
   }
 
   async navigateToDirectory(path) {
+    // Clear search input when navigating to any directory
+    this.clearSearchInput();
+
     try {
       this.showLoading(true);
       this.setStatus('Navigating...');
@@ -166,6 +186,9 @@ class FileBrowser {
   }
 
   async navigateBack() {
+    // Clear search input when navigating back
+    this.clearSearchInput();
+
     try {
       this.showLoading(true);
       const result = await window.electronAPI.navigateBack();
@@ -183,6 +206,9 @@ class FileBrowser {
   }
 
   async navigateForward() {
+    // Clear search input when navigating forward
+    this.clearSearchInput();
+
     try {
       this.showLoading(true);
       const result = await window.electronAPI.navigateForward();
@@ -200,6 +226,9 @@ class FileBrowser {
   }
 
   async navigateUp() {
+    // Clear search input when navigating up
+    this.clearSearchInput();
+
     try {
       this.showLoading(true);
       const result = await window.electronAPI.navigateUp();
@@ -276,6 +305,15 @@ class FileBrowser {
       </span>
       ${pathParts.length > 0 ? '<span class="breadcrumb-separator">/</span>' + breadcrumbHTML : ''}
     `;
+
+    // Ensure the breadcrumb view is scrolled to the far right so the current folder is visible
+    const container = this.breadcrumb.closest('.breadcrumb-container');
+    if (container) {
+      // Use requestAnimationFrame to guarantee DOM has rendered before scrolling
+      requestAnimationFrame(() => {
+        container.scrollLeft = container.scrollWidth;
+      });
+    }
   }
 
   updateCurrentWorkingDirectory() {
@@ -306,7 +344,7 @@ class FileBrowser {
     if (this.filteredContents.length === 0) {
       this.fileList.innerHTML = `
         <div class="empty-directory">
-          <div class="empty-icon">📁</div>
+          <div class="empty-icon codicon codicon-folder"></div>
           <div class="empty-message">
             ${this.fileSearchQuery ? 'No files match your search' : 'This directory is empty'}
           </div>
@@ -316,21 +354,15 @@ class FileBrowser {
     }
 
     const fileListHTML = this.filteredContents.map(item => {
-      const icon = item.isDirectory ? '📁' : this.getFileIcon(item.name);
-      const sizeText = item.isDirectory ? '' : DOMUtils.formatFileSize(item.size);
-      const modifiedText = DOMUtils.formatTimestamp(item.modified);
+      const icon = item.isDirectory ? this.getFileIcon('folder') : this.getFileIcon(item.name);
 
       return `
         <div class="file-item ${item.isDirectory ? 'directory' : 'file'}"
              onclick="fileBrowser.handleFileClick('${item.path}', ${item.isDirectory})"
              title="${item.path}">
-          <span class="file-icon">${icon}</span>
+          <span class="file-icon codicon ${icon}"></span>
           <div class="file-info">
             <div class="file-name">${DOMUtils.escapeHTML(item.name)}</div>
-            <div class="file-details">
-              ${sizeText ? `<span class="file-size">${sizeText}</span>` : ''}
-              <span class="file-modified">${modifiedText}</span>
-            </div>
           </div>
         </div>
       `;
@@ -379,45 +411,147 @@ class FileBrowser {
     }
   }
 
-  handleFileClick(path, isDirectory) {
-    if (isDirectory) {
-      this.navigateToDirectory(path);
-    } else {
-      // Open file in the editor
-      console.log('File clicked:', path);
 
-      // Get the file editor component and open the file
-      const fileEditor = window.app?.getComponent('fileEditor');
-      if (fileEditor) {
-        fileEditor.openFile(path);
-      } else {
-        console.error('File editor component not available');
-      }
-    }
-  }
 
   getFileIcon(filename) {
     const ext = filename.split('.').pop()?.toLowerCase();
+
+    // Special handling for folders
+    if (filename === 'folder') {
+      return 'codicon-folder';
+    }
+
+    // Codicon mapping for file extensions
     const iconMap = {
-      'js': '📄',
-      'ts': '📘',
-      'json': '📋',
-      'md': '📝',
-      'txt': '📄',
-      'py': '🐍',
-      'html': '🌐',
-      'css': '🎨',
-      'png': '🖼️',
-      'jpg': '🖼️',
-      'jpeg': '🖼️',
-      'gif': '🖼️',
-      'svg': '🎨',
-      'pdf': '📕',
-      'zip': '📦',
-      'tar': '📦',
-      'gz': '📦'
+      // JavaScript/TypeScript
+      'js':               'codicon-symbol-variable',
+      'jsx':              'codicon-symbol-variable',
+      'ts':               'codicon-symbol-variable',
+      'tsx':              'codicon-symbol-variable',
+      'mjs':              'codicon-symbol-variable',
+
+      // Web technologies
+      'html':             'codicon-html',
+      'htm':              'codicon-html',
+      'css':              'codicon-symbol-color',
+      'scss':             'codicon-symbol-color',
+      'sass':             'codicon-symbol-color',
+      'less':             'codicon-symbol-color',
+
+      // Data formats
+      'json':             'codicon-json',
+      'xml':              'codicon-symbol-structure',
+      'yaml':             'codicon-symbol-structure',
+      'yml':              'codicon-symbol-structure',
+      'toml':             'codicon-symbol-structure',
+      'csv':              'codicon-graph',
+
+      // Documentation
+      'md':               'codicon-markdown',
+      'markdown':         'codicon-markdown',
+      'txt':              'codicon-file-text',
+      'rtf':              'codicon-file-text',
+      'doc':              'codicon-file-text',
+      'docx':             'codicon-file-text',
+
+      // Programming languages
+      'py':               'codicon-symbol-method',
+      'pyw':              'codicon-symbol-method',
+      'java':             'codicon-symbol-class',
+      'c':                'codicon-symbol-structure',
+      'cpp':              'codicon-symbol-structure',
+      'cc':               'codicon-symbol-structure',
+      'h':                'codicon-symbol-structure',
+      'hpp':              'codicon-symbol-structure',
+      'cs':               'codicon-symbol-class',
+      'php':              'codicon-symbol-method',
+      'rb':               'codicon-ruby',
+      'go':               'codicon-symbol-method',
+      'rs':               'codicon-symbol-structure',
+      'swift':            'codicon-symbol-class',
+      'kt':               'codicon-symbol-class',
+      'scala':            'codicon-symbol-class',
+
+      // Shell scripts
+      'sh':               'codicon-terminal',
+      'bash':             'codicon-terminal',
+      'zsh':              'codicon-terminal',
+      'fish':             'codicon-terminal',
+      'ps1':              'codicon-terminal-powershell',
+      'bat':              'codicon-terminal-cmd',
+      'cmd':              'codicon-terminal-cmd',
+
+      // Configuration files
+      'conf':             'codicon-settings-gear',
+      'config':           'codicon-settings-gear',
+      'ini':              'codicon-settings-gear',
+      'cfg':              'codicon-settings-gear',
+      'env':              'codicon-symbol-key',
+      'gitignore':        'codicon-symbol-misc',
+      'gitattributes':    'codicon-symbol-misc',
+      'editorconfig':     'codicon-symbol-misc',
+      'dockerfile':       'codicon-symbol-misc',
+
+      // Images
+      'png':              'codicon-file-media',
+      'jpg':              'codicon-file-media',
+      'jpeg':             'codicon-file-media',
+      'gif':              'codicon-file-media',
+      'bmp':              'codicon-file-media',
+      'tiff':             'codicon-file-media',
+      'webp':             'codicon-file-media',
+      'ico':              'codicon-file-media',
+      'svg':              'codicon-symbol-color',
+
+      // Audio/Video
+      'mp3':              'codicon-unmute',
+      'wav':              'codicon-unmute',
+      'flac':             'codicon-unmute',
+      'aac':              'codicon-unmute',
+      'mp4':              'codicon-device-camera-video',
+      'avi':              'codicon-device-camera-video',
+      'mov':              'codicon-device-camera-video',
+      'mkv':              'codicon-device-camera-video',
+      'webm':             'codicon-device-camera-video',
+
+      // Archives
+      'zip':              'codicon-file-zip',
+      'tar':              'codicon-file-zip',
+      'gz':               'codicon-file-zip',
+      'bz2':              'codicon-file-zip',
+      'xz':               'codicon-file-zip',
+      '7z':               'codicon-file-zip',
+      'rar':              'codicon-file-zip',
+
+      // Documents
+      'pdf':              'codicon-file-pdf',
+      'epub':             'codicon-book',
+      'mobi':             'codicon-book',
+
+      // Fonts
+      'ttf':              'codicon-symbol-text',
+      'otf':              'codicon-symbol-text',
+      'woff':             'codicon-symbol-text',
+      'woff2':            'codicon-symbol-text',
+      'eot':              'codicon-symbol-text',
+
+      // Database
+      'sql':              'codicon-database',
+      'db':               'codicon-database',
+      'sqlite':           'codicon-database',
+      'sqlite3':          'codicon-database',
+
+      // Binary/Executable
+      'exe':              'codicon-symbol-misc',
+      'msi':              'codicon-symbol-misc',
+      'deb':              'codicon-symbol-misc',
+      'rpm':              'codicon-symbol-misc',
+      'dmg':              'codicon-symbol-misc',
+      'pkg':              'codicon-symbol-misc',
+      'app':              'codicon-symbol-misc'
     };
-    return iconMap[ext] || '📄';
+
+    return iconMap[ext] || 'codicon-file';
   }
 
   showLoading(show) {
@@ -475,10 +609,72 @@ class FileBrowser {
         name: item.name,
         path: item.path,
         isDirectory: item.isDirectory,
-        icon: item.isDirectory ? '📁' : this.getFileIcon(item.name)
+        icon: item.isDirectory ? this.getFileIcon('folder') : this.getFileIcon(item.name)
       }));
 
     return matches;
+  }
+
+  /* -------------------------- Search Methods ------------------------- */
+
+  selectTopSearchResult() {
+    if (!this.filteredContents || this.filteredContents.length === 0) {
+      return;
+    }
+
+    // Get the first item from filtered results
+    const topResult = this.filteredContents[0];
+
+    // Select it using the existing handleFileClick method
+    this.handleFileClick(topResult.path, topResult.isDirectory);
+  }
+
+  clearSearchInput() {
+    if (this.fileSearchInput) {
+      this.fileSearchInput.value = '';
+      this.fileSearchQuery = '';
+      this.filterContents();
+      this.updateClearButton();
+    }
+  }
+
+  /* -------------------------- Clear Button Methods ------------------------- */
+
+  addClearButton() {
+    if (!this.fileSearchInput) return;
+
+    // Create wrapper if it doesn't exist
+    let wrapper = this.fileSearchInput.parentElement;
+    if (!wrapper.classList.contains('search-input-wrapper')) {
+      wrapper = document.createElement('div');
+      wrapper.className = 'search-input-wrapper';
+      this.fileSearchInput.parentNode.insertBefore(wrapper, this.fileSearchInput);
+      wrapper.appendChild(this.fileSearchInput);
+    }
+
+    // Create clear button
+    this.clearButton = document.createElement('button');
+    this.clearButton.className = 'search-clear-btn';
+    this.clearButton.innerHTML = '<span class="codicon codicon-close"></span>';
+    this.clearButton.style.display = 'none';
+    this.clearButton.title = 'Clear search';
+
+    this.clearButton.addEventListener('click', () => {
+      this.clearSearchInput();
+      this.fileSearchInput.focus();
+    });
+
+    wrapper.appendChild(this.clearButton);
+  }
+
+  updateClearButton() {
+    if (!this.clearButton) return;
+
+    if (this.fileSearchQuery && this.fileSearchQuery.length > 0) {
+      this.clearButton.style.display = 'flex';
+    } else {
+      this.clearButton.style.display = 'none';
+    }
   }
 
   /* -------------------------- Sidebar View Toggle ------------------------- */
@@ -534,6 +730,58 @@ class FileBrowser {
     // Update global header button states
     if (window.globalHeader) {
       window.globalHeader.updateButtonStates();
+    }
+  }
+
+  // Handle directory change from session switching
+  handleDirectoryChange(directoryResult) {
+    if (directoryResult && directoryResult.success) {
+      console.log('File browser updating to new directory:', directoryResult.path);
+
+      // Update the file browser with the new directory
+      this.updateDirectory(directoryResult);
+
+      // Clear any existing search
+      this.clearSearchInput();
+
+      // Refresh the display
+      this.setStatus('Directory changed to: ' + this.getDisplayPath(directoryResult.path));
+    } else {
+      console.warn('Failed to update file browser directory:', directoryResult?.error);
+    }
+  }
+
+  // Helper to get display path (consistent with session manager)
+  getDisplayPath(path) {
+    if (!path) return '';
+
+    // Replace home directory with ~ for display
+    if (this.homeDirectory && path.startsWith(this.homeDirectory)) {
+      return '~' + path.slice(this.homeDirectory.length);
+    }
+
+    return path;
+  }
+
+
+
+    handleFileClick(path, isDirectory) {
+    // Clear search input when a file/folder is selected
+    this.clearSearchInput();
+
+    if (isDirectory) {
+      this.navigateToDirectory(path);
+    } else {
+      // Open file in the editor
+      console.log('File clicked:', path);
+
+      // Get the file editor component and open the file
+      const fileEditor = window.app?.getComponent('fileEditor');
+      if (fileEditor) {
+        fileEditor.openFile(path);
+      } else {
+        console.error('File editor component not available');
+      }
     }
   }
 }

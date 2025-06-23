@@ -1,0 +1,138 @@
+/* Global Header Styles */
+.global-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 44px;
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+  padding: 0 var(--space-12);
+  -webkit-app-region: drag; /* Make header draggable for window movement */
+  z-index: 2000;
+  position: relative;
+  box-shadow: var(--shadow-xs);
+}
+
+.global-header-left {
+  display: flex;
+  align-items: center;
+  gap: var(--space-12);
+}
+
+.global-header-center {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.global-header-right {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+}
+
+/* Global header buttons (VSCode style) */
+.global-header-btn {
+  background: transparent;
+  border: none;
+  padding: var(--space-6);
+  cursor: pointer;
+  color: var(--color-text-secondary);
+  border-radius: var(--radius-sm);
+  transition: all var(--duration-fast) var(--ease-standard);
+  -webkit-app-region: no-drag; /* Allow click events */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+}
+
+.global-header-btn:hover {
+  background: var(--color-secondary);
+  color: var(--color-text);
+}
+
+.global-header-btn:focus-visible {
+  outline: var(--focus-outline);
+  outline-offset: 2px;
+}
+
+.global-header-btn svg {
+  display: block;
+}
+
+/* Active state for sidebar toggles */
+.global-header-btn.sidebar-toggle.active {
+  background: var(--color-primary);
+  color: var(--color-btn-primary-text);
+}
+
+.global-header-btn.sidebar-toggle.active:hover {
+  background: var(--color-primary-hover);
+}
+
+/* App title in global header */
+.global-app-title {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-secondary);
+  margin: 0;
+  -webkit-app-region: no-drag;
+  user-select: none;
+}
+
+/* Status indicator */
+.global-status-indicator {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  -webkit-app-region: no-drag;
+  user-select: none;
+}
+
+.global-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--color-success);
+  flex-shrink: 0;
+  transition: background var(--duration-fast) var(--ease-standard);
+}
+
+.global-status-dot.warning {
+  background: var(--color-warning);
+}
+
+.global-status-dot.error {
+  background: var(--color-error);
+}
+
+.global-status-dot.info {
+  background: var(--color-info);
+}
+
+/* Breadcrumb in global header center (when file is open) */
+.global-breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  max-width: 400px;
+  overflow: hidden;
+}
+
+.global-breadcrumb-item {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.global-breadcrumb-separator {
+  color: var(--color-text-secondary);
+  opacity: 0.5;
+}

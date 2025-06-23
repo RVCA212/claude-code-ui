@@ -1,0 +1,20 @@
+/* Main CSS Import File */
+
+/* Foundation styles - load first */
+@import './variables.css';
+@import './themes/dark.css';
+@import './base.css';
+@import './utilities.css';
+@import './layout.css';
+
+/* Component styles */
+@import './components/global-header.css';
+@import './components/sidebar.css';
+@import './components/file-browser.css';
+@import './components/file-editor.css';
+@import './components/chat-sidebar.css';
+@import './components/message.css';
+@import './components/input-area.css';
+@import './components/session-manager.css';
+@import './components/modals.css';
+@import './components/settings.css';

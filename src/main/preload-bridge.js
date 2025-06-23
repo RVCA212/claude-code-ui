@@ -19,6 +19,13 @@ class PreloadBridge {
       updateSessionTitle: (sessionId, newTitle) => ipcRenderer.invoke('update-session-title', sessionId, newTitle),
       getSessionContext: (sessionId) => ipcRenderer.invoke('get-session-context', sessionId),
 
+      // Session working directory management
+      setSessionCwd: (sessionId, cwd) => ipcRenderer.invoke('set-session-cwd', sessionId, cwd),
+      getSessionCwd: (sessionId) => ipcRenderer.invoke('get-session-cwd', sessionId),
+      validateSessionCwd: (sessionId) => ipcRenderer.invoke('validate-session-cwd', sessionId),
+      restoreSessionCwd: (sessionId) => ipcRenderer.invoke('restore-session-cwd', sessionId),
+      validateSendDirectory: (sessionId) => ipcRenderer.invoke('validate-send-directory', sessionId),
+
       // Messaging
       sendMessage: (sessionId, message) => ipcRenderer.invoke('send-message', sessionId, message),
       stopMessage: (sessionId) => ipcRenderer.invoke('stop-message', sessionId),
@@ -44,6 +51,9 @@ class PreloadBridge {
       writeFile: (filePath, content) => ipcRenderer.invoke('write-file', filePath, content),
       watchFile: (filePath) => ipcRenderer.invoke('watch-file', filePath),
       unwatchFile: (filePath) => ipcRenderer.invoke('unwatch-file', filePath),
+
+      // File search operations
+      searchFilesByPrefix: (query, maxResults) => ipcRenderer.invoke('search-files-by-prefix', query, maxResults),
 
       // MCP server management
       getMcpServers: () => ipcRenderer.invoke('get-mcp-servers'),
@@ -75,10 +85,12 @@ class PreloadBridge {
     const requiredMethods = [
       'checkSetup', 'setApiKey', 'getCurrentModel', 'setCurrentModel',
       'getSessions', 'createSession', 'deleteSession', 'updateSessionTitle', 'getSessionContext',
+      'setSessionCwd', 'getSessionCwd', 'validateSessionCwd', 'restoreSessionCwd', 'validateSendDirectory',
       'sendMessage', 'stopMessage',
       'revertToMessage', 'unrevertFromMessage', 'getMessageCheckpoints', 'hasFileChanges',
       'getDirectoryContents', 'navigateToDirectory', 'getCurrentDirectory', 'getHomeDirectory',
       'getCommonDirectories', 'navigateBack', 'navigateForward', 'navigateUp',
+      'searchFilesByPrefix',
       'getMcpServers', 'saveMcpServer', 'deleteMcpServer', 'toggleMcpServer', 'testMcpServer',
       'onSessionsLoaded', 'onMessageStream', 'onSessionUpdated', 'onSessionDeleted', 'onSessionCreated',
       'removeAllListeners'

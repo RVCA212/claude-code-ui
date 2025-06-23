@@ -1,0 +1,16 @@
+/* Core app layout */
+.app {
+  display: flex;
+  flex: 1; /* Let the app container grow to fill available space */
+  min-height: 0; /* Prevents flex children from overflowing their container */
+  font-family: var(--font-family-base);
+  color: var(--color-text);
+  background-color: var(--color-background);
+}
+
+.app-content {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  /* Flexbox layout for resizable three-panel design */
+}

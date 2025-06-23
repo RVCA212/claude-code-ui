@@ -1,0 +1,29 @@
+Index: tree.md
+===================================================================
+--- tree.md	before
++++ tree.md	after
+@@ -1,11 +1,11 @@
+-├── renderer
+-│   ├── app.js                       # Renderer process main application logic
+-│   ├── components
+-│   │   ├── app-component.js         # Main application component
+-│   │   ├── file-browser.js          # Component for browsing files
+-│   │   ├── message-component.js     # Handles message rendering and interactions
+-│   │   ├── session-manager.js       # Manages UI-side session state
+-│   │   └── settings-component.js    # Application settings UI component
+-│   └── utils
+-│       ├── dom-utils.js             # Utility functions for DOM manipulation
+-│       └── message-utils.js         # Utility functions for message handling
+\ No newline at end of file
++├── renderer                         # Renderer process for user interface and interactions
++│   ├── app.js                       # Renderer entry point and component coordinator
++│   ├── components                   # Modular, reusable UI components
++│   │   ├── app-component.js         # Global UI coordinator with event handling
++│   │   ├── file-browser.js          # Advanced directory navigation with search and filtering
++│   │   ├── message-component.js     # Streaming message display with revert functionality
++│   │   ├── session-manager.js       # Session list management and interaction
++│   │   └── settings-component.js    # Comprehensive configuration and API management
++│   └── utils                        # Shared utility functions for UI operations
++│       ├── dom-utils.js             # Safe and efficient DOM manipulation
++│       └── message-utils.js         # Advanced message parsing and formatting
+\ No newline at end of file

@@ -1,0 +1,56 @@
+Index: style.css
+===================================================================
+--- style.css	before
++++ style.css	after
+@@ -5,8 +5,13 @@
+   background: var(--color-background);
+   border-bottom: 1px solid var(--color-border);
+ }
+ 
++.search-input-wrapper {
++  position: relative;
++  width: 100%;
++}
++
+ .file-search-input {
+   width: 100%;
+   padding: 6px 12px 6px 32px;
+   border: 1px solid var(--color-border);
+@@ -32,5 +37,36 @@
+   top: 50%;
+   transform: translateY(-50%);
+   color: var(--color-text-secondary);
+   pointer-events: none;
++}
++
++.search-clear-btn {
++  position: absolute;
++  right: 8px;
++  top: 50%;
++  transform: translateY(-50%);
++  display: none;
++  align-items: center;
++  justify-content: center;
++  width: 20px;
++  height: 20px;
++  border: none;
++  background: none;
++  color: var(--color-text-secondary);
++  cursor: pointer;
++  border-radius: 50%;
++  transition: all var(--duration-fast) var(--ease-standard);
++}
++
++.search-clear-btn:hover {
++  color: var(--color-text);
++  background: var(--color-secondary);
++}
++
++.search-clear-btn:active {
++  background: var(--color-secondary-hover);
++}
++
++.search-clear-btn .codicon {
++  font-size: 12px;
+ }
+\ No newline at end of file

@@ -32,7 +32,8 @@ class SessionManager {
           lastActivity: session.lastActivity || session.updatedAt || new Date().toISOString(),
           status: session.status || 'active', // active, historical, archived
           lastUserMessage: session.lastUserMessage || null,
-          lastAssistantMessage: session.lastAssistantMessage || null
+          lastAssistantMessage: session.lastAssistantMessage || null,
+          cwd: session.cwd || null // Working directory where the conversation took place
         };
         this.sessions.set(session.id, normalizedSession);
       });
@@ -152,7 +153,8 @@ class SessionManager {
       claudeSessionId: null, // Will be set when first message is sent
       status: 'active',
       lastUserMessage: null,
-      lastAssistantMessage: null
+      lastAssistantMessage: null,
+      cwd: null // Will be set when first message is sent
     };
 
     this.sessions.set(sessionId, session);
@@ -185,6 +187,47 @@ class SessionManager {
     throw new Error('Session not found');
   }
 
+  // Set the working directory for a session (called when first message is sent)
+  async setSessionCwd(sessionId, cwd) {
+    const session = this.sessions.get(sessionId);
+    if (!session) {
+      throw new Error('Session not found');
+    }
+
+    // Only set cwd if it hasn't been set before (first message only)
+    if (!session.cwd) {
+      session.cwd = cwd;
+      await this.saveSession(sessionId);
+      console.log(`Set working directory for session ${sessionId}: ${cwd}`);
+    }
+
+    return session;
+  }
+
+  // Get the working directory for a session
+  getSessionCwd(sessionId) {
+    const session = this.sessions.get(sessionId);
+    return session ? session.cwd : null;
+  }
+
+  // Validate that a session's working directory still exists
+  async validateSessionCwd(sessionId) {
+    const session = this.sessions.get(sessionId);
+    if (!session || !session.cwd) {
+      return { valid: false, reason: 'No working directory set' };
+    }
+
+    try {
+      const stats = await fs.stat(session.cwd);
+      if (!stats.isDirectory()) {
+        return { valid: false, reason: 'Path is not a directory' };
+      }
+      return { valid: true, path: session.cwd };
+    } catch (error) {
+      return { valid: false, reason: `Directory does not exist: ${error.message}` };
+    }
+  }
+
   // Get session context
   getSessionContext(sessionId) {
     const session = this.sessions.get(sessionId);
@@ -200,6 +243,10 @@ class SessionManager {
         lastAssistantMessage: session.lastAssistantMessage ?
           session.lastAssistantMessage.substring(0, 200) + (session.lastAssistantMessage.length > 200 ? '...' : '') :
           null
+      },
+      cwdInfo: {
+        path: session.cwd,
+        hasWorkingDirectory: !!session.cwd
       }
     };
   }
@@ -234,7 +281,9 @@ class SessionManager {
       lastUserMessage: session.lastUserMessage,
       lastAssistantMessage: session.lastAssistantMessage,
       messageCount: session.messages ? session.messages.length : 0,
-      lastActivity: session.lastActivity || session.updatedAt
+      lastActivity: session.lastActivity || session.updatedAt,
+      hasWorkingDirectory: !!session.cwd,
+      workingDirectory: session.cwd
     };
   }
 

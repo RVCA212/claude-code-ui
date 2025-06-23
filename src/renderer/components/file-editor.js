@@ -87,6 +87,8 @@ class FileEditorComponent {
     });
   }
 
+
+
   async initializeMonaco() {
     if (this.isInitialized || this.loadingEditor) {
       return;
@@ -164,7 +166,7 @@ class FileEditorComponent {
     return isDark ? 'vs-dark' : 'vs';
   }
 
-  async openFile(filePath) {
+    async openFile(filePath) {
     if (!filePath) {
       console.error('No file path provided');
       return;
@@ -280,6 +282,8 @@ class FileEditorComponent {
       this.showError(`Failed to open file: ${error.message}`);
     }
   }
+
+
 
   async saveFile() {
     if (!this.currentFile || !this.editor) {
@@ -462,10 +466,10 @@ class FileEditorComponent {
       console.error('Editor container not found');
     }
 
-    // Add editor-active class to app container for layout adjustments
-    const appContainer = document.querySelector('.app');
-    if (appContainer) {
-      appContainer.classList.add('editor-active');
+    // Add editor-active class to app-content container for layout adjustments
+    const appContent = document.querySelector('.app-content');
+    if (appContent) {
+      appContent.classList.add('editor-active');
     }
 
     // Keep the chat sidebar visible - removed the hiding logic
@@ -499,10 +503,10 @@ class FileEditorComponent {
       this.container.classList.remove('active');
     }
 
-    // Remove editor-active class from app container
-    const appContainer = document.querySelector('.app');
-    if (appContainer) {
-      appContainer.classList.remove('editor-active');
+    // Remove editor-active class from app-content container
+    const appContent = document.querySelector('.app-content');
+    if (appContent) {
+      appContent.classList.remove('editor-active');
     }
 
     // Chat sidebar remains visible - removed the logic to show it again
@@ -607,6 +611,8 @@ class FileEditorComponent {
       }
     }, this.autoSaveDelay);
   }
+
+
 }
 
 // Export for module compatibility

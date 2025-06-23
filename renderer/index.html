@@ -3,7 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="styles/main.css">
+    <!-- VSCode Codicons -->
+    <link rel="stylesheet" href="../node_modules/@vscode/codicons/dist/codicon.css">
     <!-- Global header styles -->
     <style>
         body {
@@ -481,7 +483,7 @@
                 <div class="input-container">
                     <textarea
                         id="messageInput"
-                        placeholder="Type here..."
+                        placeholder="Plan, search, build anything"
                         rows="1"
                         aria-expanded="false"
                         aria-autocomplete="list"
@@ -526,14 +528,96 @@
         </div>
     </div>
 
-    <!-- Configure Monaco Environment FIRST to prevent worker creation -->
+        <!-- Configure Monaco Environment with Electron-Compatible Workers -->
     <script>
-      // CRITICAL: Set this before Monaco loads to completely disable workers
+      // Configure Monaco with Electron-compatible worker support
       self.MonacoEnvironment = {
         getWorker: function (workerId, label) {
-          // Return null to disable all workers completely
-          console.log('Monaco requesting worker for:', label, '- returning null to disable');
-          return null;
+          console.log('Monaco requesting worker for:', label);
+
+          // In Electron, create inline workers using Blob URLs to avoid file path issues
+          // This approach embeds the worker code directly, eliminating file loading errors
+
+          let workerCode = '';
+
+          if (label === 'json') {
+            // Minimal JSON worker
+            workerCode = `
+              self.onmessage = function(e) {
+                // Basic JSON validation and formatting
+                try {
+                  if (e.data && e.data.type === 'format') {
+                    const formatted = JSON.stringify(JSON.parse(e.data.code), null, 2);
+                    self.postMessage({ type: 'result', result: formatted });
+                  } else {
+                    self.postMessage({ type: 'result', result: null });
+                  }
+                } catch (error) {
+                  self.postMessage({ type: 'error', error: error.message });
+                }
+              };
+            `;
+          } else if (label === 'css' || label === 'html') {
+            // Minimal CSS/HTML worker
+            workerCode = `
+              self.onmessage = function(e) {
+                // Minimal processing for CSS/HTML
+                self.postMessage({ type: 'result', result: null });
+              };
+            `;
+          } else if (label === 'typescript' || label === 'javascript') {
+            // Minimal TypeScript/JavaScript worker (syntax checking disabled to avoid complexity)
+            workerCode = `
+              self.onmessage = function(e) {
+                // Minimal processing - no TypeScript compilation in worker
+                // This prevents the complex TS compiler from running in worker
+                self.postMessage({ type: 'result', result: null });
+              };
+            `;
+          } else {
+            // Default editor worker for basic editing features
+            workerCode = `
+              self.onmessage = function(e) {
+                // Handle basic editor services like link detection, basic validation
+                try {
+                  if (e.data && e.data.type === 'links') {
+                    // Basic link detection
+                    const text = e.data.text || '';
+                    const urlRegex = /https?:\\/\\/[^\\s]+/g;
+                    const links = [];
+                    let match;
+                    while ((match = urlRegex.exec(text)) !== null) {
+                      links.push({
+                        range: { startLineNumber: 1, startColumn: match.index + 1, endLineNumber: 1, endColumn: match.index + match[0].length + 1 },
+                        url: match[0]
+                      });
+                    }
+                    self.postMessage({ type: 'links', links: links });
+                  } else {
+                    self.postMessage({ type: 'result', result: null });
+                  }
+                } catch (error) {
+                  self.postMessage({ type: 'error', error: error.message });
+                }
+              };
+            `;
+          }
+
+          try {
+            // Create worker from inline code
+            const blob = new Blob([workerCode], { type: 'application/javascript' });
+            const worker = new Worker(URL.createObjectURL(blob));
+
+            console.log('Successfully created inline worker for:', label);
+            return worker;
+
+          } catch (error) {
+            console.warn('Failed to create inline worker for', label, ':', error);
+
+            // Ultimate fallback: return null to disable workers for this feature
+            // Monaco will fall back to main thread processing
+            return null;
+          }
         }
       };
     </script>
@@ -560,6 +644,7 @@
     <script src="../src/renderer/components/file-browser.js"></script>
     <script src="../src/renderer/components/file-editor.js"></script>
     <script src="../src/renderer/components/chat-sidebar.js"></script>
+    <script src="../src/renderer/components/directory-mismatch-modal.js"></script>
     <script src="../src/renderer/components/session-manager.js"></script>
     <script src="../src/renderer/components/message-component.js"></script>
     <script src="../src/renderer/components/settings-component.js"></script>

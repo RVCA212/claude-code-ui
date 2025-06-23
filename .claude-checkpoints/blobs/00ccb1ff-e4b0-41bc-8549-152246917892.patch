@@ -1,0 +1,13 @@
+Index: file-browser.js
+===================================================================
+--- file-browser.js	before
++++ file-browser.js	after
+@@ -1,5 +1,8 @@
+   async navigateToDirectory(path) {
++    // Clear search input when navigating to any directory
++    this.clearSearchInput();
++    
+     try {
+       this.showLoading(true);
+       this.setStatus('Navigating...');
+       const result = await window.electronAPI.navigateToDirectory(path);

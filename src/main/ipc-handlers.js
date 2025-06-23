@@ -156,6 +156,98 @@ class IPCHandlers {
     ipcMain.handle('get-session-context', async (event, sessionId) => {
       return this.sessionManager.getSessionContext(sessionId);
     });
+
+    // Session working directory management
+    ipcMain.handle('set-session-cwd', async (event, sessionId, cwd) => {
+      return await this.sessionManager.setSessionCwd(sessionId, cwd);
+    });
+
+    ipcMain.handle('get-session-cwd', async (event, sessionId) => {
+      return this.sessionManager.getSessionCwd(sessionId);
+    });
+
+    ipcMain.handle('validate-session-cwd', async (event, sessionId) => {
+      return await this.sessionManager.validateSessionCwd(sessionId);
+    });
+
+    ipcMain.handle('restore-session-cwd', async (event, sessionId) => {
+      try {
+        const sessionCwd = this.sessionManager.getSessionCwd(sessionId);
+        if (!sessionCwd) {
+          return { success: false, error: 'No working directory set for this session' };
+        }
+
+        // Validate the directory still exists
+        const validation = await this.sessionManager.validateSessionCwd(sessionId);
+        if (!validation.valid) {
+          return { success: false, error: validation.reason };
+        }
+
+        // Update file operations working directory
+        this.fileOperations.setCurrentWorkingDirectory(sessionCwd);
+
+        // Get the directory contents to return to frontend
+        const result = await this.fileOperations.getCurrentDirectory();
+
+        console.log(`Restored working directory for session ${sessionId}: ${sessionCwd}`);
+
+        return {
+          success: true,
+          path: sessionCwd,
+          contents: result.contents || [],
+          canGoBack: result.canGoBack || false,
+          canGoForward: result.canGoForward || false
+        };
+      } catch (error) {
+        console.error('Failed to restore session working directory:', error);
+        return { success: false, error: error.message };
+      }
+    });
+
+    ipcMain.handle('validate-send-directory', async (event, sessionId) => {
+      try {
+        const sessionCwd = this.sessionManager.getSessionCwd(sessionId);
+        const currentCwd = this.fileOperations.getCurrentWorkingDirectory();
+
+        if (!sessionCwd) {
+          // No saved directory, allow send (new conversation)
+          return {
+            success: true,
+            canSend: true,
+            sessionCwd: null,
+            currentCwd
+          };
+        }
+
+        // Check if directories match
+        const isMatch = sessionCwd === currentCwd;
+
+        if (isMatch) {
+          // Directories match, allow send
+          return {
+            success: true,
+            canSend: true,
+            sessionCwd,
+            currentCwd
+          };
+        }
+
+        // Directories don't match, check if original directory still exists
+        const validation = await this.sessionManager.validateSessionCwd(sessionId);
+
+        return {
+          success: true,
+          canSend: false,
+          sessionCwd,
+          currentCwd,
+          originalDirectoryValid: validation.valid,
+          mismatchReason: validation.valid ? 'directory_changed' : 'original_directory_missing'
+        };
+      } catch (error) {
+        console.error('Failed to validate send directory:', error);
+        return { success: false, error: error.message };
+      }
+    });
   }
 
   registerMessagingHandlers() {
@@ -316,6 +408,11 @@ class IPCHandlers {
 
     ipcMain.handle('unwatch-file', async (event, filePath) => {
       return await this.fileOperations.unwatchFile(filePath);
+    });
+
+    // Search files by prefix recursively
+    ipcMain.handle('search-files-by-prefix', async (event, query, maxResults = 50) => {
+      return await this.fileOperations.searchFilesByPrefix(query, maxResults);
     });
   }
 

@@ -1,1 +1,44 @@
-"create a plan for this task into a new .md file: <task>\nhow can we create a clean ui for allowing the user to select the current working directory for the claude code session to operate in? currently it only operates within this app's cwd but I want it to be default to the user's root directory with the option to be in any directory in the user's machine. I would like an option to toggle the sidebar state to control this between showing past conversations and toggling to instead see the cwd folders/files and being able to easily switch the cwd. I'm not sure of the best ui or how to get this information, so please analyze my app @renderer/app.js to think through the best ui for doing this and ensure that it's functional within my claude app which uses @sdk.md\n</task>"
+Problem Diagnosis: File Browser Not Working During Chat Streaming
+
+Root Cause Found:
+After analyzing the codebase, I've identified that the issue is NOT caused by any
+intentional disabling of file browser interactions during streaming. The file
+browser component (file-browser.js) and file editor component (file-editor.js)
+have no code that checks for streaming state or disables functionality during chat
+ activity.
+
+Key Findings:
+
+1. No Streaming Interference: The handleFileClick() method in
+file-browser.js:414-432 has no streaming checks and should work normally during
+chat.
+2. No Global Disabling: There are no CSS rules or JavaScript code that globally
+disable pointer events or interactions during streaming.
+3. Monaco Editor Issue: The most likely cause is a Monaco Editor initialization
+race condition or DOM interference when both chat streaming and file opening occur
+ simultaneously.
+
+Likely Issues:
+
+1. DOM Conflict: The Monaco editor (file-editor.js:219-252) creates DOM elements
+that might conflict with streaming message updates
+2. Event Handler Interference: Chat streaming might be interfering with file
+browser event propagation
+3. Component State Race: File editor initialization might fail silently during
+heavy DOM updates from streaming
+
+Solution Plan:
+
+1. Add Debug Logging: Add comprehensive logging to track file click events and
+Monaco initialization during streaming
+2. Implement Click Queuing: Queue file open requests during streaming and process
+them after streaming completes
+3. Improve Error Handling: Add better error handling and user feedback when file
+opening fails
+4. DOM Isolation: Ensure Monaco editor DOM creation is properly isolated from
+streaming updates
+5. Add Loading States: Provide clear visual feedback when files are being opened
+during active streaming
+
+This fix will ensure users can browse and open files while maintaining
+uninterrupted chat functionality.

@@ -3,27 +3,37 @@ class AppComponent {
   constructor() {
     this.components = {};
     this.isInitialized = false;
-    
+    this.isHandlingResize = false; // Flag to prevent recursive resize handling
+
     this.initializeComponents();
     this.setupGlobalEventListeners();
   }
 
   initializeComponents() {
     try {
-      // Initialize all components in the correct order
+      // 1. Settings first (independent)
       this.components.settings = new SettingsComponent();
-      this.components.sessionManager = new SessionManager();
-      this.components.messageComponent = new MessageComponent(this.components.sessionManager);
+
+      // 2. File browser next so it can listen for directory change events *before* sessions are restored
       this.components.fileBrowser = new FileBrowser();
+
+      // 3. Session manager (triggers async session load which will emit directoryChanged)
+      this.components.sessionManager = new SessionManager();
+
+      // 4. Remaining components that depend on sessionManager
+      this.components.messageComponent = new MessageComponent(this.components.sessionManager);
       this.components.fileEditor = new FileEditorComponent();
       this.components.chatSidebar = new ChatSidebarComponent();
-      
+
       // Set up cross-component communication
       this.setupComponentCommunication();
-      
+
+      // Initialize session manager after other components are ready
+      this.components.sessionManager.init();
+
       this.isInitialized = true;
       console.log('App components initialized successfully');
-      
+
     } catch (error) {
       console.error('Failed to initialize app components:', error);
       this.showFatalError('Failed to initialize application');
@@ -120,10 +130,10 @@ class AppComponent {
 
   handleSessionChange(detail) {
     const { sessionId, context } = detail;
-    
+
     // Update window title
     this.updateWindowTitle(context?.title || 'Claude Code Chat');
-    
+
     // Update any other global UI elements based on session change
     this.updateGlobalUI(context);
   }
@@ -156,7 +166,7 @@ class AppComponent {
   handleFileChanged(data) {
     // Handle file change notifications from the main process
     console.log('File changed:', data);
-    
+
     // If the changed file is currently open in the editor, notify the user
     if (this.components.fileEditor) {
       const currentFile = this.components.fileEditor.getCurrentFile();
@@ -187,34 +197,164 @@ class AppComponent {
       // We could add more integration here if needed
     }
 
-    // Handle window resize for responsive layout
+    // Set up chat sidebar resizing after DOM is ready
+    setTimeout(() => {
+      this.setupChatSidebarResizing();
+    }, 100);
+
+    // Handle window resize for responsive layout with throttling
+    let resizeTimeout;
     window.addEventListener('resize', () => {
-      this.handleLayoutResize();
+      // Throttle resize events to prevent excessive calls
+      if (resizeTimeout) {
+        clearTimeout(resizeTimeout);
+      }
+      resizeTimeout = setTimeout(() => {
+        this.handleLayoutResize();
+      }, 100); // Debounce to 100ms
     });
   }
 
   handleLayoutResize() {
-    // Handle responsive layout changes
-    const width = window.innerWidth;
-    
-    // Auto-collapse chat sidebar on very small screens
-    if (width < 900 && this.components.chatSidebar && 
-        typeof this.components.chatSidebar.isCollapsed === 'function' && 
-        !this.components.chatSidebar.isCollapsed()) {
-      if (typeof this.components.chatSidebar.forceCollapse === 'function') {
-        this.components.chatSidebar.forceCollapse();
-      }
+    // Prevent recursive resize handling
+    if (this.isHandlingResize) {
+      return;
     }
-    
-    // Auto-expand on larger screens if no file is open
-    if (width > 1200 && this.components.chatSidebar && 
-        typeof this.components.chatSidebar.isCollapsed === 'function' && 
-        this.components.chatSidebar.isCollapsed()) {
-      const currentFile = this.components.fileEditor?.getCurrentFile();
-      if (!currentFile && typeof this.components.chatSidebar.forceExpand === 'function') {
-        this.components.chatSidebar.forceExpand();
+
+    this.isHandlingResize = true;
+
+    try {
+      // Handle responsive layout changes
+      // Note: With CSS Grid, most layout is handled automatically
+      // Only handle specific cases that need JavaScript intervention
+
+      const appContent = document.querySelector('.app-content');
+      if (!appContent) {
+        return;
       }
+
+      // Check window width for responsive breakpoints
+      const windowWidth = window.innerWidth;
+
+      // On very small screens, we might want to hide one sidebar
+      if (windowWidth < 900) {
+        // Could add logic to auto-hide sidebars on small screens
+        // For now, let CSS media queries handle this
+      }
+
+      // Ensure chat sidebar width constraints are still valid
+      const currentWidth = getComputedStyle(document.documentElement)
+        .getPropertyValue('--chat-sidebar-width');
+
+      if (currentWidth) {
+        const widthValue = parseInt(currentWidth);
+        const minWidth = 350;
+        const maxWidth = Math.min(600, windowWidth * 0.4); // Max 40% of window width
+
+        if (widthValue < minWidth || widthValue > maxWidth) {
+          const newWidth = Math.max(minWidth, Math.min(maxWidth, widthValue));
+          document.documentElement.style.setProperty('--chat-sidebar-width', `${newWidth}px`);
+        }
+      }
+
+    } catch (error) {
+      console.warn('Layout resize handling failed:', error);
+    } finally {
+      // Always clear the flag, even if there was an error
+      setTimeout(() => {
+        this.isHandlingResize = false;
+      }, 50); // Small delay to prevent immediate re-entry
     }
+  }
+
+  setupChatSidebarResizing() {
+    // Set up chat sidebar resizing functionality at the app level
+    let isResizing = false;
+    let startX = 0;
+    let startWidth = 0;
+
+    // Find the resize handle
+    const resizeHandle = document.querySelector('.chat-sidebar-resize-handle');
+    if (!resizeHandle) {
+      console.warn('Chat sidebar resize handle not found');
+      return;
+    }
+
+    resizeHandle.addEventListener('mousedown', (e) => {
+      // Only allow resizing in split mode (when editor is active)
+      const appContent = document.querySelector('.app-content');
+      if (!appContent || !appContent.classList.contains('editor-active')) {
+        return;
+      }
+
+      const chatSidebar = document.getElementById('chatSidebar');
+      if (!chatSidebar) return;
+
+      isResizing = true;
+      startX = e.clientX;
+      startWidth = chatSidebar.offsetWidth;
+
+      // Add visual feedback class to body
+      document.body.classList.add('resizing-chat-sidebar');
+
+      e.preventDefault();
+    });
+
+    document.addEventListener('mousemove', (e) => {
+      if (!isResizing) return;
+
+      try {
+        const deltaX = startX - e.clientX; // Reverse delta since we're on the right side
+
+        const appContent = document.querySelector('.app-content');
+        const chatSidebar = document.getElementById('chatSidebar');
+        if (!appContent || !chatSidebar) return;
+
+        const appWidth = appContent.offsetWidth;
+
+        // Fixed widths / minimums for other panes
+        const sidebarWidth = 280; // Left file-browser sidebar (fixed)
+
+        // Honour the editor's CSS driven min-width so we don't shrink it too far
+        const editorMinWidth = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--editor-min-width')) || 200;
+
+        const minChatWidth = 350;
+
+        // Ensure we never grow the chat sidebar beyond the space that would keep the editor >= its min width
+        const maxChatWidthByEditor = appWidth - sidebarWidth - editorMinWidth;
+
+        // Additional hard cap (either 60% of the app or 600px – whichever is smaller)
+        const maxChatWidthUi = Math.min(600, Math.floor(appWidth * 0.6));
+
+        const maxChatWidth = Math.min(maxChatWidthByEditor, maxChatWidthUi);
+
+        // Guard: if available width is already smaller than minChatWidth, stick to minChatWidth
+        const safeMaxChatWidth = Math.max(minChatWidth, maxChatWidth);
+
+        const tentativeWidth = startWidth + deltaX;
+        const newWidth = Math.max(minChatWidth, Math.min(safeMaxChatWidth, tentativeWidth));
+
+        // Update CSS custom property which controls the layout
+        document.documentElement.style.setProperty('--chat-sidebar-width', `${newWidth}px`);
+
+      } catch (error) {
+        console.warn('Resize operation failed:', error);
+        // Stop resizing on error to prevent loops
+        this.stopChatSidebarResizing();
+      }
+    });
+
+    document.addEventListener('mouseup', () => {
+      if (isResizing) {
+        isResizing = false;
+        this.stopChatSidebarResizing();
+      }
+    });
+  }
+
+  stopChatSidebarResizing() {
+    // Clear visual feedback
+    document.body.classList.remove('resizing-chat-sidebar');
   }
 
   updateTimestamps() {
@@ -247,7 +387,7 @@ class AppComponent {
         <button onclick="window.location.reload()">Reload Application</button>
       </div>
     `;
-    
+
     document.body.innerHTML = errorHTML;
   }
 
@@ -331,7 +471,7 @@ class AppComponent {
     };
   }
 
-  logDebugInfo() {
+    logDebugInfo() {
     console.log('App Debug Info:', this.getDebugInfo());
   }
 }
