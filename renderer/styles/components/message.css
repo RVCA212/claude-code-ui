@@ -1,4 +1,25 @@
-/* Message Component Styles */
+/**
+ * Message Component Styles
+ * 
+ * Used by: Message display and tool output rendering in chat
+ * Related files:
+ *   - src/renderer/components/message-component.js (main message rendering)
+ *   - src/renderer/components/chat-sidebar.js (message container)
+ *   - Various tool implementations throughout the app
+ * 
+ * Features:
+ *   - User and assistant message styling
+ *   - Tool call display with collapsible details
+ *   - Specialized tool components (Bash, Read, Write, Edit, TodoWrite, etc.)
+ *   - Thinking/reasoning display
+ *   - Streaming indicators and typing animations
+ *   - Code syntax highlighting integration
+ *   - Checkpoint/revert functionality
+ */
+
+/* ============================================================================
+   Base Message Containers
+   ============================================================================ */
 .message {
   margin-bottom: var(--space-16);
   padding: var(--space-16);
@@ -46,7 +67,11 @@
   margin: var(--space-12) 0;
 }
 
-/* Tool Call Styles */
+/* ============================================================================
+   Basic Tool Call Display
+   ============================================================================ */
+
+/* Simple tool call container (legacy format) */
 .tool-call {
   margin: var(--space-12) 0;
   border: 1px solid var(--color-border);
@@ -73,7 +98,11 @@
   overflow-x: auto;
 }
 
-/* Streaming indicator */
+/* ============================================================================
+   Streaming and Typing Indicators
+   ============================================================================ */
+
+/* Visual indicators for real-time message streaming */
 .typing-indicator {
   display: flex;
   align-items: center;
@@ -108,4 +137,520 @@
     transform: scale(1);
     opacity: 1;
   }
+}
+
+/* ============================================================================
+   Advanced Tool Call Components
+   ============================================================================ */
+
+/* Modern tool call display with expandable details */
+.tool-call {
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  margin-bottom: var(--space-8);
+  overflow: visible;
+}
+
+.tool-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  padding: var(--space-4) 0;
+  background: transparent;
+  border: none;
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+  transition: opacity var(--duration-fast) var(--ease-standard);
+}
+
+.tool-header:hover {
+  opacity: 0.8;
+}
+
+.tool-icon {
+  font-size: var(--font-size-base);
+}
+
+.tool-name {
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text);
+}
+
+.tool-status {
+  margin-left: auto;
+  padding: var(--space-2) var(--space-6);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+}
+
+.tool-status.running {
+  background: rgba(var(--color-warning-rgb), 0.15);
+  color: var(--color-warning);
+}
+
+.tool-status.completed {
+  background: rgba(var(--color-success-rgb), 0.15);
+  color: var(--color-success);
+}
+
+.tool-status.failed {
+  background: rgba(var(--color-error-rgb), 0.15);
+  color: var(--color-error);
+}
+
+.tool-summary {
+  flex: 1;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  font-family: var(--font-family-mono);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tool-details {
+  background: var(--color-background);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-base);
+  margin-top: var(--space-8);
+}
+
+.tool-input, .tool-output {
+  padding: var(--space-12);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.tool-input:last-child, .tool-output:last-child {
+  border-bottom: none;
+}
+
+.tool-input strong, .tool-output strong {
+  display: block;
+  margin-bottom: var(--space-6);
+  color: var(--color-text);
+  font-size: var(--font-size-sm);
+}
+
+.tool-input pre, .tool-output pre {
+  background: var(--color-secondary);
+  padding: var(--space-8);
+  border-radius: var(--radius-sm);
+  overflow-x: auto;
+  margin: 0;
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xs);
+  color: var(--color-text);
+}
+
+.tool-output-content {
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+/* ============================================================================
+   AI Thinking and Reasoning Display
+   ============================================================================ */
+
+/* Collapsible thinking section for AI reasoning */
+.thinking-section {
+  background: var(--color-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-base);
+  margin-bottom: var(--space-12);
+  overflow: hidden;
+}
+
+.thinking-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-8) var(--space-12);
+  background: var(--color-background);
+  border-bottom: 1px solid var(--color-border);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-secondary);
+}
+
+.thinking-content {
+  padding: var(--space-12);
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.thinking-chunk {
+  margin-bottom: var(--space-4);
+  opacity: 0.8;
+  font-size: var(--font-size-sm);
+}
+
+/* ============================================================================
+   Assistant Response Styling
+   ============================================================================ */
+
+/* Main assistant message content with enhanced formatting */
+.assistant-response {
+  background-color: var(--color-secondary);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  padding: var(--space-12) var(--space-16);
+  border-radius: var(--radius-lg);
+  font-size: var(--font-size-base);
+  line-height: var(--line-height-normal);
+  word-wrap: break-word;
+}
+
+/* Primary response styling - more prominent display */
+.assistant-response.primary-response {
+  background-color: var(--color-surface);
+  border: 2px solid var(--color-primary);
+  padding: var(--space-16) var(--space-20);
+  margin-bottom: var(--space-16);
+  font-size: var(--font-size-md);
+  line-height: var(--line-height-relaxed);
+  box-shadow: 0 2px 8px rgba(33, 128, 141, 0.1);
+}
+
+.assistant-response pre {
+  background-color: rgba(0, 0, 0, 0.1);
+  padding: var(--space-12);
+  border-radius: var(--radius-sm);
+  overflow-x: auto;
+  margin: var(--space-8) 0;
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-sm);
+}
+
+.assistant-response code {
+  background-color: rgba(0, 0, 0, 0.1);
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-sm);
+}
+
+.assistant-response pre code {
+  background: none;
+  padding: 0;
+}
+
+/* ============================================================================
+   Specialized Tool Components
+   ============================================================================ */
+
+/* Tool-specific styling for different Claude Code tools */
+
+/* TodoWrite Tool Component */
+.tool-todo-write {
+  background: var(--color-background);
+  border-radius: var(--radius-base);
+  overflow: hidden;
+}
+
+.tool-todo-list {
+  max-height: 300px;
+  overflow-y: auto;
+  background: var(--color-surface);
+}
+
+.tool-todo-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  padding: var(--space-8) var(--space-12);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.tool-todo-item:last-child {
+  border-bottom: none;
+}
+
+.tool-todo-status {
+  padding: var(--space-2) var(--space-6);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  text-transform: uppercase;
+}
+
+.tool-todo-status.pending {
+  background: rgba(var(--color-info-rgb), 0.15);
+  color: var(--color-info);
+}
+
+.tool-todo-status.in_progress {
+  background: rgba(var(--color-warning-rgb), 0.15);
+  color: var(--color-warning);
+}
+
+.tool-todo-status.completed {
+  background: rgba(var(--color-success-rgb), 0.15);
+  color: var(--color-success);
+}
+
+.tool-todo-content {
+  flex: 1;
+  font-size: var(--font-size-sm);
+  color: var(--color-text);
+}
+
+.tool-todo-priority {
+  padding: var(--space-1) var(--space-4);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  text-transform: uppercase;
+}
+
+.tool-todo-priority.high {
+  background: rgba(var(--color-error-rgb), 0.15);
+  color: var(--color-error);
+}
+
+.tool-todo-priority.medium {
+  background: rgba(var(--color-warning-rgb), 0.15);
+  color: var(--color-warning);
+}
+
+.tool-todo-priority.low {
+  background: rgba(var(--color-info-rgb), 0.15);
+  color: var(--color-info);
+}
+
+/* ============================================================================
+   File Operation Tool Components
+   ============================================================================ */
+
+/* Write Tool Component - for file creation and modification */
+.tool-file-write {
+  background: var(--color-background);
+  border-radius: var(--radius-base);
+  overflow: hidden;
+}
+
+.tool-file-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  padding: var(--space-8) var(--space-12);
+  background: var(--color-secondary);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.tool-file-icon {
+  font-size: var(--font-size-base);
+}
+
+.tool-file-path {
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-sm);
+  color: var(--color-text);
+  flex: 1;
+  word-break: break-all;
+}
+
+.tool-file-content {
+  max-height: 300px;
+  overflow-y: auto;
+  background: var(--color-surface);
+}
+
+.tool-file-content pre {
+  margin: 0;
+  padding: var(--space-12);
+  background: none;
+  border: none;
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-sm);
+  color: var(--color-text);
+  line-height: 1.4;
+}
+
+/* Read Tool Component */
+.tool-file-read {
+  background: var(--color-background);
+  border-radius: var(--radius-base);
+  overflow: hidden;
+}
+
+.tool-file-read .tool-file-content {
+  background: var(--color-background);
+  border: 1px solid var(--color-border);
+}
+
+.tool-file-stats {
+  padding: var(--space-6) var(--space-12);
+  background: var(--color-secondary);
+  border-top: 1px solid var(--color-border);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  font-family: var(--font-family-mono);
+}
+
+/* Edit Tool Component */
+.tool-file-edit {
+  background: var(--color-background);
+  border-radius: var(--radius-base);
+  overflow: hidden;
+}
+
+.tool-edit-summary {
+  padding: var(--space-8) var(--space-12);
+  background: var(--color-secondary);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.tool-edit-changes {
+  padding: var(--space-12);
+  background: var(--color-surface);
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-sm);
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.tool-edit-old {
+  background: rgba(var(--color-error-rgb), 0.1);
+  color: var(--color-error);
+  padding: var(--space-4);
+  border-radius: var(--radius-sm);
+  margin-bottom: var(--space-8);
+}
+
+.tool-edit-new {
+  background: rgba(var(--color-success-rgb), 0.1);
+  color: var(--color-success);
+  padding: var(--space-4);
+  border-radius: var(--radius-sm);
+}
+
+/* ============================================================================
+   Terminal and System Tool Components
+   ============================================================================ */
+
+/* Bash Tool Component - terminal command execution */
+.tool-terminal {
+  background: #1a1a1a;
+  color: #00ff00;
+  border-radius: var(--radius-base);
+  overflow: hidden;
+  font-family: var(--font-family-mono);
+}
+
+.tool-terminal-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  padding: var(--space-8) var(--space-12);
+  background: #2d2d2d;
+  border-bottom: 1px solid #404040;
+}
+
+.tool-terminal-icon {
+  font-size: var(--font-size-base);
+}
+
+.tool-terminal-command {
+  font-size: var(--font-size-sm);
+  color: #ffffff;
+  flex: 1;
+}
+
+.tool-terminal-content {
+  padding: var(--space-12);
+  max-height: 300px;
+  overflow-y: auto;
+  background: #1a1a1a;
+}
+
+.tool-terminal-content pre {
+  margin: 0;
+  background: none;
+  border: none;
+  color: #00ff00;
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-sm);
+  line-height: 1.4;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+/* ============================================================================
+   Legacy Message Support and Checkpoint Controls
+   ============================================================================ */
+
+/* Support for older message formats and checkpoint functionality */
+.message-thinking {
+  margin-bottom: var(--space-12);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-sm);
+}
+
+.message-thinking .thinking-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-secondary);
+  margin-bottom: var(--space-6);
+  font-size: var(--font-size-xs);
+}
+
+.message-thinking .thinking-content {
+  max-height: 200px;
+  overflow-y: auto;
+  color: var(--color-text-secondary);
+  line-height: 1.4;
+  font-family: var(--font-family-mono);
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  background: none;
+  border: none;
+  padding: var(--space-8) 0;
+}
+
+.message-thinking .thinking-chunk {
+  margin-bottom: var(--space-4);
+  opacity: 0.8;
+  font-size: var(--font-size-sm);
+}
+
+/* Restore Checkpoint Button - Minimal Style */
+.revert-btn {
+  background: none;
+  border: none;
+  color: var(--color-text-secondary);
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+  padding: var(--space-4) var(--space-8);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+  transition: color var(--duration-fast) var(--ease-standard);
+  -webkit-app-region: no-drag;
+}
+
+.revert-btn:hover {
+  color: var(--color-text);
+}
+
+.revert-btn svg {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  color: currentColor;
 }

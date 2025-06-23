@@ -238,7 +238,8 @@ class FileEditorComponent {
           fontFamily: 'SF Mono, Monaco, Inconsolata, "Roboto Mono", Consolas, "Courier New", monospace',
           lineNumbers: 'on',
           wordWrap: 'on',
-          minimap: { enabled: true },
+          // Disable the right-hand minimap for a cleaner interface
+          minimap: { enabled: false },
           scrollBeyondLastLine: false,
           renderWhitespace: 'selection',
           tabSize: 2,
@@ -255,7 +256,11 @@ class FileEditorComponent {
       } else {
         console.log('Updating existing editor with new content');
         this.editor.setValue(result.content);
-        this.editor.updateOptions({ language: this.currentFile.language });
+        // Ensure minimap stays disabled when switching files
+        this.editor.updateOptions({
+          language: this.currentFile.language,
+          minimap: { enabled: false }
+        });
       }
 
       // Update UI
@@ -472,8 +477,18 @@ class FileEditorComponent {
       appContent.classList.add('editor-active');
     }
 
-    // Keep the chat sidebar visible - removed the hiding logic
-    // This allows for a three-column layout: file browser | file editor | chat sidebar
+    // Ensure chat sidebar respects its current visibility state
+    // Don't force hide/show - let the global toggle manage this
+    const chatSidebar = document.getElementById('chatSidebar');
+    if (chatSidebar) {
+      // Update global header button states to reflect current layout
+      // Use requestAnimationFrame to avoid race conditions with DOM updates
+      requestAnimationFrame(() => {
+        if (window.globalHeader && typeof window.globalHeader.updateButtonStates === 'function') {
+          window.globalHeader.updateButtonStates();
+        }
+      });
+    }
 
     console.log('showEditor() completed');
   }
@@ -509,8 +524,15 @@ class FileEditorComponent {
       appContent.classList.remove('editor-active');
     }
 
-    // Chat sidebar remains visible - removed the logic to show it again
-    // since we never hide it in the first place
+    // Update global header button states to reflect the layout change
+    // Use requestAnimationFrame to avoid race conditions with DOM updates
+    requestAnimationFrame(() => {
+      if (window.globalHeader && typeof window.globalHeader.updateButtonStates === 'function') {
+        window.globalHeader.updateButtonStates();
+      }
+    });
+
+    console.log('hideEditor() completed - chat sidebar visibility unchanged');
   }
 
   showLoading(message) {

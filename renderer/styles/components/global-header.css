@@ -1,4 +1,23 @@
-/* Global Header Styles */
+/**
+ * Global Header Component Styles
+ * 
+ * Used by: Global header bar spanning the entire application
+ * Related files: 
+ *   - renderer/index.html (global-header section)
+ *   - src/renderer/components/app-component.js (global header functionality)
+ *   - GlobalHeader class in index.html inline script
+ * 
+ * Features:
+ *   - Cross-platform window drag support
+ *   - Settings and sidebar toggle buttons
+ *   - File breadcrumb display in center
+ *   - macOS-style header bar design
+ *   - Status indicators for connection state
+ */
+
+/* ============================================================================
+   Base Global Header Layout
+   ============================================================================ */
 .global-header {
   display: flex;
   align-items: center;
@@ -13,6 +32,11 @@
   box-shadow: var(--shadow-xs);
 }
 
+/* ============================================================================
+   Header Layout Sections
+   ============================================================================ */
+
+/* Left section - typically contains navigation or branding */
 .global-header-left {
   display: flex;
   align-items: center;
@@ -32,7 +56,11 @@
   gap: var(--space-8);
 }
 
-/* Global header buttons (VSCode style) */
+/* ============================================================================
+   Interactive Header Buttons
+   ============================================================================ */
+
+/* Base styles for all header buttons (VSCode style) */
 .global-header-btn {
   background: transparent;
   border: none;
@@ -73,6 +101,10 @@
   background: var(--color-primary-hover);
 }
 
+/* ============================================================================
+   App Title and Text Elements
+   ============================================================================ */
+
 /* App title in global header */
 .global-app-title {
   font-size: var(--font-size-sm);
@@ -83,7 +115,11 @@
   user-select: none;
 }
 
-/* Status indicator */
+/* ============================================================================
+   Status Indicators
+   ============================================================================ */
+
+/* Connection/status indicator in header */
 .global-status-indicator {
   font-size: var(--font-size-xs);
   color: var(--color-text-secondary);
@@ -115,7 +151,11 @@
   background: var(--color-info);
 }
 
-/* Breadcrumb in global header center (when file is open) */
+/* ============================================================================
+   File Breadcrumb Display
+   ============================================================================ */
+
+/* Breadcrumb showing currently open file in center of header */
 .global-breadcrumb {
   display: flex;
   align-items: center;
@@ -135,4 +175,61 @@
 .global-breadcrumb-separator {
   color: var(--color-text-secondary);
   opacity: 0.5;
+}
+
+/* ============================================================================
+   Legacy Compatibility and Layout Integration
+   ============================================================================ */
+
+/* Hide old sidebar toggle button since it's moved to global header */
+.sidebar-toggle-btn {
+  display: none !important;
+}
+
+/* Remove top padding from sidebar since global header handles spacing */
+.sidebar {
+  padding-top: 0 !important;
+}
+
+/* Utility class for hiding sidebars - used by JavaScript toggle functionality */
+.sidebar.hidden {
+  display: none !important;
+}
+
+/* Base app content layout integration */
+.app-content {
+  display: flex;
+  flex: 1;
+}
+
+/* ============================================================================
+   Global Sidebar Toggle Button (specific variant)
+   ============================================================================ */
+
+/* Specific styles for sidebar toggle button in global header */
+.global-sidebar-toggle-btn {
+  background: transparent;
+  border: none;
+  padding: var(--space-6);
+  cursor: pointer;
+  color: var(--color-text-secondary);
+  border-radius: var(--radius-sm);
+  transition: all var(--duration-fast) var(--ease-standard);
+  -webkit-app-region: no-drag; /* Allow click events */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+}
+
+.global-sidebar-toggle-btn:hover {
+  background: var(--color-secondary);
+  color: var(--color-text);
+}
+
+.global-sidebar-toggle-btn svg {
+  display: block;
+  width: 16px;
+  height: 16px;
 }

@@ -1,0 +1,209 @@
+/**
+ * Notification System Component Styles
+ * 
+ * Used by: Toast notifications and status messages throughout the app
+ * Related files:
+ *   - src/renderer/components/app-component.js (notification triggers)
+ *   - src/renderer/components/file-browser.js (directory change notifications)
+ *   - Various components that trigger status messages
+ * 
+ * Features:
+ *   - Working directory change notifications
+ *   - Status badges and indicators
+ *   - Checkpoint/revert message editing
+ *   - Dark mode support
+ *   - Slide-in animations for toasts
+ *   - Color-coded success/warning/error states
+ */
+
+/* Working Directory Notifications */
+.cwd-notification {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  max-width: 400px;
+  padding: 12px 16px;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 10000;
+  transform: translateX(100%);
+  transition: transform 0.3s ease-in-out, opacity 0.3s ease-in-out;
+  opacity: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  font-size: 13px;
+}
+
+.cwd-notification.show {
+  transform: translateX(0);
+  opacity: 1;
+}
+
+.cwd-notification.success {
+  background-color: #d4edda;
+  border: 1px solid #c3e6cb;
+  color: #155724;
+}
+
+.cwd-notification.warning {
+  background-color: #fff3cd;
+  border: 1px solid #ffeaa7;
+  color: #856404;
+}
+
+.notification-content {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.notification-icon {
+  font-size: 16px;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.notification-text {
+  flex: 1;
+}
+
+.notification-text strong {
+  font-weight: 600;
+}
+
+.notification-text code {
+  background-color: rgba(0, 0, 0, 0.1);
+  padding: 2px 4px;
+  border-radius: 3px;
+  font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+  font-size: 12px;
+}
+
+.notification-text small {
+  font-size: 11px;
+  opacity: 0.8;
+}
+
+/* Working Directory Badge */
+.cwd-badge {
+  background-color: rgba(59, 130, 246, 0.1);
+  border: 1px solid rgba(59, 130, 246, 0.2);
+  color: #1d4ed8;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 8px;
+  cursor: help;
+}
+
+.cwd-badge:hover {
+  background-color: rgba(59, 130, 246, 0.15);
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .cwd-notification.success {
+    background-color: rgba(34, 197, 94, 0.1);
+    border-color: rgba(34, 197, 94, 0.2);
+    color: #22c55e;
+  }
+
+  .cwd-notification.warning {
+    background-color: rgba(245, 158, 11, 0.1);
+    border-color: rgba(245, 158, 11, 0.2);
+    color: #f59e0b;
+  }
+
+  .notification-text code {
+    background-color: rgba(255, 255, 255, 0.1);
+  }
+
+  .cwd-badge {
+    background-color: rgba(59, 130, 246, 0.2);
+    border-color: rgba(59, 130, 246, 0.3);
+    color: #60a5fa;
+  }
+
+  .cwd-badge:hover {
+    background-color: rgba(59, 130, 246, 0.25);
+  }
+}
+
+/* Editable message styles for checkpoint revert functionality */
+.message-editable {
+  background: rgba(33, 128, 141, 0.05);
+  border-left: 3px solid var(--color-primary);
+  border-radius: var(--radius-base);
+  padding-left: var(--space-12);
+}
+
+.editable-message {
+  width: 100%;
+  min-height: 60px;
+  padding: var(--space-12);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-base);
+  font-family: var(--font-family-base);
+  font-size: var(--font-size-base);
+  line-height: 1.5;
+  color: var(--color-text);
+  background: var(--color-surface);
+  resize: vertical;
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+
+.editable-message:focus {
+  border-color: var(--color-primary);
+  box-shadow: var(--focus-ring);
+}
+
+.send-edited-btn {
+  background: var(--color-primary);
+  color: var(--color-btn-primary-text);
+  border: none;
+  border-radius: var(--radius-base);
+  padding: var(--space-8) var(--space-12);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-6);
+  transition: all 0.2s ease;
+}
+
+.send-edited-btn:hover {
+  background: var(--color-primary-hover);
+  transform: translateY(-1px);
+}
+
+.send-edited-btn:active {
+  background: var(--color-primary-active);
+  transform: translateY(0);
+}
+
+.send-edited-btn svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* Dark mode support for editable messages */
+@media (prefers-color-scheme: dark) {
+  .message-editable {
+    background: rgba(33, 128, 141, 0.1);
+  }
+
+  .editable-message {
+    background: #1f2937;
+    border-color: #374151;
+    color: #e5e7eb;
+  }
+
+  .editable-message:focus {
+    border-color: var(--color-primary);
+  }
+}

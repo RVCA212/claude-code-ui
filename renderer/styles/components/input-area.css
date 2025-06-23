@@ -1,17 +1,41 @@
-/* Input Area Styles */
+/**
+ * Input Area Component Styles
+ * 
+ * Used by: Chat input area at bottom of chat sidebar
+ * Related files:
+ *   - src/renderer/components/chat-sidebar.js (input handling)
+ *   - src/renderer/components/app-component.js (send message logic)
+ *   - renderer/index.html (input-area section)
+ * 
+ * Features:
+ *   - Multi-line text input with auto-resize
+ *   - Send and stop buttons with state management
+ *   - Model selection dropdown
+ *   - Session info display
+ *   - File mention dropdown with autocomplete
+ *   - Responsive design for different chat modes
+ */
+
+/* ============================================================================
+   Base Input Area Container
+   ============================================================================ */
 .input-area {
   padding: var(--space-16) var(--space-24);
   border-top: 1px solid var(--color-border);
   background-color: var(--color-surface);
+  position: relative; /* Ensure dropdown positioned relative to input area */
   flex-shrink: 0;
 }
 
+/* ============================================================================
+   Message Input Container
+   ============================================================================ */
+
+/* Container for text input and send/stop buttons */
 .input-container {
-  position: relative;
   display: flex;
+  gap: var(--space-12);
   align-items: flex-end;
-  gap: var(--space-8);
-  margin-bottom: var(--space-8);
 }
 
 #messageInput {
@@ -39,48 +63,49 @@
 }
 
 .send-btn, .stop-btn {
+  background: var(--color-primary);
+  color: var(--color-btn-primary-text);
+  border: none;
+  border-radius: var(--radius-full);
+  width: 44px;
+  height: 44px;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 44px;
-  height: 44px;
-  border: none;
-  border-radius: var(--radius-base);
   cursor: pointer;
-  transition: all var(--duration-fast) var(--ease-standard);
+  transition: background-color var(--duration-fast) var(--ease-standard);
   flex-shrink: 0;
 }
 
-.send-btn {
-  background: var(--color-primary);
-  color: var(--color-btn-primary-text);
-}
-
-.send-btn:hover:not(:disabled) {
+.send-btn:hover, .stop-btn:hover {
   background: var(--color-primary-hover);
 }
 
 .send-btn:disabled {
-  opacity: 0.5;
+  background: var(--color-text-secondary);
   cursor: not-allowed;
 }
 
 .stop-btn {
   background: var(--color-error);
-  color: white;
 }
 
 .stop-btn:hover {
-  background: var(--color-error);
-  opacity: 0.8;
+  background: rgba(var(--color-error-rgb), 0.8);
 }
 
+/* ============================================================================
+   Input Metadata and Controls
+   ============================================================================ */
+
+/* Container for model selection and session info */
 .input-info {
   display: flex;
-  align-items: center;
   justify-content: space-between;
-  gap: var(--space-12);
-  font-size: var(--font-size-sm);
+  align-items: center;
+  gap: var(--space-16);
+  margin-top: var(--space-8);
+  font-size: var(--font-size-xs);
   color: var(--color-text-secondary);
 }
 
@@ -119,15 +144,18 @@
 .input-metrics {
   display: flex;
   align-items: center;
-  gap: var(--space-12);
+  gap: var(--space-8);
 }
 
 .session-info {
-  font-size: var(--font-size-xs);
-  color: var(--color-text-secondary);
+  font-family: var(--font-family-mono);
 }
 
-/* File Mention Dropdown */
+/* ============================================================================
+   File Mention Autocomplete
+   ============================================================================ */
+
+/* Dropdown for file path autocompletion when typing @ */
 .file-mention-dropdown {
   position: absolute;
   bottom: 100%;

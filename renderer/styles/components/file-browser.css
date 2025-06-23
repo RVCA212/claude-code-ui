@@ -1,5 +1,24 @@
+/**
+ * File Browser Component Styles
+ * 
+ * Used by: Left sidebar file browser for project navigation
+ * Related files:
+ *   - src/renderer/components/file-browser.js (main component logic)
+ *   - src/renderer/components/file-editor.js (file opening integration)
+ *   - renderer/index.html (file-browser section in sidebar)
+ * 
+ * Features:
+ *   - Directory navigation with breadcrumbs
+ *   - File type icons using VSCode Codicons
+ *   - Quick access shortcuts
+ *   - File search and filtering
+ *   - Navigation controls (back, forward, up, home)
+ *   - Conversation history toggle
+ *   - Loading and empty states
+ */
+
 /* ============================================================================
-   File Browser Styles
+   Base File Browser Container
    ============================================================================ */
 
 .file-browser {
@@ -11,7 +30,11 @@
   overflow: hidden;
 }
 
-/* Navigation Toolbar */
+/* ============================================================================
+   Navigation Controls
+   ============================================================================ */
+
+/* Navigation toolbar with back/forward/up/home buttons */
 .file-browser-toolbar {
   padding: 8px;
   border-bottom: 1px solid var(--color-border);
@@ -53,7 +76,11 @@
   height: 16px;
 }
 
-/* Breadcrumb Navigation */
+/* ============================================================================
+   Breadcrumb Navigation
+   ============================================================================ */
+
+/* Directory path breadcrumb display */
 .breadcrumb-container {
   padding: 8px 12px;
   background: var(--color-background);
@@ -103,7 +130,11 @@
   font-size: 12px;
 }
 
-/* Working Directory Indicator */
+/* ============================================================================
+   Working Directory Display
+   ============================================================================ */
+
+/* Current working directory indicator */
 .working-directory-indicator {
   padding: 8px 12px;
   background: var(--color-primary);
@@ -123,7 +154,11 @@
   word-break: break-all;
 }
 
-/* Quick Access */
+/* ============================================================================
+   Quick Access Shortcuts
+   ============================================================================ */
+
+/* Collapsible quick access section for frequent directories */
 .quick-access {
   border-bottom: 1px solid var(--color-border);
 }
@@ -221,7 +256,11 @@
   font-weight: 500;
 }
 
-/* File List Container */
+/* ============================================================================
+   File List Display
+   ============================================================================ */
+
+/* Main file listing container with header and search */
 .file-list-container {
   flex: 1;
   display: flex;
@@ -262,7 +301,11 @@
   color: var(--color-text);
 }
 
-/* File Search */
+/* ============================================================================
+   File Search and Filtering
+   ============================================================================ */
+
+/* Search input and filtering controls */
 .file-search {
   position: relative;
   padding: 8px 12px;
@@ -335,7 +378,11 @@
   font-size: 12px;
 }
 
-/* File List */
+/* ============================================================================
+   File Item Rendering
+   ============================================================================ */
+
+/* Individual file and directory items */
 .file-list {
   flex: 1;
   overflow-y: auto;
@@ -510,7 +557,11 @@
   color: var(--color-border);
 }
 
-/* Loading State */
+/* ============================================================================
+   Loading and Empty States
+   ============================================================================ */
+
+/* Loading spinner while fetching directory contents */
 .loading-state {
   display: flex;
   flex-direction: column;
@@ -544,4 +595,90 @@
   justify-content: center;
   padding: 32px;
   color: var(--color-text-secondary);
+}
+
+.empty-icon {
+  font-size: 32px;
+  margin-bottom: 12px;
+  opacity: 0.6;
+  color: var(--color-text-secondary);
+}
+
+.empty-message {
+  font-size: var(--font-size-sm);
+  text-align: center;
+}
+
+/* ============================================================================
+   Status Bar and Controls
+   ============================================================================ */
+
+/* Bottom status bar with file count and history toggle */
+.file-browser-status {
+  padding: 6px 12px;
+  background: var(--color-background);
+  border-top: 1px solid var(--color-border);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+/* Sidebar History Toggle Button */
+.history-toggle-btn {
+  background: none;
+  border: none;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+  cursor: pointer;
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  transition: background-color var(--duration-fast) var(--ease-standard), color var(--duration-fast) var(--ease-standard);
+}
+
+.history-toggle-btn:hover {
+  background: var(--color-secondary-hover);
+  color: var(--color-text);
+}
+
+/* ============================================================================
+   Scrollbar Customization
+   ============================================================================ */
+
+/* Custom scrollbar styling for file list */
+.file-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.file-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.file-list::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 3px;
+}
+
+.file-list::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-secondary);
+}
+
+/* ============================================================================
+   Conversation History Integration
+   ============================================================================ */
+
+/* Alternative view showing conversation history instead of files */
+.conversation-history-sidebar {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.conversations-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-8);
 }

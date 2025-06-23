@@ -1,20 +1,75 @@
-/* Main CSS Import File */
+/**
+ * Main CSS Entry Point for Claude Code Chat Electron App
+ * 
+ * This file orchestrates all stylesheets for the application using CSS imports.
+ * Import order is critical for proper style cascading and theme application.
+ * 
+ * Architecture:
+ *   1. Foundation Layer: Variables, themes, base styles, utilities
+ *   2. Layout Layer: Core app layout and responsive design
+ *   3. Component Layer: Individual component styles
+ * 
+ * Related files:
+ *   - renderer/index.html (references this as main stylesheet)
+ *   - All component JavaScript files use these styles
+ */
 
-/* Foundation styles - load first */
+/* ============================================================================
+   FOUNDATION LAYER - CSS Custom Properties and Base Styles
+   ============================================================================ */
+
+/* CSS custom properties (variables) - must load first */
 @import './variables.css';
+
+/* Theme definitions for dark/light mode support */
 @import './themes/dark.css';
+
+/* Base HTML element styles, typography, and resets */
 @import './base.css';
+
+/* Utility classes for common styling patterns */
 @import './utilities.css';
+
+/* ============================================================================
+   LAYOUT LAYER - Application Structure
+   ============================================================================ */
+
+/* Core three-panel layout system (sidebar, editor, chat) */
 @import './layout.css';
 
-/* Component styles */
+/* ============================================================================
+   COMPONENT LAYER - UI Components
+   ============================================================================ */
+
+/* Global application header with window controls and navigation */
 @import './components/global-header.css';
+
+/* Left sidebar container and general sidebar behavior */
 @import './components/sidebar.css';
+
+/* File browser component in left sidebar */
 @import './components/file-browser.css';
+
+/* Monaco code editor container and styling */
 @import './components/file-editor.css';
+
+/* Right sidebar chat interface */
 @import './components/chat-sidebar.css';
+
+/* Message display components and tool outputs */
 @import './components/message.css';
+
+/* Chat input area and file mention functionality */
 @import './components/input-area.css';
+
+/* Conversation history and session management */
 @import './components/session-manager.css';
+
+/* Modal dialogs and overlays */
 @import './components/modals.css';
+
+/* Settings panels and configuration UI */
 @import './components/settings.css';
+
+/* Toast notifications and status messages */
+@import './components/notifications.css';

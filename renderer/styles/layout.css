@@ -1,4 +1,25 @@
-/* Core app layout */
+/**
+ * Core Application Layout System
+ * 
+ * Manages the three-panel layout architecture for Claude Code Chat:
+ *   1. Left Panel: File browser sidebar
+ *   2. Center Panel: Monaco code editor (conditional)
+ *   3. Right Panel: Chat interface
+ * 
+ * Related files:
+ *   - src/renderer/components/app-component.js (layout state management)
+ *   - src/renderer/components/file-editor.js (editor activation)
+ *   - renderer/index.html (main app structure)
+ * 
+ * Layout Modes:
+ *   - Chat-only: Full-width chat when no file is open
+ *   - Split-view: Three-panel layout when file is open
+ *   - Collapsible sidebars with JavaScript toggle controls
+ */
+
+/* ============================================================================
+   Base Application Container
+   ============================================================================ */
 .app {
   display: flex;
   flex: 1; /* Let the app container grow to fill available space */
@@ -13,4 +34,189 @@
   flex: 1;
   min-height: 0;
   /* Flexbox layout for resizable three-panel design */
+}
+
+/* ============================================================================
+   Three-Panel Layout System
+   ============================================================================ */
+
+/* Main content container - houses all three panels */
+.app-content {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  /* Explicit flexbox layout for three-panel design */
+  flex-direction: row; /* Ensure horizontal layout */
+}
+
+/* ============================================================================
+   Right Panel: Chat Sidebar
+   ============================================================================ */
+
+/* Chat sidebar - adapts between full-width and sidebar modes */
+.chat-sidebar {
+  background-color: var(--color-background);
+  display: flex; /* Always display: flex when visible */
+  flex-direction: column;
+  position: relative; /* For resize handle positioning */
+  overflow: hidden; /* Prevent content overflow */
+  height: 100%; /* Ensure full height */
+  z-index: 20; /* Significantly higher than editor for proper stacking */
+  order: 3; /* Place after editor in flex order */
+}
+
+/* Chat-only mode: When no editor is active, chat takes full width */
+.app-content:not(.editor-active) .chat-sidebar:not(.hidden) {
+  flex: 1;
+  border-left: none; /* No left border when full width */
+  min-width: 0; /* Allow full flexibility */
+  max-width: none; /* No maximum constraint */
+}
+
+/* Split-view mode: When editor is active, chat becomes fixed-width sidebar */
+.app-content.editor-active .chat-sidebar:not(.hidden) {
+  flex: 0 0 var(--chat-sidebar-width);
+  width: var(--chat-sidebar-width);
+  border-left: 1px solid var(--color-border);
+  min-width: var(--chat-sidebar-min-width);
+  max-width: var(--chat-sidebar-max-width);
+  z-index: 20; /* Ensure proper stacking even in split view */
+  position: relative; /* Ensure stacking context */
+}
+
+/* ============================================================================
+   Center Panel: File Editor (Conditional)
+   ============================================================================ */
+
+/* Hide the editor panel unless a file is actively open */
+.editor-container:not(.active) {
+  display: none; /* Remain hidden until the "active" class is added */
+}
+
+/* When editor is active, it takes remaining space between sidebars */
+.editor-container {
+  order: 2; /* Place between sidebar (order 1) and chat sidebar (order 3) */
+  z-index: 5; /* Lower than chat sidebar but higher than file browser */
+}
+
+/* Editor becomes visible and takes remaining space when file is opened */
+.editor-container.active {
+  display: flex;
+  flex: 1; /* Fill remaining space between file browser and chat sidebar */
+  min-width: var(--editor-min-width); /* Ensure minimum usable width */
+}
+
+/* ============================================================================
+   Left Panel: File Browser Sidebar
+   ============================================================================ */
+
+/* File browser sidebar gets explicit flex ordering */
+.sidebar {
+  order: 1; /* First in flex order */
+}
+
+/* ============================================================================
+   Panel Visibility Controls
+   ============================================================================ */
+
+/* Hide panels when .hidden class is applied by JavaScript */
+.app-content .sidebar.hidden {
+  display: none;
+}
+
+.app-content .chat-sidebar.hidden {
+  display: none; /* Hide sidebar when hidden class is applied */
+}
+
+/* Ensure chat sidebar proper visibility when being shown */
+.app-content .chat-sidebar:not(.hidden) {
+  display: flex; /* Explicit flex display when visible */
+  z-index: 20; /* Always maintain high z-index when visible */
+  position: relative; /* Establish stacking context */
+}
+
+/* High-specificity rules to ensure chat sidebar always appears above editor */
+.app-content.editor-active .editor-container.active ~ .chat-sidebar:not(.hidden),
+.app-content .editor-container.active ~ .chat-sidebar:not(.hidden),
+.app-content .chat-sidebar:not(.hidden) {
+  z-index: 25 !important; /* Force chat sidebar above everything */
+  position: relative !important;
+  order: 3 !important; /* Ensure flex order is maintained */
+}
+
+/* Ensure editor always stays below chat sidebar when both are active */
+.app-content.editor-active .editor-container.active {
+  z-index: 5 !important; /* Keep editor below chat sidebar */
+  position: relative;
+}
+
+/* ============================================================================
+   Flex Layout Behavior for Components
+   ============================================================================ */
+
+/* Ensure proper flex behavior for core layout elements */
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.file-browser {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.file-list-container {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.file-list {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.file-browser-status {
+  flex-shrink: 0;
+}
+
+.main-chat {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.chat-header {
+  flex-shrink: 0;
+}
+
+.messages-container {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.input-area {
+  flex-shrink: 0;
+}
+
+.quick-access {
+  flex-shrink: 0;
+}
+
+.breadcrumb-container {
+  flex-shrink: 0;
+}
+
+.file-list-header {
+  flex-shrink: 0;
+}
+
+.file-search {
+  flex-shrink: 0;
 }

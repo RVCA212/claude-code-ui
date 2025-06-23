@@ -1,4 +1,18 @@
-/* Settings Component Styles */
+/**
+ * Settings Component Styles
+ * 
+ * Used by: Settings modal and configuration UI
+ * Related files:
+ *   - src/renderer/components/settings-component.js (main settings logic)
+ *   - renderer/index.html (settings modal section)
+ * 
+ * Features:
+ *   - Tabbed settings interface (General, MCP Servers)
+ *   - Setup status indicators with color coding
+ *   - MCP server configuration forms
+ *   - API key and CLI status display
+ *   - Form validation and styling
+ */
 .settings-tabs {
   display: flex;
   border-bottom: 1px solid var(--color-border);

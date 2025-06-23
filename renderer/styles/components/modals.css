@@ -1,4 +1,19 @@
-/* Modal Styles */
+/**
+ * Modal Dialog Component Styles
+ * 
+ * Used by: Modal dialogs and overlays throughout the app
+ * Related files:
+ *   - renderer/index.html (settings modal, delete confirmation modal)
+ *   - src/renderer/components/settings-component.js (settings modal)
+ *   - src/renderer/components/session-manager.js (delete confirmation)
+ * 
+ * Features:
+ *   - Backdrop overlay with blur effect
+ *   - Centered modal positioning
+ *   - Responsive modal sizing
+ *   - Action button layouts
+ *   - Delete confirmation styling
+ */
 .modal-overlay {
   position: fixed;
   top: 0;

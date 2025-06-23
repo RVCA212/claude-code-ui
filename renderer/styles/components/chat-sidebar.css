@@ -1,17 +1,42 @@
-/* Chat Sidebar Styles */
+/**
+ * Chat Sidebar Component Styles
+ * 
+ * Used by: Right panel chat interface in the three-panel layout
+ * Related files:
+ *   - src/renderer/components/chat-sidebar.js (main component logic)
+ *   - src/renderer/components/message-component.js (message rendering)
+ *   - src/renderer/components/session-manager.js (conversation management)
+ *   - renderer/index.html (chat-sidebar section)
+ * 
+ * Features:
+ *   - Adaptive layout (full-width or sidebar mode)
+ *   - Conversation header with title editing
+ *   - Message display area with scrolling
+ *   - History dropdown for conversation switching
+ *   - Empty state for new users
+ *   - Integration with layout.css for panel management
+ */
+
+/* ============================================================================
+   Base Chat Sidebar Container
+   ============================================================================ */
 .chat-sidebar {
-  flex: 0 0 var(--chat-sidebar-width);
-  width: var(--chat-sidebar-width);
-  min-width: var(--chat-sidebar-min-width);
-  max-width: var(--chat-sidebar-max-width);
+  /* Removed hardcoded flex properties to allow layout.css to control positioning */
   background-color: var(--color-surface);
   border-left: 1px solid var(--color-border);
-  display: flex;
+  /* Removed hardcoded display: flex to allow layout.css to control visibility */
   flex-direction: column;
   overflow: hidden;
+  /* Keep sizing properties for when the sidebar is visible */
+  min-width: var(--chat-sidebar-min-width);
+  max-width: var(--chat-sidebar-max-width);
 }
 
-/* Main Chat Area */
+/* ============================================================================
+   Main Chat Container
+   ============================================================================ */
+
+/* Main chat area - contains header, messages, and input */
 .main-chat {
   flex: 1;
   width: 100%;
@@ -22,6 +47,11 @@
   overflow: hidden; /* Prevent overflow */
 }
 
+/* ============================================================================
+   Chat Header Section
+   ============================================================================ */
+
+/* Header containing conversation title and action buttons */
 .chat-header {
   padding: var(--space-16) var(--space-24);
   border-bottom: 1px solid var(--color-border);
@@ -98,7 +128,11 @@
   height: 14px;
 }
 
-/* Messages Container */
+/* ============================================================================
+   Message Display Area
+   ============================================================================ */
+
+/* Scrollable container for all messages */
 .messages-container {
   flex: 1;
   overflow-y: auto;
@@ -106,37 +140,166 @@
   background-color: var(--color-surface);
 }
 
-/* Empty State */
+/* ============================================================================
+   Empty State Display
+   ============================================================================ */
+
+/* Welcome screen shown when no conversation is active */
 .empty-state {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  height: 100%;
   text-align: center;
-  padding: var(--space-32);
   color: var(--color-text-secondary);
+  max-width: 600px;
+  margin: 0 auto;
 }
 
 .empty-state h3 {
+  margin-bottom: var(--space-8);
   color: var(--color-text);
-  margin-bottom: var(--space-16);
 }
 
-.empty-state p {
-  margin-bottom: var(--space-24);
+.features-info {
+  margin-top: var(--space-24);
+  text-align: left;
 }
 
 .features-info h4 {
-  color: var(--color-text);
   margin-bottom: var(--space-12);
+  color: var(--color-text);
 }
 
 .features-info ul {
-  text-align: left;
   list-style: none;
   padding: 0;
+  margin: 0;
 }
 
 .features-info li {
   margin-bottom: var(--space-8);
+}
+
+/* ============================================================================
+   Header Action Buttons
+   ============================================================================ */
+
+/* Buttons for new conversation, history, etc. */
+.header-action-btn {
+  background: transparent;
+  border: none;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  transition: background-color var(--duration-fast) var(--ease-standard);
+  color: var(--color-text);
+  -webkit-app-region: no-drag;
+}
+
+.header-action-btn:hover {
+  background: var(--color-secondary-hover);
+}
+
+.header-action-btn svg {
+  color: var(--color-text);
+}
+
+/* ============================================================================
+   History Management
+   ============================================================================ */
+
+/* Button to show conversation history dropdown */
+.history-btn {
+  background: transparent;
+  border: none;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  transition: color var(--duration-fast) var(--ease-standard);
+  -webkit-app-region: no-drag;
+}
+
+.history-btn svg {
+  color: #fff;
+}
+
+.history-btn:hover {
+  background: transparent;
+}
+
+.history-btn:hover svg {
+  color: var(--color-text-secondary);
+}
+
+/* History Dropdown */
+.history-dropdown {
+  position: absolute;
+  top: calc(100% + var(--space-8));
+  right: 0;
+  width: 260px;
+  max-height: 400px;
+  overflow-y: auto;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-base);
+  box-shadow: var(--shadow-lg);
+  z-index: 1000;
+}
+
+/* Ensure conversation items fit within dropdown */
+.history-dropdown .conversation-item {
+  width: 100%;
+  max-width: 100%;
+}
+
+/* Adjust dropdown scrollbar */
+.history-dropdown::-webkit-scrollbar {
+  width: 6px;
+}
+
+.history-dropdown::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 3px;
+}
+
+/* ============================================================================
+   Model Selection UI
+   ============================================================================ */
+
+/* Model selection dropdown container */
+.model-selection-container {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  padding: var(--space-4) var(--space-12);
+  background: var(--color-background);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-base);
+  -webkit-app-region: no-drag;
+}
+
+.model-label {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text);
+  white-space: nowrap;
+}
+
+/* Status Dot for cleaner badges */
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: currentColor;
+  display: inline-block;
 }

@@ -1,4 +1,24 @@
-/* Session Manager Styles */
+/**
+ * Session Manager Component Styles
+ * 
+ * Used by: Conversation history and session management UI
+ * Related files:
+ *   - src/renderer/components/session-manager.js (main session logic)
+ *   - src/renderer/components/chat-sidebar.js (history dropdown integration)
+ *   - renderer/index.html (conversations-list sections)
+ * 
+ * Features:
+ *   - Conversation list display with metadata
+ *   - Status indicators (active, historical, archived)
+ *   - Delete conversation functionality
+ *   - History button and dropdown positioning
+ *   - Conversation switching and selection
+ *   - Timestamp and preview display
+ */
+
+/* ============================================================================
+   Conversation List Container
+   ============================================================================ */
 .conversations-list {
   flex: 1;
   overflow-y: auto;
@@ -6,6 +26,11 @@
   -webkit-app-region: no-drag; /* Make conversations list interactive, not draggable */
 }
 
+/* ============================================================================
+   Individual Conversation Items
+   ============================================================================ */
+
+/* Individual conversation card in the list */
 .conversation-item {
   padding: var(--space-12);
   margin-bottom: var(--space-4);
@@ -39,7 +64,12 @@
   margin-bottom: var(--space-4);
 }
 
-.conversation-title-text {
+.conversation-title-container {
+  display: flex;
+  align-items: center;
+}
+
+.conversation-title-container .conversation-title-text {
   font-weight: var(--font-weight-medium);
   color: #ffffff;
   font-size: var(--font-size-sm);
@@ -50,10 +80,38 @@
   min-width: 0;
 }
 
+.conversation-title-container .conversation-status {
+  display: flex;
+  align-items: center;
+}
+
+.conversation-title-container .status-badge {
+  padding: 0; /* remove badge padding */
+  margin: 0;
+  background: transparent;
+  border: none;
+}
+
+.conversation-title-container .status-badge .status-dot {
+  width: 8px;
+  height: 8px;
+}
+
 .conversation-status-indicator {
-  font-size: var(--font-size-xs);
-  opacity: 0.8;
+  position: relative;
+  font-size: 0; /* hide any emoji or text */
   flex-shrink: 0;
+  width: 10px; /* reserve space for dot */
+  height: 10px;
+}
+
+.conversation-status-indicator::before {
+  content: '';
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: currentColor;
 }
 
 .conversation-status-indicator.active {
@@ -89,10 +147,13 @@
   color: #72767d;
 }
 
+/* ============================================================================
+   Conversation Metadata and Actions
+   ============================================================================ */
+
+/* Hide old message count style (no longer used) */
 .message-count {
-  font-size: var(--font-size-xs);
-  color: #72767d;
-  opacity: 0.7;
+  display: none;
 }
 
 .delete-conversation-btn {
@@ -116,9 +177,13 @@
   background-color: rgba(237, 66, 69, 0.1);
 }
 
-/* History Button and Dropdown */
+/* ============================================================================
+   History Button and Dropdown Controls
+   ============================================================================ */
+
+/* Main history button and its dropdown positioning */
 .history-btn {
-  background: var(--color-primary);
+  background: transparent;
   border: none;
   padding: var(--space-8);
   border-radius: var(--radius-base);
@@ -127,12 +192,12 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background-color var(--duration-fast) var(--ease-standard);
+  transition: color var(--duration-fast) var(--ease-standard);
   -webkit-app-region: no-drag;
 }
 
 .history-btn:hover {
-  background: var(--color-primary-hover);
+  background: transparent;
 }
 
 .history-dropdown {

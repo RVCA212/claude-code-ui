@@ -1,4 +1,17 @@
-/* Sidebar Styles */
+/**
+ * Sidebar Container Component Styles
+ * 
+ * Used by: Left sidebar container housing file browser
+ * Related files:
+ *   - renderer/index.html (sidebar section)
+ *   - src/renderer/components/file-browser.js (contained component)
+ *   - renderer/styles/layout.css (panel positioning)
+ * 
+ * Features:
+ *   - Fixed-width left panel container
+ *   - Integration with global header drag region
+ *   - Dark theme styling
+ */
 .sidebar {
   flex: 0 0 var(--sidebar-width);
   width: var(--sidebar-width);

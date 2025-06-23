@@ -36,6 +36,8 @@ class SessionManager {
     this.cancelDeleteBtn = document.getElementById('cancelDeleteBtn');
 
     this.sessionToDelete = null;
+
+    this.conversationTitleContainer = document.querySelector('.conversation-title-container');
   }
 
   setupEventListeners() {
@@ -275,7 +277,6 @@ class SessionManager {
     const sessionsHTML = this.sessions.map(session => {
       const isActive = session.id === this.currentSessionId;
       const statusClass = session.statusInfo?.status || 'active';
-      const statusIcon = this.getStatusIcon(statusClass);
       const preview = this.getSessionPreview(session);
       const timestamp = DOMUtils.formatTimestamp(session.lastActivity || session.updatedAt);
 
@@ -290,12 +291,11 @@ class SessionManager {
           <div class="conversation-content">
             <div class="conversation-header">
               <div class="conversation-title-text">${DOMUtils.escapeHTML(session.title)}</div>
-              <span class="conversation-status-indicator ${statusClass}">${statusIcon}</span>
+              <span class="conversation-status-indicator ${statusClass}"></span>
             </div>
             <div class="conversation-preview">${DOMUtils.escapeHTML(preview)}</div>
             <div class="conversation-meta">
               <span class="conversation-timestamp">${timestamp}</span>
-              <span class="message-count">${session.messages?.length || 0} msgs</span>
               ${cwdDisplay}
             </div>
           </div>
@@ -376,24 +376,45 @@ class SessionManager {
       this.conversationContext.style.display = 'block';
       this.conversationContext.innerHTML = this.createContextHTML(session.conversationPreview);
     }
+
+    // Move the status element next to the title (inside the title container) so
+    // that only a small dot is shown to the right of the conversation title.
+    if (this.conversationTitleContainer && this.conversationStatus) {
+      // Ensure the status element is the last child in the title container
+      // (after the editable title itself).
+      this.conversationTitleContainer.appendChild(this.conversationStatus);
+    }
   }
 
   createStatusHTML(statusInfo) {
     const statusClass = statusInfo.status || 'active';
-    const statusIcon = this.getStatusIcon(statusClass);
+
+    // Determine whether to include a text label. We want to hide the label for
+    // the common "active" and "historical" states so that only the colored dot
+    // is rendered in the chat header. For any other custom states (e.g.
+    // "archived") we continue to display the text label.
+    let statusLabelHTML = '';
+    if (statusClass !== 'active' && statusClass !== 'historical') {
+      const labelMap = {
+        'archived': 'Archived',
+      };
+      const labelText = labelMap[statusClass] || statusClass;
+      statusLabelHTML = ` ${labelText}`;
+    }
+
+    // Build the status badge HTML (dot + optional label)
+    const statusBadge = `
+      <div class="status-badge ${statusClass}">
+        <span class="status-dot"></span>${statusLabelHTML}
+      </div>
+    `;
 
     // Add working directory badge if available
     const cwdBadge = statusInfo.hasWorkingDirectory
       ? `<div class="cwd-badge" title="Working directory: ${statusInfo.workingDirectory}">📁 ${this.getDisplayPath(statusInfo.workingDirectory)}</div>`
       : '';
 
-    return `
-      <div class="status-badge ${statusClass}">
-        ${statusIcon} ${statusClass}
-      </div>
-      <div class="message-count-badge">${statusInfo.messageCount} messages</div>
-      ${cwdBadge}
-    `;
+    return `${statusBadge}${cwdBadge}`;
   }
 
   createContextHTML(preview) {
@@ -401,12 +422,8 @@ class SessionManager {
   }
 
   getStatusIcon(status) {
-    const icons = {
-      'active': '🟢',
-      'historical': '⚪',
-      'archived': '🟡'
-    };
-    return icons[status] || '⚪';
+    // Icons are now rendered purely with CSS dot, so return empty string
+    return '';
   }
 
   getSessionPreview(session) {

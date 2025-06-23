@@ -3,10 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="styles/main.css">
     <!-- VSCode Codicons -->
     <link rel="stylesheet" href="../node_modules/@vscode/codicons/dist/codicon.css">
-    <!-- Global header styles -->
+    <!-- Base layout styles for body - extracted global header styles moved to components/global-header.css -->
     <style>
         body {
             display: flex;
@@ -14,187 +14,6 @@
             height: 100vh;
             margin: 0;
             overflow: hidden;
-        }
-
-        /* Global header bar that spans the entire app */
-        .global-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            height: 44px;
-            background: var(--color-surface);
-            border-bottom: 1px solid var(--color-border);
-            padding: 0 var(--space-12);
-            -webkit-app-region: drag; /* Make header draggable for window movement */
-            z-index: 2000;
-            position: relative;
-        }
-
-        .global-header-left {
-            display: flex;
-            align-items: center;
-            gap: var(--space-12);
-        }
-
-        .global-header-center {
-            flex: 1;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .global-header-right {
-            display: flex;
-            align-items: center;
-            gap: var(--space-8);
-        }
-
-        /* Sidebar toggle button in global header */
-        .global-sidebar-toggle-btn {
-            background: transparent;
-            border: none;
-            padding: var(--space-6);
-            cursor: pointer;
-            color: var(--color-text-secondary);
-            border-radius: var(--radius-sm);
-            transition: all var(--duration-fast) var(--ease-standard);
-            -webkit-app-region: no-drag; /* Allow click events */
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .global-sidebar-toggle-btn:hover {
-            background: var(--color-secondary);
-            color: var(--color-text);
-        }
-
-        .global-sidebar-toggle-btn svg {
-            display: block;
-        }
-
-        /* App title in global header */
-        .global-app-title {
-            font-size: var(--font-size-sm);
-            font-weight: var(--font-weight-medium);
-            color: var(--color-text-secondary);
-            margin: 0;
-            -webkit-app-region: no-drag;
-        }
-
-        /* Status indicator */
-        .global-status-indicator {
-            font-size: var(--font-size-xs);
-            color: var(--color-text-secondary);
-            display: flex;
-            align-items: center;
-            gap: var(--space-4);
-        }
-
-        .global-status-dot {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            background: var(--color-success);
-        }
-
-        /* Remove old sidebar toggle styles since we moved it to global header */
-        .sidebar-toggle-btn {
-            display: none !important;
-        }
-
-        /* Update sidebar padding to not account for macOS buttons since they're handled by global header */
-        .sidebar {
-            padding-top: 0 !important;
-        }
-
-        /* Utility class added by JS when the sidebar is hidden */
-        .sidebar.hidden {
-            display: none !important;
-        }
-
-        /* Chat sidebar hidden state */
-        .chat-sidebar.hidden {
-            display: none !important;
-        }
-
-        /* Ensure proper layout for sidebars with fixed bottom elements */
-        .sidebar {
-            display: flex;
-            flex-direction: column;
-            height: 100%;
-            overflow: hidden;
-        }
-
-        .file-browser {
-            display: flex;
-            flex-direction: column;
-            height: 100%;
-            overflow: hidden;
-        }
-
-        .file-list-container {
-            flex: 1;
-            overflow: hidden;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .file-list {
-            flex: 1;
-            overflow-y: auto;
-        }
-
-        .file-browser-status {
-            flex-shrink: 0;
-        }
-
-        .chat-sidebar {
-            display: flex;
-            flex-direction: column;
-            height: 100%;
-            overflow: hidden;
-        }
-
-        .main-chat {
-            display: flex;
-            flex-direction: column;
-            height: 100%;
-            overflow: hidden;
-        }
-
-        .chat-header {
-            flex-shrink: 0;
-        }
-
-        .messages-container {
-            flex: 1;
-            overflow-y: auto;
-        }
-
-        .input-area {
-            flex-shrink: 0;
-        }
-
-        .quick-access {
-            flex-shrink: 0;
-        }
-
-        .breadcrumb-container {
-            flex-shrink: 0;
-        }
-
-        .file-list-header {
-            flex-shrink: 0;
-        }
-
-        .file-search {
-            flex-shrink: 0;
-        }
-
-        .app-content {
-            display: flex;
-            flex: 1;
         }
     </style>
 </head>
@@ -688,6 +507,7 @@
           });
 
           // Initialize button states
+          console.log('Initializing global header button states');
           this.updateButtonStates();
         }
 
@@ -700,20 +520,146 @@
         }
 
         toggleRightSidebar() {
-          // Toggle the chat sidebar
+          // Toggle the chat sidebar with proper synchronization
           const chatSidebar = document.getElementById('chatSidebar');
-          if (chatSidebar) {
-            chatSidebar.classList.toggle('hidden');
-            this.updateButtonStates();
+          if (!chatSidebar) {
+            console.error('Chat sidebar element not found');
+            return;
           }
+
+          const wasHidden = chatSidebar.classList.contains('hidden');
+          console.log('Chat sidebar toggle: currently hidden =', wasHidden);
+          
+          // Perform the toggle
+          chatSidebar.classList.toggle('hidden');
+          
+          const isNowHidden = chatSidebar.classList.contains('hidden');
+          console.log('Chat sidebar toggle: now hidden =', isNowHidden);
+          
+          // Force comprehensive flexbox layout recalculation
+          const appContent = document.querySelector('.app-content');
+          
+          // Step 1: Force flexbox re-layout by temporarily changing flex direction
+          if (appContent) {
+            const originalDirection = appContent.style.flexDirection;
+            appContent.style.flexDirection = 'column';
+            appContent.offsetHeight; // Force reflow
+            appContent.style.flexDirection = originalDirection || 'row';
+          }
+          
+          // Step 2: Ensure proper stacking and flex order when showing
+          if (!isNowHidden) {
+            // Temporarily remove from flex layout and re-add to force repositioning
+            chatSidebar.style.display = 'none';
+            chatSidebar.offsetHeight; // Force reflow
+            chatSidebar.style.display = 'flex';
+            
+            // Ensure proper flex properties
+            chatSidebar.style.order = '3';
+            chatSidebar.style.zIndex = '25';
+            chatSidebar.style.position = 'relative';
+            
+            // Force another layout pass
+            if (appContent) {
+              appContent.offsetHeight;
+            }
+          }
+          
+          // Step 4: Update button states with multiple animation frames for stability
+          requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+              this.updateButtonStates();
+              
+              // Final validation - ensure layout is correct
+              if (!isNowHidden) {
+                this.validateChatSidebarLayout();
+              }
+              
+              // Emit event for app-component coordination
+              document.dispatchEvent(new CustomEvent('chatSidebarToggled', {
+                detail: { isHidden: isNowHidden }
+              }));
+            });
+          });
         }
 
+        validateChatSidebarLayout() {
+          // Validate that the chat sidebar is properly positioned and visible
+          const chatSidebar = document.getElementById('chatSidebar');
+          const editorContainer = document.querySelector('.editor-container');
+          const appContent = document.querySelector('.app-content');
+          
+          if (!chatSidebar || chatSidebar.classList.contains('hidden')) {
+            return; // Skip validation if sidebar is hidden
+          }
+          
+          // Check if sidebar is properly visible
+          const sidebarRect = chatSidebar.getBoundingClientRect();
+          const isActuallyVisible = sidebarRect.width > 0 && sidebarRect.height > 0;
+          
+          if (!isActuallyVisible) {
+            console.warn('Chat sidebar validation failed: not visible after toggle');
+            // Force complete flexbox re-layout
+            this.forceFlexboxRelayout(chatSidebar, appContent);
+            return;
+          }
+          
+          // If editor is active, ensure chat sidebar is in the correct position
+          if (editorContainer && editorContainer.classList.contains('active')) {
+            const editorRect = editorContainer.getBoundingClientRect();
+            
+            // Chat sidebar should be to the right of the editor
+            if (sidebarRect.left <= editorRect.right + 5) { // 5px tolerance
+              console.warn('Chat sidebar validation failed: positioned incorrectly relative to editor');
+              console.log(`Sidebar left: ${sidebarRect.left}, Editor right: ${editorRect.right}`);
+              
+              // Force complete flexbox re-layout
+              this.forceFlexboxRelayout(chatSidebar, appContent);
+              return;
+            }
+          }
+          
+          console.log('Chat sidebar layout validation completed successfully');
+        }
 
+        forceFlexboxRelayout(chatSidebar, appContent) {
+          // Nuclear option: force complete flexbox recalculation
+          console.log('Forcing complete flexbox re-layout...');
+          
+          // Step 1: Remove from layout
+          chatSidebar.style.display = 'none';
+          if (appContent) {
+            appContent.offsetHeight; // Force reflow
+          }
+          
+          // Step 2: Re-add with explicit properties
+          chatSidebar.style.display = 'flex';
+          chatSidebar.style.order = '3';
+          chatSidebar.style.zIndex = '25';
+          chatSidebar.style.position = 'relative';
+          
+          // Step 3: Force flexbox direction change and back
+          if (appContent) {
+            const originalDirection = getComputedStyle(appContent).flexDirection;
+            appContent.style.flexDirection = 'column';
+            appContent.offsetHeight; // Force reflow
+            appContent.style.flexDirection = originalDirection;
+            appContent.offsetHeight; // Force reflow again
+          }
+          
+          console.log('Flexbox re-layout completed');
+        }
 
         updateButtonStates() {
+          // Defensive check - ensure elements exist before manipulation
+          if (!this.sidebarToggleBtn || !this.chatToggleBtn) {
+            console.warn('Toggle buttons not available yet, skipping state update');
+            return;
+          }
+
           // Update left sidebar button state
           const sidebar = document.querySelector('.sidebar');
-          if (this.sidebarToggleBtn && sidebar) {
+          if (sidebar) {
             if (sidebar.classList.contains('hidden')) {
               this.sidebarToggleBtn.classList.remove('active');
             } else {
@@ -723,12 +669,19 @@
 
           // Update right sidebar button state
           const chatSidebar = document.getElementById('chatSidebar');
-          if (this.chatToggleBtn && chatSidebar) {
-            if (chatSidebar.classList.contains('hidden')) {
+          if (chatSidebar) {
+            const isHidden = chatSidebar.classList.contains('hidden');
+            console.log('Updating chat button state: sidebar hidden =', isHidden);
+            
+            if (isHidden) {
               this.chatToggleBtn.classList.remove('active');
+              console.log('Chat button: removing active class');
             } else {
               this.chatToggleBtn.classList.add('active');
+              console.log('Chat button: adding active class');
             }
+          } else {
+            console.warn('Chat sidebar not found during state update');
           }
         }
 

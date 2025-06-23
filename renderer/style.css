@@ -410,9 +410,21 @@ pre code {
 }
 
 .conversation-status-indicator {
-  font-size: var(--font-size-xs);
-  opacity: 0.8;
+  position: relative;
+  font-size: 0; /* hide any emoji or text */
   flex-shrink: 0;
+  width: 10px;
+  height: 10px;
+  opacity: 0.8;
+}
+
+.conversation-status-indicator::before {
+  content: '';
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: currentColor;
 }
 
 .conversation-status-indicator.active {
@@ -598,12 +610,16 @@ pre code {
   border: 1px solid rgba(var(--color-warning-rgb), var(--status-border-opacity));
 }
 
+.status-badge .status-dot, .status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: currentColor;
+  display: inline-block;
+}
+
 .message-count-badge {
-  background-color: var(--color-secondary);
-  color: var(--color-text-secondary);
-  padding: var(--space-2) var(--space-6);
-  border-radius: var(--radius-full);
-  font-size: var(--font-size-xs);
+  display: none; /* message count removed from UI */
 }
 
 .conversation-context {
