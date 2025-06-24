@@ -547,6 +547,32 @@ class FileOperations {
     }
   }
 
+  // Get directory contents without changing current working directory
+  async getDirectoryContentsOnly(dirPath) {
+    try {
+      const resolvedPath = path.resolve(dirPath);
+      const isValid = await this.validateDirectory(resolvedPath);
+
+      if (!isValid) {
+        throw new Error(`Invalid directory: ${resolvedPath}`);
+      }
+
+      const contents = await this.getDirectoryContents(resolvedPath);
+      return {
+        success: true,
+        path: resolvedPath,
+        contents: contents
+      };
+    } catch (error) {
+      console.error('Failed to get directory contents only:', error);
+      return {
+        success: false,
+        error: error.message,
+        path: dirPath
+      };
+    }
+  }
+
   // Recursively search for files by name prefix
   async searchFilesByPrefix(query, maxResults = 50) {
     try {

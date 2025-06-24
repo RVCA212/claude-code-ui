@@ -66,3 +66,160 @@
   background: var(--color-error) !important;
   opacity: 0.9;
 }
+
+/* Directory Mismatch Modal Styles */
+.directory-mismatch-modal {
+  max-width: 480px;
+  padding: var(--space-24);
+}
+
+.directory-mismatch-modal .modal-header {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-16);
+  margin-bottom: var(--space-24);
+}
+
+.directory-mismatch-modal .modal-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-lg);
+  font-size: 24px;
+  flex-shrink: 0;
+}
+
+.directory-mismatch-modal .modal-icon.warning {
+  background: rgba(var(--color-warning-rgb), 0.1);
+  color: var(--color-warning);
+}
+
+.directory-mismatch-modal .modal-title {
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text);
+  margin: 0;
+  line-height: var(--line-height-tight);
+}
+
+.directory-mismatch-modal .modal-body {
+  margin-bottom: var(--space-24);
+}
+
+.directory-mismatch-modal .modal-description {
+  font-size: var(--font-size-base);
+  color: var(--color-text-secondary);
+  line-height: var(--line-height-normal);
+  margin-bottom: var(--space-20);
+}
+
+.directory-info {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-16);
+  margin-top: var(--space-16);
+}
+
+.directory-item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.directory-item + .directory-item {
+  margin-top: var(--space-16);
+  padding-top: var(--space-16);
+  border-top: 1px solid var(--color-border);
+}
+
+.directory-label {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.directory-path {
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-sm);
+  color: var(--color-text);
+  background: rgba(var(--color-info-rgb), 0.05);
+  padding: var(--space-6) var(--space-8);
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(var(--color-info-rgb), 0.1);
+  word-break: break-all;
+}
+
+.directory-path.current-dir {
+  color: var(--color-primary);
+  background: rgba(var(--color-success-rgb), 0.05);
+  border-color: rgba(var(--color-success-rgb), 0.15);
+}
+
+.directory-path.original-dir {
+  color: var(--color-text-secondary);
+}
+
+.directory-mismatch-modal .modal-footer {
+  margin-top: var(--space-24);
+}
+
+.directory-mismatch-modal .modal-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-12);
+}
+
+.modal-button {
+  padding: var(--space-10) var(--space-20);
+  border-radius: var(--radius-base);
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-medium);
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-standard);
+  min-width: 120px;
+  text-align: center;
+}
+
+.modal-button.secondary {
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  border-color: var(--color-border);
+}
+
+.modal-button.secondary:hover {
+  background: var(--color-secondary);
+  color: var(--color-text);
+  border-color: var(--color-border);
+}
+
+.modal-button.secondary:focus {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.modal-button.primary {
+  background: var(--color-primary);
+  color: var(--color-btn-primary-text);
+  border-color: var(--color-primary);
+}
+
+.modal-button.primary:hover {
+  background: var(--color-primary-hover);
+  border-color: var(--color-primary-hover);
+}
+
+.modal-button.primary:focus {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.modal-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

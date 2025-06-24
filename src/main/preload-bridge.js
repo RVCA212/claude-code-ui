@@ -54,6 +54,7 @@ class PreloadBridge {
 
       // File search operations
       searchFilesByPrefix: (query, maxResults) => ipcRenderer.invoke('search-files-by-prefix', query, maxResults),
+      getDirectoryContentsOnly: (dirPath) => ipcRenderer.invoke('get-directory-contents-only', dirPath),
 
       // MCP server management
       getMcpServers: () => ipcRenderer.invoke('get-mcp-servers'),

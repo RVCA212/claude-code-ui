@@ -76,59 +76,6 @@
   height: 16px;
 }
 
-/* ============================================================================
-   Breadcrumb Navigation
-   ============================================================================ */
-
-/* Directory path breadcrumb display */
-.breadcrumb-container {
-  padding: 8px 12px;
-  background: var(--color-background);
-  border-bottom: 1px solid var(--color-border);
-  overflow-x: auto;
-}
-
-.breadcrumb {
-  display: flex;
-  align-items: center;
-  white-space: nowrap;
-  font-size: var(--font-size-sm);
-  color: var(--color-text-secondary);
-  /* Align breadcrumb contents to the right so the current folder is always visible when the path fits */
-  justify-content: flex-end;
-}
-
-.breadcrumb-segment {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 4px 6px;
-  border-radius: 4px;
-  transition: background-color 0.2s ease;
-}
-
-.breadcrumb-segment:not(.current) {
-  cursor: pointer;
-}
-
-.breadcrumb-segment:not(.current):hover {
-  background: var(--color-secondary-hover);
-  color: var(--color-text);
-}
-
-.breadcrumb-segment.current {
-  color: var(--color-text);
-  font-weight: 500;
-}
-
-.breadcrumb-separator {
-  margin: 0 4px;
-  color: var(--color-text-secondary);
-}
-
-.breadcrumb-icon {
-  font-size: 12px;
-}
 
 /* ============================================================================
    Working Directory Display
@@ -399,6 +346,7 @@
   cursor: pointer;
   transition: all 0.2s ease;
   border: 1px solid transparent;
+  position: relative;
 }
 
 .file-item:hover {
@@ -408,6 +356,80 @@
 
 .file-item.directory {
   font-weight: 500;
+}
+
+.file-item.selected {
+  background: var(--color-secondary-hover);
+  border-color: var(--color-primary);
+}
+
+.file-item.clicking {
+  background: var(--color-primary);
+  color: var(--color-btn-primary-text);
+  border-color: var(--color-primary);
+  opacity: 0.8;
+  transition: all 0.15s ease;
+}
+
+/* Expanded folder styling */
+.file-item.directory.expanded {
+  background: var(--color-background);
+  border-left: 2px solid var(--color-primary);
+  padding-left: 10px;
+}
+
+/* Folder expansion button */
+.folder-expand-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border: none;
+  background: none;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  border-radius: 2px;
+  transition: all var(--duration-fast) var(--ease-standard);
+  flex-shrink: 0;
+  margin-right: 4px;
+}
+
+.folder-expand-btn:hover {
+  background: var(--color-secondary-hover);
+  color: var(--color-text);
+}
+
+.folder-expand-btn:active {
+  background: var(--color-secondary);
+  transform: scale(0.95);
+}
+
+.folder-expand-btn .codicon {
+  font-size: 12px;
+  transition: transform var(--duration-fast) var(--ease-standard);
+}
+
+/* Spacer for files to align with directories */
+.folder-expand-spacer {
+  width: 24px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
+/* Nested item styling */
+.file-item[data-indent-level="1"] {
+  border-left: 1px solid var(--color-border);
+}
+
+.file-item[data-indent-level="2"] {
+  border-left: 1px solid var(--color-border);
+  background: rgba(var(--color-secondary-rgb, 128, 128, 128), 0.1);
+}
+
+.file-item[data-indent-level="3"] {
+  border-left: 1px solid var(--color-border);
+  background: rgba(var(--color-secondary-rgb, 128, 128, 128), 0.15);
 }
 
 .file-icon {
@@ -666,6 +688,116 @@
 }
 
 /* ============================================================================
+   Global Search Results Styling
+   ============================================================================ */
+
+/* Separator between local and global search results */
+.search-results-separator {
+  display: flex;
+  align-items: center;
+  margin: 12px 8px;
+  gap: 8px;
+}
+
+.separator-line {
+  flex: 1;
+  height: 1px;
+  background: var(--color-border);
+}
+
+.separator-text {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  padding: 0 8px;
+  white-space: nowrap;
+  font-weight: 500;
+}
+
+/* Global search result styling */
+.file-item.global-result {
+  background: var(--color-background);
+  border-left: 3px solid var(--color-primary);
+  padding-left: 9px; /* Adjust for border */
+}
+
+.file-item.global-result:hover {
+  background: var(--color-secondary-hover);
+}
+
+.file-item.global-result .file-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.file-item.global-result .file-path {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 1px;
+  font-family: var(--font-family-mono);
+}
+
+/* Loading animation for search */
+.empty-icon.codicon-loading {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* ============================================================================
+   File Path Tooltip
+   ============================================================================ */
+
+/* Custom tooltip for showing full file paths on hover */
+.file-tooltip {
+  position: absolute;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: var(--font-size-sm);
+  font-family: var(--font-family-mono);
+  color: var(--color-text);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 1000;
+  pointer-events: none;
+  white-space: nowrap;
+  max-width: 400px;
+  word-break: break-all;
+  opacity: 0;
+  transform: translateY(-5px);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.file-tooltip.show {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.file-tooltip::before {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 20px;
+  border: 6px solid transparent;
+  border-top-color: var(--color-border);
+}
+
+.file-tooltip::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 21px;
+  border: 5px solid transparent;
+  border-top-color: var(--color-surface);
+}
+
+/* ============================================================================
    Conversation History Integration
    ============================================================================ */
 
@@ -681,4 +813,9 @@
   flex: 1;
   overflow-y: auto;
   padding: var(--space-8);
+}
+
+.file-item.global-result.selected {
+  background: var(--color-secondary-hover);
+  border-color: var(--color-primary);
 }

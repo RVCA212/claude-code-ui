@@ -152,20 +152,69 @@
 }
 
 /* ============================================================================
-   File Breadcrumb Display
+   Directory Breadcrumb Navigation
    ============================================================================ */
 
-/* Breadcrumb showing currently open file in center of header */
+/* Container for directory breadcrumb navigation in global header */
+.global-breadcrumb-container {
+  max-width: 600px;
+  min-width: 200px;
+  overflow-x: auto;
+  padding: 0 var(--space-8);
+  /* Hide scrollbar but allow scrolling */
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.global-breadcrumb-container::-webkit-scrollbar {
+  display: none;
+}
+
+/* Directory path breadcrumb display */
 .global-breadcrumb {
   display: flex;
   align-items: center;
-  gap: var(--space-4);
-  font-size: var(--font-size-xs);
+  white-space: nowrap;
+  font-size: var(--font-size-sm);
   color: var(--color-text-secondary);
-  max-width: 400px;
-  overflow: hidden;
+  /* Align breadcrumb contents to the right so the current folder is always visible when the path fits */
+  justify-content: flex-end;
 }
 
+.breadcrumb-segment {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 6px;
+  border-radius: 4px;
+  transition: background-color 0.2s ease;
+  -webkit-app-region: no-drag; /* Allow click events */
+}
+
+.breadcrumb-segment:not(.current) {
+  cursor: pointer;
+}
+
+.breadcrumb-segment:not(.current):hover {
+  background: var(--color-secondary-hover);
+  color: var(--color-text);
+}
+
+.breadcrumb-segment.current {
+  color: var(--color-text);
+  font-weight: 500;
+}
+
+.breadcrumb-separator {
+  margin: 0 4px;
+  color: var(--color-text-secondary);
+}
+
+.breadcrumb-icon {
+  font-size: 12px;
+}
+
+/* Legacy file breadcrumb styles (for compatibility) */
 .global-breadcrumb-item {
   white-space: nowrap;
   overflow: hidden;

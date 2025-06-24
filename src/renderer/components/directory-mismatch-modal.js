@@ -21,7 +21,7 @@ class DirectoryMismatchModal {
 
     // Create modal container
     this.modal = document.createElement('div');
-    this.modal.className = 'modal-container directory-mismatch-modal';
+    this.modal.className = 'modal directory-mismatch-modal';
 
     // Create modal content
     this.modal.innerHTML = `
@@ -158,6 +158,14 @@ class DirectoryMismatchModal {
     }
 
     return path;
+  }
+
+  // Static method to determine if the modal should be shown
+  // This can be enhanced later with user preferences or settings
+  static shouldShowModal() {
+    // Always show modal by default - this ensures user is aware of directory changes
+    // In the future, this could check user preferences or remember user's choice
+    return true;
   }
 }
 

@@ -197,6 +197,24 @@
   background-color: var(--color-surface);
 }
 
+/* Custom scrollbar for message container */
+.chat-sidebar .messages-container::-webkit-scrollbar {
+  width: 6px;
+}
+
+.chat-sidebar .messages-container::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.chat-sidebar .messages-container::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 3px;
+}
+
+.chat-sidebar .messages-container::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-secondary);
+}
+
 /* ============================================================================
    Empty State Display
    ============================================================================ */
@@ -325,9 +343,17 @@
   width: 6px;
 }
 
+.history-dropdown::-webkit-scrollbar-track {
+  background: transparent;
+}
+
 .history-dropdown::-webkit-scrollbar-thumb {
   background: var(--color-border);
   border-radius: 3px;
+}
+
+.history-dropdown::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-secondary);
 }
 
 /* ============================================================================

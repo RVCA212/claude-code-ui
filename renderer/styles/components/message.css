@@ -18,6 +18,103 @@
  */
 
 /* ============================================================================
+   Custom Scrollbar Styling - Subtle Theme-Matching Design
+   ============================================================================ */
+
+/* Modern scrollbar styling for Webkit browsers */
+.tool-file-content::-webkit-scrollbar,
+.thinking-content::-webkit-scrollbar,
+.tool-terminal-content::-webkit-scrollbar,
+.tool-edit-changes::-webkit-scrollbar,
+.task-logs-content::-webkit-scrollbar,
+.diff-lines::-webkit-scrollbar,
+.tool-todo-list::-webkit-scrollbar,
+.diff-line-content::-webkit-scrollbar,
+#messagesContainer::-webkit-scrollbar,
+.message-content::-webkit-scrollbar,
+.assistant-response::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.tool-file-content::-webkit-scrollbar-track,
+.thinking-content::-webkit-scrollbar-track,
+.tool-terminal-content::-webkit-scrollbar-track,
+.tool-edit-changes::-webkit-scrollbar-track,
+.task-logs-content::-webkit-scrollbar-track,
+.diff-lines::-webkit-scrollbar-track,
+.tool-todo-list::-webkit-scrollbar-track,
+.diff-line-content::-webkit-scrollbar-track,
+#messagesContainer::-webkit-scrollbar-track,
+.message-content::-webkit-scrollbar-track,
+.assistant-response::-webkit-scrollbar-track {
+  background: transparent;
+  border-radius: 3px;
+}
+
+.tool-file-content::-webkit-scrollbar-thumb,
+.thinking-content::-webkit-scrollbar-thumb,
+.tool-terminal-content::-webkit-scrollbar-thumb,
+.tool-edit-changes::-webkit-scrollbar-thumb,
+.task-logs-content::-webkit-scrollbar-thumb,
+.diff-lines::-webkit-scrollbar-thumb,
+.tool-todo-list::-webkit-scrollbar-thumb,
+.diff-line-content::-webkit-scrollbar-thumb,
+#messagesContainer::-webkit-scrollbar-thumb,
+.message-content::-webkit-scrollbar-thumb,
+.assistant-response::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 3px;
+  opacity: 0.6;
+  transition: background-color var(--duration-fast) var(--ease-standard);
+}
+
+.tool-file-content::-webkit-scrollbar-thumb:hover,
+.thinking-content::-webkit-scrollbar-thumb:hover,
+.tool-terminal-content::-webkit-scrollbar-thumb:hover,
+.tool-edit-changes::-webkit-scrollbar-thumb:hover,
+.task-logs-content::-webkit-scrollbar-thumb:hover,
+.diff-lines::-webkit-scrollbar-thumb:hover,
+.tool-todo-list::-webkit-scrollbar-thumb:hover,
+.diff-line-content::-webkit-scrollbar-thumb:hover,
+#messagesContainer::-webkit-scrollbar-thumb:hover,
+.message-content::-webkit-scrollbar-thumb:hover,
+.assistant-response::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-secondary);
+  opacity: 0.8;
+}
+
+/* Terminal-specific scrollbar styling for dark theme */
+.tool-terminal-content::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.tool-terminal-content::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.4);
+}
+
+/* Modern CSS scrollbar properties for Firefox and newer browsers */
+.tool-file-content,
+.thinking-content,
+.tool-terminal-content,
+.tool-edit-changes,
+.task-logs-content,
+.diff-lines,
+.tool-todo-list,
+.diff-line-content,
+#messagesContainer,
+.message-content,
+.assistant-response {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border) transparent;
+}
+
+/* Special handling for terminal scrollbars in dark theme */
+.tool-terminal-content {
+  scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+}
+
+/* ============================================================================
    Base Message Containers
    ============================================================================ */
 .message {

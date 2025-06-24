@@ -53,8 +53,6 @@
 /* Monaco code editor container and styling */
 @import './components/file-editor.css';
 
-/* Main chat interface for center area */
-@import './components/main-chat.css';
 
 /* Right sidebar chat interface */
 @import './components/chat-sidebar.css';

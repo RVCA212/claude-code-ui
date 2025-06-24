@@ -218,8 +218,23 @@ class FileEditorComponent {
       };
 
       // Create or update editor
-      if (!this.editor) {
+      const monacoEditorElement = document.getElementById('monacoEditor');
+      const needsNewEditor = !this.editor || !monacoEditorElement || !monacoEditorElement.isConnected;
+      
+      if (needsNewEditor) {
         console.log('Creating Monaco editor instance...');
+        
+        // Dispose of any existing editor first
+        if (this.editor) {
+          try {
+            this.editor.dispose();
+            console.log('Disposed stale Monaco editor');
+          } catch (error) {
+            console.warn('Error disposing stale editor:', error);
+          }
+          this.editor = null;
+        }
+        
         // Clear the loading content and create editor
         const editorContent = document.getElementById('editorContent');
         if (!editorContent) {
@@ -335,8 +350,15 @@ class FileEditorComponent {
     this.currentFile = null;
     this.isDirty = false;
 
+    // Properly dispose of Monaco editor instance
     if (this.editor) {
-      this.editor.setValue('');
+      try {
+        this.editor.dispose();
+        console.log('Monaco editor disposed');
+      } catch (error) {
+        console.warn('Error disposing Monaco editor:', error);
+      }
+      this.editor = null;
     }
 
     this.hideEditor();
@@ -502,6 +524,17 @@ class FileEditorComponent {
       header.style.display = 'none';
     }
 
+    // Dispose of editor if it still exists (defensive cleanup)
+    if (this.editor) {
+      try {
+        this.editor.dispose();
+        console.log('Monaco editor disposed during hideEditor');
+      } catch (error) {
+        console.warn('Error disposing Monaco editor during hideEditor:', error);
+      }
+      this.editor = null;
+    }
+
     if (content) {
       content.innerHTML = `
         <div class="editor-placeholder">
@@ -523,6 +556,12 @@ class FileEditorComponent {
     const appContent = document.querySelector('.app-content');
     if (appContent) {
       appContent.classList.remove('editor-active');
+    }
+
+    // Ensure chat sidebar is visible when returning to "no file selected" state
+    const chatSidebar = document.getElementById('chatSidebar');
+    if (chatSidebar && chatSidebar.classList.contains('hidden')) {
+      chatSidebar.classList.remove('hidden');
     }
 
     // Use requestAnimationFrame to ensure layout changes are complete before updating buttons

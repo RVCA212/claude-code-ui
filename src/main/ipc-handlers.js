@@ -414,6 +414,11 @@ class IPCHandlers {
     ipcMain.handle('search-files-by-prefix', async (event, query, maxResults = 50) => {
       return await this.fileOperations.searchFilesByPrefix(query, maxResults);
     });
+
+    // Get directory contents without changing current working directory (for folder expansion)
+    ipcMain.handle('get-directory-contents-only', async (event, dirPath) => {
+      return await this.fileOperations.getDirectoryContentsOnly(dirPath);
+    });
   }
 
   // Session event notifications

@@ -5,9 +5,6 @@ class AppComponent {
     this.isInitialized = false;
     this.isHandlingResize = false; // Flag to prevent recursive resize handling
     
-    // State management for chat layout
-    this.chatSidebarWasVisible = true; // Default state - show sidebar when editor opens
-    this.layoutTransitionInProgress = false; // Prevent rapid state changes
 
     this.initializeComponents();
     this.setupGlobalEventListeners();
@@ -28,7 +25,6 @@ class AppComponent {
       this.components.messageComponent = new MessageComponent(this.components.sessionManager);
       this.components.fileEditor = new FileEditorComponent();
       this.components.chatSidebar = new ChatSidebarComponent();
-      this.components.mainChat = new MainChatComponent();
 
       // Initialize session manager after other components are ready
       this.components.sessionManager.init();
@@ -62,7 +58,6 @@ class AppComponent {
     window.fileBrowser = this.components.fileBrowser;
     window.fileEditor = this.components.fileEditor;
     window.chatSidebar = this.components.chatSidebar;
-    window.mainChat = this.components.mainChat;
     
     // Make app instance and debug methods globally available
     window.app = this;
@@ -85,8 +80,6 @@ class AppComponent {
     // Set up cross-component integration
     this.setupCrossComponentIntegration();
     
-    // Set up layout coordination for chat sidebar visibility
-    this.setupChatSidebarCoordination();
 
     // Set up periodic status updates
     this.setupPeriodicUpdates();
@@ -113,109 +106,7 @@ class AppComponent {
     });
   }
 
-  setupChatSidebarCoordination() {
-    // Monitor file editor state changes to coordinate chat layout
-    document.addEventListener('fileOpened', () => {
-      this.switchToSidebarChat();
-    });
-    
-    document.addEventListener('fileClosed', () => {
-      this.switchToMainChat();
-    });
-    
-    // Listen for chat sidebar toggle events
-    document.addEventListener('chatSidebarToggled', () => {
-      this.validateLayoutAfterChatToggle();
-    });
-  }
 
-  switchToSidebarChat() {
-    if (this.layoutTransitionInProgress) {
-      console.log('Layout transition in progress, ignoring switchToSidebarChat');
-      return;
-    }
-    
-    this.layoutTransitionInProgress = true;
-    
-    // Store current main chat visibility for debugging
-    const mainChatWasVisible = this.components.mainChat && this.components.mainChat.isShown();
-    
-    // Hide main chat first
-    if (this.components.mainChat) {
-      this.components.mainChat.hide();
-    }
-    
-    // Restore previous sidebar visibility state or show by default
-    if (this.components.chatSidebar) {
-      if (this.chatSidebarWasVisible) {
-        this.components.chatSidebar.show();
-      } else {
-        this.components.chatSidebar.hide();
-      }
-    }
-    
-    // Use requestAnimationFrame to ensure DOM updates complete before updating button states
-    requestAnimationFrame(() => {
-      if (window.globalHeader && typeof window.globalHeader.updateButtonStates === 'function') {
-        window.globalHeader.updateButtonStates();
-      }
-      
-      setTimeout(() => {
-        this.layoutTransitionInProgress = false;
-      }, 100);
-    });
-    
-    console.log('Switched to sidebar chat mode', {
-      mainChatWasVisible,
-      sidebarVisible: this.chatSidebarWasVisible
-    });
-  }
-
-  switchToMainChat() {
-    if (this.layoutTransitionInProgress) {
-      console.log('Layout transition in progress, ignoring switchToMainChat');
-      return;
-    }
-    
-    this.layoutTransitionInProgress = true;
-    
-    // Store current sidebar visibility state before hiding
-    if (this.components.chatSidebar) {
-      this.chatSidebarWasVisible = this.components.chatSidebar.isShown();
-      this.components.chatSidebar.hide();
-    }
-    
-    // Show main chat
-    if (this.components.mainChat) {
-      this.components.mainChat.show();
-    }
-    
-    // Use requestAnimationFrame to ensure DOM updates complete before updating button states
-    requestAnimationFrame(() => {
-      if (window.globalHeader && typeof window.globalHeader.updateButtonStates === 'function') {
-        window.globalHeader.updateButtonStates();
-      }
-      
-      setTimeout(() => {
-        this.layoutTransitionInProgress = false;
-      }, 100);
-    });
-    
-    console.log('Switched to main chat mode', {
-      sidebarWasVisible: this.chatSidebarWasVisible
-    });
-  }
-
-  validateLayoutAfterChatToggle() {
-    // Update our internal state tracking when sidebar is toggled
-    if (this.components.chatSidebar) {
-      this.chatSidebarWasVisible = this.components.chatSidebar.isShown();
-    }
-    
-    console.log('Layout validation completed after chat toggle', {
-      sidebarVisible: this.chatSidebarWasVisible
-    });
-  }
 
   setupPeriodicUpdates() {
     // Periodically update timestamps
@@ -310,16 +201,13 @@ class AppComponent {
   setupCrossComponentIntegration() {
     // Set up integration between components
 
-    // Monitor message activity to update both chat components
-    if (this.components.messageComponent && (this.components.chatSidebar || this.components.mainChat)) {
+    // Monitor message activity to update chat component
+    if (this.components.messageComponent && this.components.chatSidebar) {
       const originalSendMessage = this.components.messageComponent.sendMessage.bind(this.components.messageComponent);
       this.components.messageComponent.sendMessage = (...args) => {
-        // Notify whichever chat component is currently active
+        // Notify the chat sidebar component
         if (this.components.chatSidebar && this.components.chatSidebar.isShown()) {
           this.components.chatSidebar.notifyMessageActivity();
-        }
-        if (this.components.mainChat && this.components.mainChat.isShown()) {
-          this.components.mainChat.notifyMessageActivity();
         }
         return originalSendMessage(...args);
       };
@@ -598,7 +486,6 @@ class AppComponent {
   getDebugInfo() {
     const editorContainer = document.getElementById('editorContainer');
     const chatSidebar = document.getElementById('chatSidebar');
-    const mainChat = document.getElementById('mainChat');
     const appContent = document.querySelector('.app-content');
     
     return {
@@ -610,15 +497,11 @@ class AppComponent {
       layoutState: {
         editorActive: editorContainer?.classList.contains('active'),
         appContentEditorActive: appContent?.classList.contains('editor-active'),
-        chatSidebarHidden: chatSidebar?.classList.contains('hidden'),
-        mainChatHidden: mainChat?.classList.contains('hidden'),
-        chatSidebarWasVisible: this.chatSidebarWasVisible,
-        layoutTransitionInProgress: this.layoutTransitionInProgress
+        chatSidebarHidden: chatSidebar?.classList.contains('hidden')
       },
       domElements: {
         editorContainer: !!editorContainer,
         chatSidebar: !!chatSidebar,
-        mainChat: !!mainChat,
         appContent: !!appContent
       }
     };
@@ -641,16 +524,14 @@ class AppComponent {
     
     console.group('🧪 Chat Layout Diagnosis');
     
-    console.log('Current Layout Mode:', debug.layoutState.editorActive ? 'Editor + Sidebar' : 'Main Chat');
+    console.log('Current Layout Mode:', debug.layoutState.editorActive ? 'Editor + Sidebar' : 'Chat Only');
     console.log('Expected Visibility:');
-    console.log('  - Main Chat:', debug.layoutState.editorActive ? 'hidden' : 'visible');
-    console.log('  - Chat Sidebar:', debug.layoutState.editorActive && !debug.layoutState.chatSidebarHidden ? 'visible' : 'hidden');
+    console.log('  - Chat Sidebar:', !debug.layoutState.chatSidebarHidden ? 'visible' : 'hidden');
     
     console.log('Actual DOM State:');
     console.log('  - Editor Active:', debug.layoutState.editorActive);
     console.log('  - App Content Editor Active:', debug.layoutState.appContentEditorActive);
     console.log('  - Chat Sidebar Hidden:', debug.layoutState.chatSidebarHidden);
-    console.log('  - Main Chat Hidden:', debug.layoutState.mainChatHidden);
     
     // Check CSS computed styles
     if (chatSidebar) {
@@ -672,17 +553,11 @@ class AppComponent {
     if (debug.layoutState.editorActive !== debug.layoutState.appContentEditorActive) {
       issues.push('Mismatch: editor container and app-content editor-active state');
     }
-    if (debug.layoutState.editorActive && !debug.layoutState.mainChatHidden) {
-      issues.push('Issue: Main chat should be hidden when editor is active');
-    }
-    if (!debug.layoutState.editorActive && debug.layoutState.mainChatHidden) {
-      issues.push('Issue: Main chat should be visible when no editor is active');
-    }
     
     // CSS-specific checks
     if (chatSidebar) {
       const computedStyle = window.getComputedStyle(chatSidebar);
-      if (debug.layoutState.editorActive && !debug.layoutState.chatSidebarHidden && computedStyle.display === 'none') {
+      if (!debug.layoutState.chatSidebarHidden && computedStyle.display === 'none') {
         issues.push('Critical: Chat sidebar should be visible but CSS display is "none"');
       }
       if (computedStyle.display !== 'none' && computedStyle.width === '0px') {
