@@ -165,7 +165,7 @@
   border: 1px solid var(--color-border);
   border-radius: var(--radius-base);
   box-shadow: var(--shadow-lg);
-  z-index: 1000;
+  z-index: var(--z-dropdowns); /* Use standardized z-index for dropdowns */
   max-height: 200px;
   overflow-y: auto;
   margin-bottom: var(--space-4);

@@ -1,35 +1,88 @@
 /**
  * Chat Sidebar Component Styles
  * 
- * Used by: Right panel chat interface in the three-panel layout
+ * Used by: Right panel chat interface when file editor is active
  * Related files:
- *   - src/renderer/components/chat-sidebar.js (main component logic)
+ *   - src/renderer/components/chat-sidebar.js (sidebar component logic)
  *   - src/renderer/components/message-component.js (message rendering)
  *   - src/renderer/components/session-manager.js (conversation management)
  *   - renderer/index.html (chat-sidebar section)
  * 
  * Features:
- *   - Adaptive layout (full-width or sidebar mode)
+ *   - Fixed-width sidebar layout optimized for right panel
  *   - Conversation header with title editing
  *   - Message display area with scrolling
  *   - History dropdown for conversation switching
- *   - Empty state for new users
  *   - Integration with layout.css for panel management
+ *   - Resizable sidebar functionality
  */
 
 /* ============================================================================
    Base Chat Sidebar Container
    ============================================================================ */
 .chat-sidebar {
-  /* Removed hardcoded flex properties to allow layout.css to control positioning */
+  display: flex; /* ✅ FIX: Add missing display property */
+  flex-direction: column;
   background-color: var(--color-surface);
   border-left: 1px solid var(--color-border);
-  /* Removed hardcoded display: flex to allow layout.css to control visibility */
-  flex-direction: column;
   overflow: hidden;
-  /* Keep sizing properties for when the sidebar is visible */
+  /* Sidebar-specific sizing constraints */
   min-width: var(--chat-sidebar-min-width);
   max-width: var(--chat-sidebar-max-width);
+  /* Only shown when file editor is active and not hidden */
+  position: relative;
+}
+
+.chat-sidebar.hidden {
+  display: none !important; /* ✅ FIX: Ensure hidden state overrides all other display rules */
+}
+
+/* Add resize handle for sidebar */
+.chat-sidebar-resize-handle {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: transparent;
+  cursor: col-resize;
+  z-index: 10;
+  transition: background-color var(--duration-fast) var(--ease-standard);
+}
+
+.chat-sidebar-resize-handle:hover,
+.resizing-chat-sidebar .chat-sidebar-resize-handle {
+  background: var(--color-primary);
+}
+
+/* ============================================================================
+   CSS Debugging Utilities
+   ============================================================================ */
+
+/* Debug overlay to visually identify chat sidebar boundaries */
+.chat-sidebar.debug-visible {
+  border: 3px solid #ff0000 !important;
+  background: rgba(255, 0, 0, 0.1) !important;
+}
+
+.chat-sidebar.debug-visible::before {
+  content: "CHAT SIDEBAR DEBUG";
+  position: absolute;
+  top: 0;
+  left: 0;
+  background: #ff0000;
+  color: white;
+  padding: 2px 8px;
+  font-size: 10px;
+  font-weight: bold;
+  z-index: 9999;
+  pointer-events: none;
+}
+
+/* Debug class to show when sidebar should be visible */
+.chat-sidebar.debug-should-show {
+  border: 3px solid #00ff00 !important;
+  background: rgba(0, 255, 0, 0.1) !important;
 }
 
 /* ============================================================================
@@ -52,15 +105,15 @@
    ============================================================================ */
 
 /* Header containing conversation title and action buttons */
-.chat-header {
-  padding: var(--space-16) var(--space-24);
+.chat-sidebar .chat-header {
+  padding: var(--space-12) var(--space-16);
   border-bottom: 1px solid var(--color-border);
   background-color: var(--color-surface);
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: var(--space-12);
-  /* Removed drag region - handled by global header now */
+  gap: var(--space-8);
+  /* Compact header for sidebar */
 }
 
 .conversation-header-info {
@@ -84,16 +137,20 @@
   gap: var(--space-8);
 }
 
-.conversation-title {
-  font-size: var(--font-size-xl);
+.chat-sidebar .conversation-title {
+  font-size: var(--font-size-base);
   font-weight: var(--font-weight-semibold);
   margin: 0;
   outline: none;
   border: 1px solid transparent;
-  padding: var(--space-4) var(--space-8);
+  padding: var(--space-2) var(--space-6);
   border-radius: var(--radius-sm);
   transition: border-color var(--duration-fast) var(--ease-standard);
   -webkit-app-region: no-drag; /* Allow text selection and editing */
+  /* Ensure title doesn't overflow in narrow sidebar */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .conversation-title[contenteditable="true"] {
@@ -133,10 +190,10 @@
    ============================================================================ */
 
 /* Scrollable container for all messages */
-.messages-container {
+.chat-sidebar .messages-container {
   flex: 1;
   overflow-y: auto;
-  padding: var(--space-16);
+  padding: var(--space-12);
   background-color: var(--color-surface);
 }
 
@@ -187,11 +244,11 @@
    ============================================================================ */
 
 /* Buttons for new conversation, history, etc. */
-.header-action-btn {
+.chat-sidebar .header-action-btn {
   background: transparent;
   border: none;
-  width: 36px;
-  height: 36px;
+  width: 28px;
+  height: 28px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -200,6 +257,7 @@
   transition: background-color var(--duration-fast) var(--ease-standard);
   color: var(--color-text);
   -webkit-app-region: no-drag;
+  /* Smaller buttons for compact sidebar */
 }
 
 .header-action-btn:hover {
@@ -253,7 +311,7 @@
   border: 1px solid var(--color-border);
   border-radius: var(--radius-base);
   box-shadow: var(--shadow-lg);
-  z-index: 1000;
+  z-index: var(--z-dropdowns); /* Use standardized z-index for dropdowns */
 }
 
 /* Ensure conversation items fit within dropdown */

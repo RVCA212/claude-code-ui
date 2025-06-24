@@ -222,6 +222,111 @@
             </div>
         </div>
 
+        <!-- Main Chat Container (shown when no file editor is active) -->
+        <div class="main-chat-container hidden" id="mainChat">
+            <div class="main-chat">
+            <div class="chat-header">
+                <div class="conversation-header-info">
+                    <div class="conversation-title-container">
+                        <button class="edit-title-btn" id="mainEditTitleBtn" style="display: none;">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="m18.5 2.5 3 3L12 15l-4 1 1-4 9.5-9.5z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                        </button>
+                    <h2 class="conversation-title" id="mainConversationTitle" contenteditable="false">
+                        Select a conversation
+                    </h2>
+                    </div>
+                    <div class="conversation-status" id="mainConversationStatus" style="display: none;"></div>
+                    <div class="conversation-context" id="mainConversationContext" style="display: none;"></div>
+                </div>
+
+                <div class="conversation-actions">
+                    <!-- New Conversation Button -->
+                    <button class="header-action-btn" id="mainNewConversationBtn" title="New Conversation">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </button>
+
+                    <!-- History Button -->
+                    <button class="history-btn" id="mainHistoryBtn" title="Conversation history">
+                        <!-- Clock/history icon -->
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/>
+                            <polyline points="12 7 12 12 15 14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </button>
+
+                    <!-- History Dropdown -->
+                    <div class="history-dropdown" id="mainHistoryDropdown" style="display: none;">
+                        <div class="conversations-list" id="mainConversationsList">
+                            <!-- Conversations will be populated by JavaScript -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="messages-container" id="mainMessagesContainer">
+                <div class="empty-state">
+                    <h3>Welcome to Claude Code Chat</h3>
+                    <p>Start a new conversation or select one from the history to begin chatting with Claude Code.</p>
+                    <div class="features-info">
+                        <h4>Features:</h4>
+                        <ul>
+                            <li>✨ Real Claude Code SDK integration</li>
+                            <li>🔄 Session-based conversations with resume capability</li>
+                            <li>⚡ Streaming responses</li>
+                            <li>🛠️ Full tool access (file operations, web search, etc.)</li>
+                            <li>💾 Persistent conversation history</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <div class="input-area" id="mainInputArea" style="display: none;">
+                <!-- File Mention Dropdown -->
+                <div class="file-mention-dropdown" id="mainFileMentionDropdown" style="display: none;">
+                    <div class="file-mention-list" id="mainFileMentionList" role="listbox">
+                        <!-- File items will be populated by JavaScript -->
+                    </div>
+                </div>
+
+                <div class="input-container">
+                    <textarea
+                        id="mainMessageInput"
+                        placeholder="Plan, search, build anything"
+                        rows="1"
+                        aria-expanded="false"
+                        aria-autocomplete="list"
+                        role="combobox"
+                    ></textarea>
+                    <button class="send-btn" id="mainSendBtn" disabled>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="m22 2-7 20-4-9-9-4 20-7z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </button>
+                    <button class="stop-btn" id="mainStopBtn" style="display: none;">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <rect x="6" y="6" width="12" height="12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </button>
+                </div>
+                <div class="input-info">
+                    <select class="model-select" id="mainModelSelect">
+                        <option value="">Claude 4 Sonnet</option>
+                        <option value="claude-3-5-haiku-20241022">Claude 3.5 Haiku</option>
+                        <option value="claude-opus-4-20250514">Claude Opus 4</option>
+                    </select>
+                    <div class="input-metrics">
+                        <span class="session-info" id="mainSessionInfo"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        </div>
+
         <!-- File Editor Container -->
         <div class="editor-container" id="editorContainer">
             <!-- File editor will be rendered here -->
@@ -462,6 +567,7 @@
     <!-- Load component modules -->
     <script src="../src/renderer/components/file-browser.js"></script>
     <script src="../src/renderer/components/file-editor.js"></script>
+    <script src="../src/renderer/components/main-chat.js"></script>
     <script src="../src/renderer/components/chat-sidebar.js"></script>
     <script src="../src/renderer/components/directory-mismatch-modal.js"></script>
     <script src="../src/renderer/components/session-manager.js"></script>
@@ -520,135 +626,57 @@
         }
 
         toggleRightSidebar() {
-          // Toggle the chat sidebar with proper synchronization
-          const chatSidebar = document.getElementById('chatSidebar');
-          if (!chatSidebar) {
-            console.error('Chat sidebar element not found');
+          // Determine current layout mode
+          const editorContainer = document.getElementById('editorContainer');
+          const isEditorActive = editorContainer && editorContainer.classList.contains('active');
+          
+          if (!isEditorActive) {
+            console.log('Chat toggle in main chat mode - no action needed (main chat always visible)');
             return;
           }
 
-          const wasHidden = chatSidebar.classList.contains('hidden');
-          console.log('Chat sidebar toggle: currently hidden =', wasHidden);
-          
-          // Perform the toggle
-          chatSidebar.classList.toggle('hidden');
-          
-          const isNowHidden = chatSidebar.classList.contains('hidden');
-          console.log('Chat sidebar toggle: now hidden =', isNowHidden);
-          
-          // Force comprehensive flexbox layout recalculation
-          const appContent = document.querySelector('.app-content');
-          
-          // Step 1: Force flexbox re-layout by temporarily changing flex direction
-          if (appContent) {
-            const originalDirection = appContent.style.flexDirection;
-            appContent.style.flexDirection = 'column';
-            appContent.offsetHeight; // Force reflow
-            appContent.style.flexDirection = originalDirection || 'row';
+          // Prevent rapid toggling during layout transitions
+          if (window.app && window.app.layoutTransitionInProgress) {
+            console.log('Layout transition in progress, ignoring chat toggle');
+            return;
           }
-          
-          // Step 2: Ensure proper stacking and flex order when showing
-          if (!isNowHidden) {
-            // Temporarily remove from flex layout and re-add to force repositioning
-            chatSidebar.style.display = 'none';
-            chatSidebar.offsetHeight; // Force reflow
-            chatSidebar.style.display = 'flex';
+
+          // Use the chat sidebar component's toggle method if available
+          if (window.chatSidebar && typeof window.chatSidebar.toggle === 'function') {
+            const isVisible = window.chatSidebar.toggle();
+            console.log('Chat sidebar toggled via component:', isVisible ? 'shown' : 'hidden');
             
-            // Ensure proper flex properties
-            chatSidebar.style.order = '3';
-            chatSidebar.style.zIndex = '25';
-            chatSidebar.style.position = 'relative';
-            
-            // Force another layout pass
-            if (appContent) {
-              appContent.offsetHeight;
+            // Update app component state tracking
+            if (window.app) {
+              window.app.chatSidebarWasVisible = isVisible;
             }
-          }
-          
-          // Step 4: Update button states with multiple animation frames for stability
-          requestAnimationFrame(() => {
-            requestAnimationFrame(() => {
-              this.updateButtonStates();
-              
-              // Final validation - ensure layout is correct
-              if (!isNowHidden) {
-                this.validateChatSidebarLayout();
-              }
-              
-              // Emit event for app-component coordination
-              document.dispatchEvent(new CustomEvent('chatSidebarToggled', {
-                detail: { isHidden: isNowHidden }
-              }));
-            });
-          });
-        }
-
-        validateChatSidebarLayout() {
-          // Validate that the chat sidebar is properly positioned and visible
-          const chatSidebar = document.getElementById('chatSidebar');
-          const editorContainer = document.querySelector('.editor-container');
-          const appContent = document.querySelector('.app-content');
-          
-          if (!chatSidebar || chatSidebar.classList.contains('hidden')) {
-            return; // Skip validation if sidebar is hidden
-          }
-          
-          // Check if sidebar is properly visible
-          const sidebarRect = chatSidebar.getBoundingClientRect();
-          const isActuallyVisible = sidebarRect.width > 0 && sidebarRect.height > 0;
-          
-          if (!isActuallyVisible) {
-            console.warn('Chat sidebar validation failed: not visible after toggle');
-            // Force complete flexbox re-layout
-            this.forceFlexboxRelayout(chatSidebar, appContent);
-            return;
-          }
-          
-          // If editor is active, ensure chat sidebar is in the correct position
-          if (editorContainer && editorContainer.classList.contains('active')) {
-            const editorRect = editorContainer.getBoundingClientRect();
-            
-            // Chat sidebar should be to the right of the editor
-            if (sidebarRect.left <= editorRect.right + 5) { // 5px tolerance
-              console.warn('Chat sidebar validation failed: positioned incorrectly relative to editor');
-              console.log(`Sidebar left: ${sidebarRect.left}, Editor right: ${editorRect.right}`);
-              
-              // Force complete flexbox re-layout
-              this.forceFlexboxRelayout(chatSidebar, appContent);
+          } else {
+            // Fallback to direct DOM manipulation
+            const chatSidebar = document.getElementById('chatSidebar');
+            if (!chatSidebar) {
+              console.error('Chat sidebar element not found');
               return;
             }
+
+            chatSidebar.classList.toggle('hidden');
+            const isVisible = !chatSidebar.classList.contains('hidden');
+            console.log('Chat sidebar toggled via DOM:', isVisible ? 'shown' : 'hidden');
+            
+            // Update app component state tracking
+            if (window.app) {
+              window.app.chatSidebarWasVisible = isVisible;
+            }
           }
           
-          console.log('Chat sidebar layout validation completed successfully');
+          // Update button states with delay to ensure DOM changes are complete
+          requestAnimationFrame(() => {
+            this.updateButtonStates();
+          });
+          
+          // Emit event for app-component coordination
+          document.dispatchEvent(new CustomEvent('chatSidebarToggled'));
         }
 
-        forceFlexboxRelayout(chatSidebar, appContent) {
-          // Nuclear option: force complete flexbox recalculation
-          console.log('Forcing complete flexbox re-layout...');
-          
-          // Step 1: Remove from layout
-          chatSidebar.style.display = 'none';
-          if (appContent) {
-            appContent.offsetHeight; // Force reflow
-          }
-          
-          // Step 2: Re-add with explicit properties
-          chatSidebar.style.display = 'flex';
-          chatSidebar.style.order = '3';
-          chatSidebar.style.zIndex = '25';
-          chatSidebar.style.position = 'relative';
-          
-          // Step 3: Force flexbox direction change and back
-          if (appContent) {
-            const originalDirection = getComputedStyle(appContent).flexDirection;
-            appContent.style.flexDirection = 'column';
-            appContent.offsetHeight; // Force reflow
-            appContent.style.flexDirection = originalDirection;
-            appContent.offsetHeight; // Force reflow again
-          }
-          
-          console.log('Flexbox re-layout completed');
-        }
 
         updateButtonStates() {
           // Defensive check - ensure elements exist before manipulation
@@ -667,21 +695,36 @@
             }
           }
 
-          // Update right sidebar button state
-          const chatSidebar = document.getElementById('chatSidebar');
-          if (chatSidebar) {
-            const isHidden = chatSidebar.classList.contains('hidden');
-            console.log('Updating chat button state: sidebar hidden =', isHidden);
-            
-            if (isHidden) {
-              this.chatToggleBtn.classList.remove('active');
-              console.log('Chat button: removing active class');
+          // Update right sidebar button state with better logic
+          const editorContainer = document.getElementById('editorContainer');
+          const isEditorActive = editorContainer && editorContainer.classList.contains('active');
+          
+          if (this.chatToggleBtn) {
+            if (isEditorActive) {
+              // When editor is active, button controls chat sidebar visibility
+              const chatSidebar = document.getElementById('chatSidebar');
+              if (chatSidebar) {
+                const isHidden = chatSidebar.classList.contains('hidden');
+                console.log('Updating chat button state (editor mode): sidebar hidden =', isHidden);
+                
+                if (isHidden) {
+                  this.chatToggleBtn.classList.remove('active');
+                  console.log('Chat button: removing active class');
+                } else {
+                  this.chatToggleBtn.classList.add('active');
+                  console.log('Chat button: adding active class');
+                }
+              } else {
+                console.warn('Chat sidebar element not found during button state update');
+                this.chatToggleBtn.classList.remove('active');
+              }
             } else {
+              // When no editor is active, main chat is always shown, so button is always active
               this.chatToggleBtn.classList.add('active');
-              console.log('Chat button: adding active class');
+              console.log('Chat button: always active in main chat mode');
             }
           } else {
-            console.warn('Chat sidebar not found during state update');
+            console.warn('Chat toggle button not found during state update');
           }
         }
 

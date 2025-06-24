@@ -270,14 +270,16 @@ class FileEditorComponent {
       this.markDirty(false);
       this.showEditor();
 
-      // Dispatch event for global header
-      document.dispatchEvent(new CustomEvent('fileOpened', {
-        detail: {
-          name: this.currentFile.name,
-          path: this.currentFile.path,
-          icon: this.getFileIcon(this.currentFile.name)
-        }
-      }));
+      // Dispatch event for global header with delay to ensure DOM is stable
+      setTimeout(() => {
+        document.dispatchEvent(new CustomEvent('fileOpened', {
+          detail: {
+            name: this.currentFile.name,
+            path: this.currentFile.path,
+            icon: this.getFileIcon(this.currentFile.name)
+          }
+        }));
+      }, 50); // Small delay to ensure layout changes are complete
 
       console.log('File opened successfully:', filePath);
 
@@ -339,8 +341,10 @@ class FileEditorComponent {
 
     this.hideEditor();
 
-    // Dispatch event for global header
-    document.dispatchEvent(new CustomEvent('fileClosed'));
+    // Dispatch event for global header with delay to ensure DOM is stable
+    setTimeout(() => {
+      document.dispatchEvent(new CustomEvent('fileClosed'));
+    }, 50); // Small delay to ensure layout changes are complete
 
     console.log('File closed');
 
@@ -463,7 +467,7 @@ class FileEditorComponent {
       console.error('Editor header not found');
     }
 
-    // Reveal the editor pane
+    // Reveal the editor pane first
     if (this.container) {
       console.log('Adding active class to editor container');
       this.container.classList.add('active');
@@ -477,18 +481,15 @@ class FileEditorComponent {
       appContent.classList.add('editor-active');
     }
 
-    // Ensure chat sidebar respects its current visibility state
-    // Don't force hide/show - let the global toggle manage this
-    const chatSidebar = document.getElementById('chatSidebar');
-    if (chatSidebar) {
-      // Update global header button states to reflect current layout
-      // Use requestAnimationFrame to avoid race conditions with DOM updates
+    // Use double requestAnimationFrame to ensure all layout changes are complete
+    requestAnimationFrame(() => {
       requestAnimationFrame(() => {
+        // Update global header button states after layout is stable
         if (window.globalHeader && typeof window.globalHeader.updateButtonStates === 'function') {
           window.globalHeader.updateButtonStates();
         }
       });
-    }
+    });
 
     console.log('showEditor() completed');
   }
@@ -524,8 +525,7 @@ class FileEditorComponent {
       appContent.classList.remove('editor-active');
     }
 
-    // Update global header button states to reflect the layout change
-    // Use requestAnimationFrame to avoid race conditions with DOM updates
+    // Use requestAnimationFrame to ensure layout changes are complete before updating buttons
     requestAnimationFrame(() => {
       if (window.globalHeader && typeof window.globalHeader.updateButtonStates === 'function') {
         window.globalHeader.updateButtonStates();

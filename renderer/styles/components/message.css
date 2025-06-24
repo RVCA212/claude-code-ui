@@ -1,12 +1,12 @@
 /**
  * Message Component Styles
- * 
+ *
  * Used by: Message display and tool output rendering in chat
  * Related files:
  *   - src/renderer/components/message-component.js (main message rendering)
  *   - src/renderer/components/chat-sidebar.js (message container)
  *   - Various tool implementations throughout the app
- * 
+ *
  * Features:
  *   - User and assistant message styling
  *   - Tool call display with collapsible details
@@ -653,4 +653,355 @@
   height: 14px;
   flex-shrink: 0;
   color: currentColor;
+}
+
+/* ============================================================================
+   Task Logs Dropdown
+   ============================================================================ */
+.task-logs-container {
+  margin-top: var(--space-12);
+}
+
+.task-logs-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  background: var(--color-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-6) var(--space-12);
+  cursor: pointer;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  transition: all var(--duration-fast) var(--ease-standard);
+  text-align: left;
+}
+
+.task-logs-toggle:hover {
+  background: var(--color-secondary-hover);
+}
+
+.task-logs-toggle.expanded {
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.task-logs-label {
+  font-weight: var(--font-weight-medium);
+}
+
+.task-logs-icon {
+  transition: transform var(--duration-fast) var(--ease-standard);
+}
+
+.task-logs-toggle.expanded .task-logs-icon {
+  transform: rotate(180deg);
+}
+
+.task-logs-content {
+  border: 1px solid var(--color-border);
+  border-top: none;
+  border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+  background: var(--color-background);
+  padding: var(--space-12);
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+/* ============================================================================
+   Inline Tool Call Styles
+   ============================================================================ */
+.inline-response {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+}
+
+.response-text {
+  line-height: var(--line-height-normal);
+}
+
+.inline-tool-call {
+  margin: var(--space-8) 0;
+  border-radius: var(--radius-base);
+  background: transparent;
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+}
+
+.inline-tool-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  padding: var(--space-8) var(--space-12);
+  background: var(--color-secondary);
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+  transition: background-color var(--duration-fast) var(--ease-standard);
+}
+
+.inline-tool-header:hover {
+  background: var(--color-secondary-hover);
+}
+
+.inline-tool-header .tool-icon {
+  font-size: var(--font-size-md);
+  color: var(--color-text-secondary);
+}
+
+.inline-tool-header .tool-name {
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text);
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xs);
+  background: rgba(var(--color-text-rgb), 0.05);
+  padding: var(--space-2) var(--space-6);
+  border-radius: var(--radius-sm);
+}
+
+.inline-tool-header .tool-summary {
+  flex: 1;
+  color: var(--color-text-secondary);
+  font-family: var(--font-family-mono);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.inline-tool-header .tool-status {
+  font-size: var(--font-size-xs);
+  font-weight: 500;
+}
+
+.inline-tool-call.in_progress .tool-status {
+  color: var(--color-warning);
+}
+
+.inline-tool-call.completed .tool-status {
+  color: var(--color-success);
+}
+
+.inline-tool-call .tool-details {
+  padding: var(--space-12);
+  background: var(--color-background);
+  border-top: 1px solid var(--color-border);
+  font-size: var(--font-size-sm);
+}
+
+@keyframes pulse-opacity {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
+.inline-tool-call.in_progress .inline-tool-header {
+  animation: pulse-opacity 2s infinite;
+}
+
+/* ============================================================================
+   Diff Viewer
+   ============================================================================ */
+.diff-viewer {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-base);
+  background-color: var(--color-surface);
+  overflow: hidden;
+  margin: var(--space-8) 0;
+  max-width: 100%;
+  font-family: var(--font-family-mono);
+}
+
+.diff-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-12) var(--space-16);
+  background-color: var(--color-secondary);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.diff-file-info {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  min-width: 0;
+  flex: 1;
+}
+
+.diff-file-info .codicon {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-md);
+  flex-shrink: 0;
+}
+
+.diff-file-path {
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-sm);
+  color: var(--color-text);
+  font-weight: var(--font-weight-medium);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.diff-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+}
+
+.diff-mode-toggle {
+  background: none;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-6) var(--space-8);
+  cursor: pointer;
+  color: var(--color-text-secondary);
+  transition: all var(--duration-fast) var(--ease-standard);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.diff-mode-toggle:hover {
+  background-color: var(--color-secondary-hover);
+  color: var(--color-text);
+}
+
+.diff-mode-toggle .codicon {
+  font-size: var(--font-size-sm);
+}
+
+.diff-content {
+  overflow: hidden;
+}
+
+.diff-edit-header {
+  padding: var(--space-8) var(--space-16);
+  background-color: rgba(var(--color-info-rgb), 0.1);
+  border-bottom: 1px solid var(--color-border);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-secondary);
+}
+
+.diff-section {
+  border-bottom: 1px solid var(--color-border);
+}
+
+.diff-section:last-child {
+  border-bottom: none;
+}
+
+.diff-side-by-side {
+  display: flex;
+}
+
+.diff-left,
+.diff-right {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.diff-left {
+  border-right: 1px solid var(--color-border);
+}
+
+.diff-side-header {
+  padding: var(--space-8) var(--space-12);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.diff-side-header.removed {
+  background-color: rgba(var(--color-error-rgb), 0.1);
+  color: var(--color-error);
+}
+
+.diff-side-header.added {
+  background-color: rgba(var(--color-success-rgb), 0.1);
+  color: var(--color-success);
+}
+
+.diff-lines {
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-sm);
+  line-height: 1.4;
+  max-height: 400px;
+  overflow-y: auto;
+  background-color: var(--color-background);
+}
+
+.diff-line {
+  display: flex;
+  align-items: flex-start;
+  min-height: 20px;
+}
+
+.diff-line-number {
+  padding: var(--space-2) var(--space-8);
+  background-color: var(--color-secondary);
+  color: var(--color-text-secondary);
+  text-align: right;
+  min-width: 50px;
+  font-size: var(--font-size-xs);
+  user-select: none;
+  flex-shrink: 0;
+}
+
+.diff-line-content {
+  padding: var(--space-2) var(--space-8);
+  white-space: pre;
+  overflow-x: auto;
+  flex: 1;
+  min-width: 0;
+}
+
+.diff-line-added {
+  background-color: rgba(var(--color-success-rgb), 0.08);
+}
+.diff-line-removed {
+  background-color: rgba(var(--color-error-rgb), 0.08);
+}
+.diff-line-empty .diff-line-content {
+  background-color: rgba(var(--color-text-secondary), 0.05);
+}
+
+.diff-unified .diff-line {
+  display: flex;
+  align-items: flex-start;
+}
+
+.diff-unified .diff-line-number {
+  border-right: 1px solid var(--color-border);
+}
+
+.diff-unified .diff-line-prefix {
+  padding: var(--space-2) var(--space-4);
+  color: var(--color-text-secondary);
+  font-weight: var(--font-weight-bold);
+  user-select: none;
+  flex-shrink: 0;
+  min-width: 20px;
+  text-align: center;
+}
+
+.diff-unified .diff-line-added .diff-line-prefix {
+  background-color: rgba(var(--color-success-rgb), 0.15);
+  color: var(--color-success);
+}
+
+.diff-unified .diff-line-removed .diff-line-prefix {
+  background-color: rgba(var(--color-error-rgb), 0.15);
+  color: var(--color-error);
 }

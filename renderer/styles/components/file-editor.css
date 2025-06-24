@@ -27,7 +27,7 @@
   border-right: 1px solid var(--color-border);
   min-width: var(--editor-min-width);
   position: relative;
-  z-index: 1; /* Lower than chat sidebar - allow layout.css to control stacking */
+  z-index: var(--z-editor); /* Use standardized z-index hierarchy */
 }
 
 /* ============================================================================
@@ -101,7 +101,7 @@
   flex-direction: column;
   height: 100%;
   position: relative;
-  z-index: 1; /* Ensure proper stacking within editor container */
+  z-index: inherit; /* Inherit z-index from parent editor container */
 }
 
 .editor-header {

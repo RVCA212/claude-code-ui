@@ -106,4 +106,14 @@
   --chat-sidebar-max-width: 600px;
   /* Minimum width for the central code editor pane */
   --editor-min-width: 200px;
+
+  /* Z-Index Hierarchy - Centralized z-index scale for consistent layering */
+  --z-file-browser: 1;
+  --z-content: 2;
+  --z-editor: 2;
+  --z-chat-sidebar: 3;
+  --z-dropdowns: 10;
+  --z-modals: 20;
+  --z-overlays: 30;
+  --z-notifications: 40;
 }

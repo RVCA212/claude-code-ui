@@ -1,16 +1,16 @@
 /**
  * Core Application Layout System
- * 
+ *
  * Manages the three-panel layout architecture for Claude Code Chat:
  *   1. Left Panel: File browser sidebar
  *   2. Center Panel: Monaco code editor (conditional)
  *   3. Right Panel: Chat interface
- * 
+ *
  * Related files:
  *   - src/renderer/components/app-component.js (layout state management)
  *   - src/renderer/components/file-editor.js (editor activation)
  *   - renderer/index.html (main app structure)
- * 
+ *
  * Layout Modes:
  *   - Chat-only: Full-width chat when no file is open
  *   - Split-view: Three-panel layout when file is open
@@ -56,13 +56,11 @@
 /* Chat sidebar - adapts between full-width and sidebar modes */
 .chat-sidebar {
   background-color: var(--color-background);
-  display: flex; /* Always display: flex when visible */
   flex-direction: column;
-  position: relative; /* For resize handle positioning */
-  overflow: hidden; /* Prevent content overflow */
-  height: 100%; /* Ensure full height */
-  z-index: 20; /* Significantly higher than editor for proper stacking */
-  order: 3; /* Place after editor in flex order */
+  overflow: hidden;
+  height: 100%;
+  z-index: var(--z-chat-sidebar);
+  order: 3;
 }
 
 /* Chat-only mode: When no editor is active, chat takes full width */
@@ -77,26 +75,39 @@
 .app-content.editor-active .chat-sidebar:not(.hidden) {
   flex: 0 0 var(--chat-sidebar-width);
   width: var(--chat-sidebar-width);
-  border-left: 1px solid var(--color-border);
-  min-width: var(--chat-sidebar-min-width);
-  max-width: var(--chat-sidebar-max-width);
-  z-index: 20; /* Ensure proper stacking even in split view */
-  position: relative; /* Ensure stacking context */
+  /* border-left and sizing handled by chat-sidebar.css */
+  z-index: var(--z-chat-sidebar);
+  /* display property now handled by base .chat-sidebar rule */
 }
 
 /* ============================================================================
-   Center Panel: File Editor (Conditional)
+   Center Panel: Main Chat / File Editor (Conditional)
    ============================================================================ */
+
+/* Main Chat Container - shown when no file editor is active */
+.main-chat-container {
+  order: 2;
+  flex: 1;
+  z-index: var(--z-content);
+  display: flex;
+  min-width: 0;
+  position: relative;
+}
+
+.main-chat-container.hidden {
+  display: none !important;
+}
 
 /* Hide the editor panel unless a file is actively open */
 .editor-container:not(.active) {
-  display: none; /* Remain hidden until the "active" class is added */
+  display: none !important; /* Remain hidden until the "active" class is added */
 }
 
 /* When editor is active, it takes remaining space between sidebars */
 .editor-container {
-  order: 2; /* Place between sidebar (order 1) and chat sidebar (order 3) */
-  z-index: 5; /* Lower than chat sidebar but higher than file browser */
+  order: 2;
+  z-index: var(--z-editor);
+  position: relative;
 }
 
 /* Editor becomes visible and takes remaining space when file is opened */
@@ -106,13 +117,20 @@
   min-width: var(--editor-min-width); /* Ensure minimum usable width */
 }
 
+/* Ensure only one center component is visible at a time */
+.app-content.editor-active .main-chat-container {
+  display: none !important;
+}
+
+
 /* ============================================================================
    Left Panel: File Browser Sidebar
    ============================================================================ */
 
 /* File browser sidebar gets explicit flex ordering */
 .sidebar {
-  order: 1; /* First in flex order */
+  order: 1;
+  z-index: var(--z-file-browser);
 }
 
 /* ============================================================================
@@ -130,24 +148,7 @@
 
 /* Ensure chat sidebar proper visibility when being shown */
 .app-content .chat-sidebar:not(.hidden) {
-  display: flex; /* Explicit flex display when visible */
-  z-index: 20; /* Always maintain high z-index when visible */
-  position: relative; /* Establish stacking context */
-}
-
-/* High-specificity rules to ensure chat sidebar always appears above editor */
-.app-content.editor-active .editor-container.active ~ .chat-sidebar:not(.hidden),
-.app-content .editor-container.active ~ .chat-sidebar:not(.hidden),
-.app-content .chat-sidebar:not(.hidden) {
-  z-index: 25 !important; /* Force chat sidebar above everything */
-  position: relative !important;
-  order: 3 !important; /* Ensure flex order is maintained */
-}
-
-/* Ensure editor always stays below chat sidebar when both are active */
-.app-content.editor-active .editor-container.active {
-  z-index: 5 !important; /* Keep editor below chat sidebar */
-  position: relative;
+  display: flex;
 }
 
 /* ============================================================================
@@ -220,3 +221,7 @@
 .file-search {
   flex-shrink: 0;
 }
+
+/* always let the sidebar take its place unless it is explicitly hidden */
+.app-content .chat-sidebar             { display:flex; }
+.app-content .chat-sidebar.hidden      { display:none !important; }
