@@ -16,8 +16,12 @@ class MessageComponent {
     // Directory mismatch modal
     this.directoryMismatchModal = new DirectoryMismatchModal();
 
+    // Layout state for compact mode
+    this.isCompactMode = false;
+
     this.initializeElements();
     this.setupEventListeners();
+    this.initializeLayoutState();
   }
 
   initializeElements() {
@@ -67,6 +71,27 @@ class MessageComponent {
     document.addEventListener('sessionChanged', (e) => {
       this.handleSessionChange(e.detail);
     });
+
+    // Layout state change events for compact mode
+    document.addEventListener('layoutStateChanged', (e) => {
+      this.handleLayoutStateChange(e.detail);
+    });
+  }
+
+  initializeLayoutState() {
+    // Initialize compact mode state based on current layout
+    // Use setTimeout to ensure DOM is ready and app component is initialized
+    setTimeout(() => {
+      if (window.app && typeof window.app.getLayoutState === 'function') {
+        const layoutState = window.app.getLayoutState();
+        this.isCompactMode = layoutState.isChatOnly;
+        
+        // Apply initial styling class
+        if (this.messagesContainer) {
+          this.messagesContainer.classList.toggle('compact-mode', this.isCompactMode);
+        }
+      }
+    }, 150);
   }
 
   handleInputChange() {
@@ -262,6 +287,23 @@ class MessageComponent {
     this.updateInputArea(context);
   }
 
+  handleLayoutStateChange(detail) {
+    const { newState } = detail;
+    
+    // Update compact mode state
+    this.isCompactMode = newState.isChatOnly;
+    
+    // If currently showing empty state, refresh it with new layout mode
+    if (this.messagesContainer && this.messagesContainer.querySelector('.empty-state')) {
+      this.showEmptyState();
+    }
+    
+    // Update messages container class for styling
+    if (this.messagesContainer) {
+      this.messagesContainer.classList.toggle('compact-mode', this.isCompactMode);
+    }
+  }
+
   loadSessionMessages(context) {
     if (!this.messagesContainer) return;
 
@@ -296,22 +338,32 @@ class MessageComponent {
 
   showEmptyState() {
     if (this.messagesContainer) {
-      this.messagesContainer.innerHTML = `
-        <div class="empty-state">
-          <h3>Welcome to Claude Code Chat</h3>
-          <p>Start a conversation with Claude Code. You have access to all tools including file operations, web search, and more.</p>
-          <div class="features-info">
-            <h4>Features:</h4>
-            <ul>
-              <li>✨ Real Claude Code SDK integration</li>
-              <li>🔄 Session-based conversations with resume capability</li>
-              <li>⚡ Streaming responses</li>
-              <li>🛠️ Full tool access (file operations, web search, etc.)</li>
-              <li>💾 Persistent conversation history</li>
-            </ul>
+      if (this.isCompactMode) {
+        // Compact mode: no welcome message, just ready for input
+        this.messagesContainer.innerHTML = `
+          <div class="empty-state compact">
+            <!-- Ready for conversation in compact mode -->
           </div>
-        </div>
-      `;
+        `;
+      } else {
+        // Full mode: show complete welcome message
+        this.messagesContainer.innerHTML = `
+          <div class="empty-state">
+            <h3>Welcome to Claude Code Chat</h3>
+            <p>Start a conversation with Claude Code. You have access to all tools including file operations, web search, and more.</p>
+            <div class="features-info">
+              <h4>Features:</h4>
+              <ul>
+                <li>✨ Real Claude Code SDK integration</li>
+                <li>🔄 Session-based conversations with resume capability</li>
+                <li>⚡ Streaming responses</li>
+                <li>🛠️ Full tool access (file operations, web search, etc.)</li>
+                <li>💾 Persistent conversation history</li>
+              </ul>
+            </div>
+          </div>
+        `;
+      }
     }
   }
 
@@ -402,6 +454,11 @@ class MessageComponent {
     const emptyState = this.messagesContainer.querySelector('.empty-state');
     if (emptyState) {
       emptyState.remove();
+    }
+
+    // Transition from compact mode to full view when user sends a message
+    if (this.isCompactMode) {
+      this.expandToFullView();
     }
 
     this.messagesContainer.insertAdjacentHTML('beforeend', messageHTML);
@@ -967,6 +1024,33 @@ class MessageComponent {
   isElementAfter(elementA, elementB) {
     const position = elementA.compareDocumentPosition(elementB);
     return (position & Node.DOCUMENT_POSITION_FOLLOWING) !== 0;
+  }
+
+  // Expand from compact mode to full view when user sends a message
+  expandToFullView() {
+    // Show the file browser to transition from compact mode to full view
+    const sidebar = document.querySelector('.sidebar');
+    if (sidebar && sidebar.classList.contains('hidden')) {
+      sidebar.classList.remove('hidden');
+      
+      // Update global header button state
+      if (window.globalHeader) {
+        window.globalHeader.updateButtonStates();
+      }
+      
+      // Trigger layout state change detection
+      setTimeout(() => {
+        if (window.app && typeof window.app.getLayoutState === 'function') {
+          const newLayoutState = window.app.getLayoutState();
+          this.isCompactMode = newLayoutState.isChatOnly;
+          
+          // Update styling class
+          if (this.messagesContainer) {
+            this.messagesContainer.classList.toggle('compact-mode', this.isCompactMode);
+          }
+        }
+      }, 50);
+    }
   }
 }
 

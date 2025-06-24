@@ -901,6 +901,85 @@
 }
 
 /* ============================================================================
+   Compact Mode and Empty State Styles
+   ============================================================================ */
+
+/* Compact mode for chat-only layout */
+.messages-container.compact-mode {
+  padding: var(--space-8) var(--space-12);
+}
+
+/* Empty state styling */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  text-align: center;
+  color: var(--color-text-secondary);
+  max-width: 600px;
+  margin: 0 auto;
+  padding: var(--space-24);
+}
+
+.empty-state h3 {
+  margin-bottom: var(--space-8);
+  color: var(--color-text);
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+}
+
+.empty-state p {
+  margin-bottom: var(--space-16);
+  font-size: var(--font-size-base);
+  line-height: var(--line-height-normal);
+}
+
+.features-info {
+  margin-top: var(--space-24);
+  text-align: left;
+  width: 100%;
+}
+
+.features-info h4 {
+  margin-bottom: var(--space-12);
+  color: var(--color-text);
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-medium);
+}
+
+.features-info ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.features-info li {
+  margin-bottom: var(--space-8);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-8);
+}
+
+/* Compact empty state - minimal padding and no content */
+.empty-state.compact {
+  padding: var(--space-8);
+  min-height: 0;
+  justify-content: flex-start;
+  height: auto;
+}
+
+/* Hide all content in compact mode */
+.empty-state.compact h3,
+.empty-state.compact p,
+.empty-state.compact .features-info {
+  display: none;
+}
+
+/* ============================================================================
    Diff Viewer
    ============================================================================ */
 .diff-viewer {

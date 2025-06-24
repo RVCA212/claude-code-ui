@@ -219,6 +219,9 @@ class AppComponent {
       // We could add more integration here if needed
     }
 
+    // Set up layout change monitoring
+    this.setupLayoutChangeMonitoring();
+
     // Set up chat sidebar resizing after DOM is ready
     setTimeout(() => {
       this.setupChatSidebarResizing();
@@ -377,6 +380,79 @@ class AppComponent {
   stopChatSidebarResizing() {
     // Clear visual feedback
     document.body.classList.remove('resizing-chat-sidebar');
+  }
+
+  setupLayoutChangeMonitoring() {
+    // Monitor layout state changes for compact mode
+    let currentLayoutState = this.getLayoutState();
+    
+    // Set up mutation observer to watch for layout changes
+    const observer = new MutationObserver(() => {
+      const newLayoutState = this.getLayoutState();
+      if (newLayoutState.isChatOnly !== currentLayoutState.isChatOnly) {
+        this.notifyLayoutStateChange(newLayoutState, currentLayoutState);
+        currentLayoutState = newLayoutState;
+      }
+    });
+
+    // Watch for class changes on key elements
+    const appContent = document.querySelector('.app-content');
+    const sidebar = document.querySelector('.sidebar');
+    const editorContainer = document.getElementById('editorContainer');
+    const chatSidebar = document.getElementById('chatSidebar');
+
+    if (appContent) {
+      observer.observe(appContent, { attributes: true, attributeFilter: ['class'] });
+    }
+    if (sidebar) {
+      observer.observe(sidebar, { attributes: true, attributeFilter: ['class'] });
+    }
+    if (editorContainer) {
+      observer.observe(editorContainer, { attributes: true, attributeFilter: ['class'] });
+    }
+    if (chatSidebar) {
+      observer.observe(chatSidebar, { attributes: true, attributeFilter: ['class'] });
+    }
+
+    // Store observer for cleanup if needed
+    this.layoutObserver = observer;
+  }
+
+  getLayoutState() {
+    const sidebar = document.querySelector('.sidebar');
+    const editorContainer = document.getElementById('editorContainer');
+    const chatSidebar = document.getElementById('chatSidebar');
+    
+    const isFileBrowserVisible = sidebar && !sidebar.classList.contains('hidden');
+    const isEditorVisible = editorContainer && editorContainer.classList.contains('active');
+    const isChatSidebarVisible = chatSidebar && !chatSidebar.classList.contains('hidden');
+    
+    // Chat-only mode: file browser and editor are both closed/hidden
+    const isChatOnly = !isFileBrowserVisible && !isEditorVisible && isChatSidebarVisible;
+    
+    return {
+      isFileBrowserVisible,
+      isEditorVisible,
+      isChatSidebarVisible,
+      isChatOnly
+    };
+  }
+
+  notifyLayoutStateChange(newState, oldState) {
+    // Emit custom event for layout state changes
+    const event = new CustomEvent('layoutStateChanged', {
+      detail: {
+        newState,
+        oldState,
+        timestamp: Date.now()
+      }
+    });
+    document.dispatchEvent(event);
+    
+    console.log('Layout state changed:', {
+      from: oldState.isChatOnly ? 'chat-only' : 'split-view',
+      to: newState.isChatOnly ? 'chat-only' : 'split-view'
+    });
   }
 
   updateTimestamps() {

@@ -1,0 +1,1 @@
+create a new 'trey' icon (the icons int he top bar of macs) that is for our app. when clicked, it shows options of 'open in {folder}' given the open windows on the user's page so if a user has cursor open in a window, they could click this button, see the open

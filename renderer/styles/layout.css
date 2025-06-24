@@ -68,6 +68,32 @@
   width: 100%; /* Take full available width */
 }
 
+/* Compact mode: When both file browser and editor are hidden, create compact layout */
+.app-content:not(.editor-active) .sidebar.hidden ~ .chat-sidebar:not(.hidden) {
+  /* This is true compact mode - only chat sidebar visible */
+  flex: 1;
+  min-height: 200px; /* Very small minimum to ensure usability */
+  height: auto; /* Allow natural height in compact mode */
+}
+
+/* Compact mode for the main chat container when in chat-only mode */
+.app-content:not(.editor-active) .sidebar.hidden ~ .chat-sidebar .main-chat {
+  min-height: auto;
+}
+
+/* Compact mode adjustments for messages container in chat-only layout */
+.app-content:not(.editor-active) .sidebar.hidden ~ .chat-sidebar .messages-container {
+  /* Reduce minimum height when in true compact mode */
+  min-height: 120px;
+  flex: 1;
+}
+
+/* Compact mode for input area positioning */
+.app-content:not(.editor-active) .sidebar.hidden ~ .chat-sidebar .input-area {
+  /* Ensure input area stays at bottom in compact mode */
+  margin-top: auto;
+}
+
 /* Split-view mode: When editor is active, chat becomes fixed-width sidebar */
 .app-content.editor-active .chat-sidebar:not(.hidden) {
   flex: 0 0 var(--chat-sidebar-width);
