@@ -208,6 +208,11 @@
   margin-top: var(--space-16);
 }
 
+/* Window Detection Section */
+.window-detection-section {
+  margin-top: var(--space-16);
+}
+
 .system-prompt-textarea {
   font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
   font-size: var(--font-size-sm);

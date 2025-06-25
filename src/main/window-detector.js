@@ -10,7 +10,8 @@ const { URL } = require('url');
  * Detects running applications and extracts open file information from VS Code, Cursor, and Excel
  */
 class WindowDetector {
-  constructor() {
+  constructor(modelConfig = null) {
+    this.modelConfig = modelConfig;
     this.supportedApps = {
       'Visual Studio Code': {
         bundleId: 'com.microsoft.VSCode',
@@ -51,6 +52,21 @@ class WindowDetector {
 
     // Debug mode for detailed logging
     this.debugMode = process.env.NODE_ENV === 'development' || process.env.DEBUG_WINDOW_DETECTION === 'true';
+  }
+
+  /**
+   * Get window detection settings from model config
+   */
+  getWindowDetectionSettings() {
+    if (this.modelConfig) {
+      return this.modelConfig.getWindowDetectionSettings();
+    }
+    // Default settings if no model config
+    return {
+      vscode: true,
+      cursor: true,
+      excel: false
+    };
   }
 
   /**
@@ -1380,8 +1396,28 @@ class WindowDetector {
    */
   async getOpenFiles() {
     try {
+      // Get window detection settings
+      const detectionSettings = this.getWindowDetectionSettings();
+
       const runningApps = await this.getRunningApplications();
       const allOpenFiles = [];
+
+      // Filter running apps based on detection settings
+      const enabledApps = runningApps.filter(app => {
+        if (app.applescriptName === 'Visual Studio Code') {
+          return detectionSettings.vscode;
+        } else if (app.applescriptName === 'Cursor') {
+          return detectionSettings.cursor;
+        } else if (app.applescriptName === 'Microsoft Excel') {
+          return detectionSettings.excel;
+        }
+        return false;
+      });
+
+      if (this.debugMode) {
+        console.log('Window detection settings:', detectionSettings);
+        console.log(`Filtered ${runningApps.length} running apps to ${enabledApps.length} enabled apps`);
+      }
 
       // Check if we have accessibility permissions
       const hasPermissions = await this.checkAccessibilityPermissions();
@@ -1396,8 +1432,8 @@ class WindowDetector {
         };
       }
 
-      // Get open files from each running app
-      for (const app of runningApps) {
+      // Get open files from each enabled app
+      for (const app of enabledApps) {
         let files = [];
         const knownWorkspaces = await this.getWorkspacesFromStorage(app.name);
 
@@ -1423,28 +1459,32 @@ class WindowDetector {
         }
       }
 
-      // Also get recent Excel files (even if Excel is not currently running)
-      try {
-        const recentExcelFiles = await this.getRecentExcelFiles();
-        if (Array.isArray(recentExcelFiles) && recentExcelFiles.length > 0) {
-          recentExcelFiles.forEach(file => {
-            file.appDisplayName = 'Excel';
-            file.appIcon = '📊';
-            file.isOpen = false; // Mark as recent, not currently open
-          });
-          allOpenFiles.push(...recentExcelFiles);
-          
-          if (this.debugMode) {
-            console.log(`Added ${recentExcelFiles.length} recent Excel files to results`);
+      // Also get recent Excel files (even if Excel is not currently running), but only if Excel detection is enabled
+      if (detectionSettings.excel) {
+        try {
+          const recentExcelFiles = await this.getRecentExcelFiles();
+          if (Array.isArray(recentExcelFiles) && recentExcelFiles.length > 0) {
+            recentExcelFiles.forEach(file => {
+              file.appDisplayName = 'Excel';
+              file.appIcon = '📊';
+              file.isOpen = false; // Mark as recent, not currently open
+            });
+            allOpenFiles.push(...recentExcelFiles);
+            
+            if (this.debugMode) {
+              console.log(`Added ${recentExcelFiles.length} recent Excel files to results`);
+            }
+          } else if (this.debugMode) {
+            console.log('No recent Excel files found');
           }
-        } else if (this.debugMode) {
-          console.log('No recent Excel files found');
+        } catch (error) {
+          console.error('Error getting recent Excel files:', error);
+          if (this.debugMode) {
+            console.error('Recent Excel files error stack:', error.stack);
+          }
         }
-      } catch (error) {
-        console.error('Error getting recent Excel files:', error);
-        if (this.debugMode) {
-          console.error('Recent Excel files error stack:', error.stack);
-        }
+      } else if (this.debugMode) {
+        console.log('Excel detection disabled, skipping recent Excel files');
       }
 
       // Remove duplicates and sort

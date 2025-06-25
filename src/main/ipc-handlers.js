@@ -86,6 +86,15 @@ class IPCHandlers {
     ipcMain.handle('set-system-prompt-config', async (event, config) => {
       return await this.modelConfig.setSystemPromptConfig(config);
     });
+
+    // Window detection handlers
+    ipcMain.handle('get-window-detection-settings', async () => {
+      return this.modelConfig.getWindowDetectionSettings();
+    });
+
+    ipcMain.handle('set-window-detection-settings', async (event, settings) => {
+      return await this.modelConfig.setWindowDetectionSettings(settings);
+    });
   }
 
   registerMcpHandlers() {

@@ -20,6 +20,10 @@ class PreloadBridge {
       getSystemPromptConfig: () => ipcRenderer.invoke('get-system-prompt-config'),
       setSystemPromptConfig: (config) => ipcRenderer.invoke('set-system-prompt-config', config),
 
+      // Window detection settings
+      getWindowDetectionSettings: () => ipcRenderer.invoke('get-window-detection-settings'),
+      setWindowDetectionSettings: (settings) => ipcRenderer.invoke('set-window-detection-settings', settings),
+
       // Session management
       getSessions: () => ipcRenderer.invoke('get-sessions'),
       createSession: (title) => ipcRenderer.invoke('create-session', title),

@@ -74,6 +74,7 @@
                     <button id="mcpTabBtn" class="settings-tab">MCP Servers</button>
                     <button id="taskTemplateTabBtn" class="settings-tab">Task Template</button>
                     <button id="systemPromptTabBtn" class="settings-tab">System Prompt</button>
+                    <button id="windowDetectionTabBtn" class="settings-tab">Window Detection</button>
                 </div>
                 <div id="generalSettingsSection">
                     <h3>General Settings</h3>
@@ -208,6 +209,47 @@
                                Append (On) adds to the default system prompt. Override (Off) replaces it entirely.
                            </small>
                        </div>
+                    </div>
+                </div>
+
+                <!-- Window Detection Section -->
+                <div id="windowDetectionSettingsSection" style="display:none;">
+                    <h3>Window Detection</h3>
+                    <div class="window-detection-section">
+                        <p class="form-text">Control which applications are monitored for open files and workspaces.</p>
+                        
+                        <div class="form-group">
+                            <div class="toggle-switch-container">
+                                <label class="form-label" for="vsCodeDetectionToggle">VS Code Detection</label>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="vsCodeDetectionToggle" checked>
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                            <small class="form-text">Detect open files and workspaces in Visual Studio Code</small>
+                        </div>
+
+                        <div class="form-group">
+                            <div class="toggle-switch-container">
+                                <label class="form-label" for="cursorDetectionToggle">Cursor Detection</label>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="cursorDetectionToggle" checked>
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                            <small class="form-text">Detect open files and workspaces in Cursor editor</small>
+                        </div>
+
+                        <div class="form-group">
+                            <div class="toggle-switch-container">
+                                <label class="form-label" for="excelDetectionToggle">Excel Detection</label>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="excelDetectionToggle">
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                            <small class="form-text">Detect open workbooks and recent files in Microsoft Excel</small>
+                        </div>
                     </div>
                 </div>
 

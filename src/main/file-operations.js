@@ -5,11 +5,11 @@ const { v4: uuidv4 } = require('uuid');
 const WindowDetector = require('./window-detector');
 
 class FileOperations {
-  constructor() {
+  constructor(modelConfig = null) {
     this.currentWorkingDirectory = os.homedir(); // Start in user's home directory
     this.directoryHistory = []; // Navigation history for back/forward
     this.historyIndex = -1; // Current position in history
-    this.windowDetector = new WindowDetector(); // Initialize window detector
+    this.windowDetector = new WindowDetector(modelConfig); // Initialize window detector with model config
 
     // Workspace management
     this.workspaces = new Map(); // Store loaded workspaces

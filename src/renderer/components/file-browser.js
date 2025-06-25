@@ -137,6 +137,13 @@ class FileBrowser {
     }
     if (this.newTaskBtn) {
       this.newTaskBtn.addEventListener('click', () => this.createNewTask());
+      const tooltipContent = `Create a new task from a template. <a href="#" onclick="event.stopPropagation(); window.app.getComponent('settings').openSettings('taskTemplate'); return false;">Edit Template</a>`;
+      this.newTaskBtn.addEventListener('mouseenter', (e) => {
+        this.showTooltip(e.currentTarget, tooltipContent, true);
+      });
+      this.newTaskBtn.addEventListener('mouseleave', () => {
+        this.hideTooltip();
+      });
     }
     if (this.refreshBtn) {
       this.refreshBtn.addEventListener('click', () => this.refreshDirectory());
@@ -1626,7 +1633,7 @@ class FileBrowser {
   /* -------------------------- Tooltip Methods ------------------------- */
 
   // Create and show tooltip for file path
-  showTooltip(element, path) {
+  showTooltip(element, content, isHTML = false) {
     // Clear any existing tooltip
     this.hideTooltip();
 
@@ -1637,12 +1644,12 @@ class FileBrowser {
 
     // Set a delay before showing the tooltip
     this.tooltipTimeout = setTimeout(() => {
-      this.createTooltip(element, path);
+      this.createTooltip(element, content, isHTML);
     }, 500); // 500ms delay
   }
 
   // Create the tooltip element and position it
-  createTooltip(element, path) {
+  createTooltip(element, content, isHTML = false) {
     // Check if element is still valid (hasn't been removed from DOM)
     if (!element || !element.isConnected) {
       return;
@@ -1651,7 +1658,11 @@ class FileBrowser {
     // Create tooltip element
     this.tooltip = document.createElement('div');
     this.tooltip.className = 'file-tooltip';
-    this.tooltip.textContent = path;
+    if (isHTML) {
+      this.tooltip.innerHTML = content;
+    } else {
+      this.tooltip.textContent = content;
+    }
 
     // Add to body for proper positioning
     document.body.appendChild(this.tooltip);
@@ -1794,7 +1805,7 @@ class FileBrowser {
   // Enhanced file click handler with visual feedback and debouncing
   handleFileClickWithFeedback(path, isDirectory, fileItem) {
     // Prevent rapid clicking on the same item
-    if (fileItem.classList.contains('clicking')) {
+    if (fileItem && fileItem.classList.contains('clicking')) {
       console.log('File click ignored - already processing');
       return;
     }
@@ -1806,7 +1817,9 @@ class FileBrowser {
       this.navigateToDirectory(path);
     } else {
       // Add visual feedback
-      fileItem.classList.add('clicking');
+      if (fileItem) {
+        fileItem.classList.add('clicking');
+      }
 
       // Open file in the editor
       console.log('File clicked:', path);

@@ -17,7 +17,7 @@ class SettingsComponent {
     this.settingsBtn = document.getElementById('globalSettingsBtn');
     this.saveSettingsBtn = document.getElementById('saveSettingsBtn');
     this.cancelSettingsBtn = document.getElementById('cancelSettingsBtn');
-    
+
     // Other elements will be initialized lazily via getters
   }
 
@@ -28,7 +28,7 @@ class SettingsComponent {
   get apiKeyInput() { return this._getElement('apiKeyInput'); }
   get modelSelect() { return this._getElement('modelSelect'); }
   get clearAllSessionsBtn() { return this._getElement('clearAllSessionsBtn'); }
-  
+
   // Tab elements
   get generalTabBtn() { return this._getElement('generalTabBtn'); }
   get mcpTabBtn() { return this._getElement('mcpTabBtn'); }
@@ -38,7 +38,7 @@ class SettingsComponent {
   get mcpSection() { return this._getElement('mcpSettingsSection'); }
   get taskTemplateSection() { return this._getElement('taskTemplateSettingsSection'); }
   get systemPromptSection() { return this._getElement('systemPromptSettingsSection'); }
-  
+
   // MCP elements
   get mcpServersList() { return this._getElement('mcpServersList'); }
   get mcpServerForm() { return this._getElement('mcpServerForm'); }
@@ -51,16 +51,23 @@ class SettingsComponent {
   get mcpServerUrlInput() { return this._getElement('mcpServerUrl'); }
   get mcpHeadersContainer() { return this._getElement('mcpHeaders'); }
   get addHeaderBtn() { return this._getElement('addHeaderBtn'); }
-  
+
   // Task template elements
   get taskTemplateInput() { return this._getElement('taskTemplateInput'); }
   get saveTaskTemplateBtn() { return this._getElement('saveTaskTemplateBtn'); }
   get resetTaskTemplateBtn() { return this._getElement('resetTaskTemplateBtn'); }
-  
+
   // System prompt elements
   get systemPromptInput() { return this._getElement('systemPromptInput'); }
   get systemPromptEnabledToggle() { return this._getElement('systemPromptEnabledToggle'); }
   get systemPromptModeToggle() { return this._getElement('systemPromptModeToggle'); }
+
+  // Window detection elements
+  get windowDetectionTabBtn() { return this._getElement('windowDetectionTabBtn'); }
+  get windowDetectionSection() { return this._getElement('windowDetectionSettingsSection'); }
+  get vsCodeDetectionToggle() { return this._getElement('vsCodeDetectionToggle'); }
+  get cursorDetectionToggle() { return this._getElement('cursorDetectionToggle'); }
+  get excelDetectionToggle() { return this._getElement('excelDetectionToggle'); }
 
   _getElement(id) {
     if (!this._elements[id]) {
@@ -125,12 +132,18 @@ class SettingsComponent {
     if (this.systemPromptTabBtn) {
       this.systemPromptTabBtn.addEventListener('click', () => this.switchTab('systemPrompt'));
     }
+    if (this.windowDetectionTabBtn) {
+      this.windowDetectionTabBtn.addEventListener('click', () => this.switchTab('windowDetection'));
+    }
 
     // Task template event listeners
     this.setupTaskTemplateEventListeners();
 
     // System prompt event listeners
     this.setupSystemPromptEventListeners();
+
+    // Window detection event listeners
+    this.setupWindowDetectionEventListeners();
   }
 
   setupMcpEventListeners() {
@@ -170,6 +183,18 @@ class SettingsComponent {
     }
   }
 
+  setupWindowDetectionEventListeners() {
+    if (this.vsCodeDetectionToggle) {
+      this.vsCodeDetectionToggle.addEventListener('change', () => this.saveWindowDetectionSettings());
+    }
+    if (this.cursorDetectionToggle) {
+      this.cursorDetectionToggle.addEventListener('change', () => this.saveWindowDetectionSettings());
+    }
+    if (this.excelDetectionToggle) {
+      this.excelDetectionToggle.addEventListener('change', () => this.saveWindowDetectionSettings());
+    }
+  }
+
   async loadInitialSettings() {
     try {
       // Load data in parallel for better performance
@@ -188,7 +213,7 @@ class SettingsComponent {
     }
   }
 
-  async openSettings() {
+  async openSettings(tab = 'general') {
     if (!this.settingsModal) return;
 
     // Clear API key input for security
@@ -199,8 +224,8 @@ class SettingsComponent {
     // Show modal immediately for better perceived performance
     this.settingsModal.style.display = 'flex';
 
-    // Default to general tab on open
-    this.switchTab('general');
+    // Default to general tab on open, or switch to specified tab
+    this.switchTab(tab);
 
     // Load fresh setup status
     await this.checkSetupStatus();
@@ -289,11 +314,11 @@ class SettingsComponent {
   async getCachedData(key, fetchFn) {
     const cached = this.cache.get(key);
     const now = Date.now();
-    
+
     if (cached && (now - cached.timestamp) < this.CACHE_TTL) {
       return cached.data;
     }
-    
+
     const data = await fetchFn();
     this.cache.set(key, { data, timestamp: now });
     return data;
@@ -377,7 +402,7 @@ class SettingsComponent {
 
   renderMcpServersList(servers) {
     if (!this.mcpServersList) return;
-    
+
     // Use DocumentFragment for better performance
     const fragment = document.createDocumentFragment();
 
@@ -559,19 +584,21 @@ class SettingsComponent {
   }
 
   switchTab(tab) {
-    if (!this.generalSection || !this.mcpSection || !this.taskTemplateSection || !this.systemPromptSection) return;
+    if (!this.generalSection || !this.mcpSection || !this.taskTemplateSection || !this.systemPromptSection || !this.windowDetectionSection) return;
 
     // Hide all sections first
     this.generalSection.style.display = 'none';
     this.mcpSection.style.display = 'none';
     this.taskTemplateSection.style.display = 'none';
     this.systemPromptSection.style.display = 'none';
+    this.windowDetectionSection.style.display = 'none';
 
     // Remove active class from all tabs
     this.generalTabBtn?.classList.remove('active');
     this.mcpTabBtn?.classList.remove('active');
     this.taskTemplateTabBtn?.classList.remove('active');
     this.systemPromptTabBtn?.classList.remove('active');
+    this.windowDetectionTabBtn?.classList.remove('active');
 
     // Show the selected section and activate its tab
     if (tab === 'mcp') {
@@ -587,6 +614,10 @@ class SettingsComponent {
       this.systemPromptSection.style.display = 'block';
       this.systemPromptTabBtn?.classList.add('active');
       this.loadTabData('systemPrompt');
+    } else if (tab === 'windowDetection') {
+      this.windowDetectionSection.style.display = 'block';
+      this.windowDetectionTabBtn?.classList.add('active');
+      this.loadTabData('windowDetection');
     } else {
       this.generalSection.style.display = 'block';
       this.generalTabBtn?.classList.add('active');
@@ -604,6 +635,9 @@ class SettingsComponent {
         break;
       case 'systemPrompt':
         await this.loadSystemPromptConfig();
+        break;
+      case 'windowDetection':
+        await this.loadWindowDetectionSettings();
         break;
     }
   }
@@ -757,6 +791,42 @@ class SettingsComponent {
         this.clearAllSessionsBtn.disabled = false;
         this.clearAllSessionsBtn.textContent = 'Clear All Sessions';
       }
+    }
+  }
+
+  /* ----------------------- Window Detection Management ----------------------- */
+
+  async loadWindowDetectionSettings() {
+    try {
+      const settings = await this.getCachedData('windowDetectionSettings', () => window.electronAPI.getWindowDetectionSettings());
+      if (this.vsCodeDetectionToggle) {
+        this.vsCodeDetectionToggle.checked = settings.vscode;
+      }
+      if (this.cursorDetectionToggle) {
+        this.cursorDetectionToggle.checked = settings.cursor;
+      }
+      if (this.excelDetectionToggle) {
+        this.excelDetectionToggle.checked = settings.excel;
+      }
+    } catch (error) {
+      console.error('Failed to load window detection settings:', error);
+      this.showError('Failed to load window detection settings');
+    }
+  }
+
+  async saveWindowDetectionSettings() {
+    try {
+      const settings = {
+        vscode: this.vsCodeDetectionToggle ? this.vsCodeDetectionToggle.checked : true,
+        cursor: this.cursorDetectionToggle ? this.cursorDetectionToggle.checked : true,
+        excel: this.excelDetectionToggle ? this.excelDetectionToggle.checked : false
+      };
+      await window.electronAPI.setWindowDetectionSettings(settings);
+      this.invalidateCache('windowDetectionSettings');
+      this.showSuccess('Window detection settings saved');
+    } catch (error) {
+      console.error('Failed to save window detection settings:', error);
+      this.showError('Failed to save window detection settings');
     }
   }
 }

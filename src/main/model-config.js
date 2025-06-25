@@ -12,6 +12,13 @@ class ModelConfig {
     this.systemPromptEnabled = false;
     this.systemPromptMode = 'append'; // 'append' or 'override'
 
+    // Window detection settings
+    this.windowDetectionSettings = {
+      vscode: true,    // default on
+      cursor: true,    // default on
+      excel: false     // default off
+    };
+
     this.modelConfigPath = path.join(os.homedir(), '.claude-code-chat', 'model-config.json');
   }
 
@@ -32,6 +39,13 @@ class ModelConfig {
       this.systemPromptEnabled = typeof config.systemPromptEnabled === 'boolean' ? config.systemPromptEnabled : false;
       this.systemPromptMode = config.systemPromptMode || 'append';
 
+      // Load window detection settings
+      this.windowDetectionSettings = {
+        vscode: typeof config.windowDetectionSettings?.vscode === 'boolean' ? config.windowDetectionSettings.vscode : true,
+        cursor: typeof config.windowDetectionSettings?.cursor === 'boolean' ? config.windowDetectionSettings.cursor : true,
+        excel: typeof config.windowDetectionSettings?.excel === 'boolean' ? config.windowDetectionSettings.excel : false
+      };
+
       // Set the environment variable
       if (this.currentModel) {
         process.env.ANTHROPIC_MODEL = this.currentModel;
@@ -51,6 +65,13 @@ class ModelConfig {
       this.systemPromptEnabled = false;
       this.systemPromptMode = 'append';
 
+      // Default window detection settings
+      this.windowDetectionSettings = {
+        vscode: true,
+        cursor: true,
+        excel: false
+      };
+
       delete process.env.ANTHROPIC_MODEL;
     }
   }
@@ -67,6 +88,7 @@ class ModelConfig {
         systemPrompt: this.systemPrompt,
         systemPromptEnabled: this.systemPromptEnabled,
         systemPromptMode: this.systemPromptMode,
+        windowDetectionSettings: this.windowDetectionSettings,
         updatedAt: new Date().toISOString()
       };
 
@@ -154,6 +176,37 @@ class ModelConfig {
     await this.saveModelConfig();
     console.log('System prompt config updated');
     return this.getSystemPromptConfig();
+  }
+
+  // Get window detection settings
+  getWindowDetectionSettings() {
+    return {
+      vscode: this.windowDetectionSettings.vscode,
+      cursor: this.windowDetectionSettings.cursor,
+      excel: this.windowDetectionSettings.excel
+    };
+  }
+
+  // Set window detection settings
+  async setWindowDetectionSettings(settings) {
+    if (!settings || typeof settings !== 'object') {
+      throw new Error('Invalid window detection settings');
+    }
+
+    // Update settings with validation
+    if (typeof settings.vscode === 'boolean') {
+      this.windowDetectionSettings.vscode = settings.vscode;
+    }
+    if (typeof settings.cursor === 'boolean') {
+      this.windowDetectionSettings.cursor = settings.cursor;
+    }
+    if (typeof settings.excel === 'boolean') {
+      this.windowDetectionSettings.excel = settings.excel;
+    }
+
+    await this.saveModelConfig();
+    console.log('Window detection settings updated:', this.windowDetectionSettings);
+    return this.getWindowDetectionSettings();
   }
 }
 

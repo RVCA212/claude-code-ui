@@ -488,8 +488,8 @@ async function initializeApp() {
     // Initialize all managers
     sessionManager = new SessionManager();
     checkpointManager = new CheckpointManager();
-    fileOperations = new FileOperations();
     modelConfig = new ModelConfig();
+    fileOperations = new FileOperations(modelConfig);
 
     // Claude process manager needs access to other managers (mainWindow will be set later)
     claudeProcessManager = new ClaudeProcessManager(

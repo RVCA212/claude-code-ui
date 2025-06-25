@@ -87,8 +87,6 @@ class FileEditorComponent {
     });
   }
 
-
-
   async initializeMonaco() {
     if (this.isInitialized || this.loadingEditor) {
       return;
@@ -124,8 +122,8 @@ class FileEditorComponent {
 
       this.monaco = monaco;
 
-      // Configure Monaco
-      this.configureMonaco();
+      // Configure Monaco - this is no longer needed as monaco comes with languages built-in.
+      // this.configureMonaco();
 
       // Don't create the editor instance here, just ensure Monaco is loaded
       // The actual editor will be created in openFile() after all loading is done
@@ -146,6 +144,7 @@ class FileEditorComponent {
     }
   }
 
+  /*
   configureMonaco() {
     // Configure languages and themes
     if (this.monaco?.languages) {
@@ -159,6 +158,7 @@ class FileEditorComponent {
       this.monaco.languages.register({ id: 'css' });
     }
   }
+  */
 
   getTheme() {
     // Match the app's theme
@@ -166,7 +166,7 @@ class FileEditorComponent {
     return isDark ? 'vs-dark' : 'vs';
   }
 
-    async openFile(filePath, options = {}) {
+  async openFile(filePath, options = {}) {
     if (!filePath) {
       console.error('No file path provided');
       return;
@@ -300,10 +300,10 @@ class FileEditorComponent {
         console.log('Monaco editor created successfully');
       } else {
         console.log('Updating existing editor with new content');
+        this.monaco.editor.setModelLanguage(this.editor.getModel(), this.currentFile.language);
         this.editor.setValue(result.content);
         // Ensure minimap stays disabled when switching files
         this.editor.updateOptions({
-          language: this.currentFile.language,
           minimap: { enabled: false },
           fontSize: 12,
           wordWrap: 'off'
@@ -336,8 +336,6 @@ class FileEditorComponent {
       this.showError(`Failed to open file: ${error.message}`);
     }
   }
-
-
 
   async saveFile() {
     if (!this.currentFile || !this.editor) {
@@ -704,8 +702,6 @@ class FileEditorComponent {
       }
     }, this.autoSaveDelay);
   }
-
-
 }
 
 // Export for module compatibility
