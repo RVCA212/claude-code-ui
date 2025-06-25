@@ -1181,3 +1181,12 @@
   background-color: rgba(var(--color-error-rgb), 0.15);
   color: var(--color-error);
 }
+
+.input-area.welcoming #messageInput {
+  min-height: 100px;
+}
+
+#messageInput::placeholder {
+  color: var(--color-text-secondary);
+  opacity: 0.8;
+}

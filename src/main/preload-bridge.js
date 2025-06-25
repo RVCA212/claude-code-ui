@@ -97,6 +97,9 @@ class PreloadBridge {
       toggleMcpServer: (serverId, enabled) => ipcRenderer.invoke('toggle-mcp-server', serverId, enabled),
       testMcpServer: (server) => ipcRenderer.invoke('test-mcp-server', server),
 
+      // Window lock
+      setWindowLock: (locked) => ipcRenderer.invoke('set-window-lock', locked),
+
       // Event listeners
       onSessionsLoaded: (callback) => ipcRenderer.on('sessions-loaded', callback),
       onMessageStream: (callback) => ipcRenderer.on('message-stream', callback),
@@ -109,10 +112,18 @@ class PreloadBridge {
       // Tray events
       onTrayOpenWorkspace: (callback) => ipcRenderer.on('tray-open-workspace', callback),
       onTrayOpenExcelFile: (callback) => ipcRenderer.on('tray-open-excel-file', callback),
+      onTrayOpenPhotoshopFile: (callback) => ipcRenderer.on('tray-open-photoshop-file', callback),
       onTrayInteraction: (callback) => ipcRenderer.on('tray-interaction', callback),
+      onTraySelectSession: (callback) => ipcRenderer.on('tray-select-session', callback),
 
       // Excel helpers
       handleTrayOpenExcelFile: (filePath) => ipcRenderer.invoke('handle-tray-open-excel-file', filePath),
+
+      // Photoshop helpers
+      handleTrayOpenPhotoshopFile: (filePath) => ipcRenderer.invoke('handle-tray-open-photoshop-file', filePath),
+
+      // Window resizing
+      resizeWindow: ({ width, height }) => ipcRenderer.invoke('resize-window', { width, height }),
 
       // Remove listeners
       removeAllListeners: (channel) => ipcRenderer.removeAllListeners(channel)
@@ -142,13 +153,15 @@ class PreloadBridge {
       'setWindowDetectionDebug', 'getWindowDetectionDiagnostics', 'testAppleScript',
       'getMcpServers', 'saveMcpServer', 'deleteMcpServer', 'toggleMcpServer', 'testMcpServer',
       'onSessionsLoaded', 'onMessageStream', 'onSessionUpdated', 'onSessionDeleted', 'onSessionCreated', 'onAllSessionsCleared',
-      'onFileChanged', 'onTrayOpenWorkspace', 'onTrayOpenExcelFile', 'onTrayInteraction',
-      'handleTrayOpenExcelFile', 'removeAllListeners'
+      'onFileChanged', 'onTrayOpenWorkspace', 'onTrayOpenExcelFile', 'onTrayOpenPhotoshopFile', 'onTrayInteraction',
+      'handleTrayOpenExcelFile', 'handleTrayOpenPhotoshopFile', 'removeAllListeners', 'resizeWindow'
     ];
 
+    const updatedRequiredMethods = [...requiredMethods, 'onTraySelectSession', 'setWindowLock'];
+
     const exposedMethods = Object.keys(this.exposedAPI);
-    const missingMethods = requiredMethods.filter(method => !exposedMethods.includes(method));
-    const extraMethods = exposedMethods.filter(method => !requiredMethods.includes(method));
+    const missingMethods = updatedRequiredMethods.filter(method => !exposedMethods.includes(method));
+    const extraMethods = exposedMethods.filter(method => !updatedRequiredMethods.includes(method));
 
     if (missingMethods.length > 0) {
       console.warn('Missing API methods:', missingMethods);

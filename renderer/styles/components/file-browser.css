@@ -162,6 +162,8 @@
   flex-direction: column;
   gap: 2px;
   padding: 0 12px 12px 12px;
+  max-height: 30vh; /* Limit height to 30% of the viewport height */
+  overflow-y: auto; /* Enable vertical scrolling when content overflows */
 }
 
 .quick-access-item {
@@ -767,21 +769,25 @@
    Scrollbar Customization
    ============================================================================ */
 
-/* Custom scrollbar styling for file list */
-.file-list::-webkit-scrollbar {
+/* Custom scrollbar styling for file list and quick access */
+.file-list::-webkit-scrollbar,
+.quick-access-list::-webkit-scrollbar {
   width: 6px;
 }
 
-.file-list::-webkit-scrollbar-track {
+.file-list::-webkit-scrollbar-track,
+.quick-access-list::-webkit-scrollbar-track {
   background: transparent;
 }
 
-.file-list::-webkit-scrollbar-thumb {
+.file-list::-webkit-scrollbar-thumb,
+.quick-access-list::-webkit-scrollbar-thumb {
   background: var(--color-border);
   border-radius: 3px;
 }
 
-.file-list::-webkit-scrollbar-thumb:hover {
+.file-list::-webkit-scrollbar-thumb:hover,
+.quick-access-list::-webkit-scrollbar-thumb:hover {
   background: var(--color-text-secondary);
 }
 

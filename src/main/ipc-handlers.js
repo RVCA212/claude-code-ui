@@ -40,6 +40,12 @@ class IPCHandlers {
 
     // Excel file handlers
     this.registerExcelHandlers();
+
+    // Photoshop file handlers
+    this.registerPhotoshopHandlers();
+
+    // Window handlers
+    this.registerWindowHandlers();
   }
 
   registerSetupHandlers() {
@@ -574,7 +580,6 @@ class IPCHandlers {
       try {
         console.log('Handling tray open Excel file:', filePath);
 
-        // Navigate to the directory containing the Excel file
         const navResult = await this.fileOperations.setWorkingDirectoryFromFile(filePath);
 
         if (!navResult.success) {
@@ -584,32 +589,12 @@ class IPCHandlers {
 
         console.log('Navigated to directory:', navResult.path);
 
-        // Notify the renderer to update the file browser
-        if (this.mainWindow && !this.mainWindow.isDestroyed()) {
-          this.mainWindow.webContents.send('directory-changed', {
-            path: navResult.path,
-            fromExcelFile: true,
-            originalFilePath: filePath
-          });
-        }
-
-        // Open the file in Excel
-        // const openError = await shell.openPath(filePath);
-
-        // if (openError) {
-        //   console.error('Failed to open Excel file in Excel:', openError);
-        // } else {
-        //   console.log('Successfully requested to open Excel file in Excel:', filePath);
-        // }
-
-        const relativePath = path.relative(navResult.path, filePath);
-
         // Return path info to renderer to update UI
         return {
           success: true,
           newCwd: navResult.path,
           filePath: filePath,
-          relativePath: relativePath
+          relativePath: path.relative(navResult.path, filePath)
         };
       } catch (error) {
         console.error('Error handling tray open Excel file:', error);
@@ -662,6 +647,96 @@ class IPCHandlers {
           error: error.message,
           files: []
         };
+      }
+    });
+  }
+
+  registerPhotoshopHandlers() {
+    const { shell } = require('electron');
+
+    // Handle opening Photoshop files from tray menu
+    ipcMain.handle('handle-tray-open-photoshop-file', async (event, filePath) => {
+      try {
+        console.log('Handling tray open Photoshop file:', filePath);
+
+        const navResult = await this.fileOperations.setWorkingDirectoryFromFile(filePath);
+
+        if (!navResult.success) {
+          console.warn('Failed to navigate to Photoshop file directory:', navResult.error);
+          return { success: false, error: navResult.error };
+        }
+
+        console.log('Navigated to directory:', navResult.path);
+
+        // Return path info to renderer to update UI
+        return {
+          success: true,
+          newCwd: navResult.path,
+          filePath: filePath,
+          relativePath: path.relative(navResult.path, filePath)
+        };
+      } catch (error) {
+        console.error('Error handling tray open Photoshop file:', error);
+        return { success: false, error: error.message };
+      }
+    });
+
+    // Handle opening Photoshop files and loading into Claude Code Chat
+    ipcMain.handle('open-photoshop-in-chat', async (event, filePath) => {
+      try {
+        console.log('Opening Photoshop file in Claude Code Chat:', filePath);
+
+        // First, open the file in Photoshop
+        await shell.openPath(filePath);
+
+        // Then, add the file path to the current chat context
+        // This could be used to automatically mention the file in the chat
+        return {
+          success: true,
+          filePath: filePath,
+          message: `Photoshop file opened: ${filePath}`
+        };
+      } catch (error) {
+        console.error('Error opening Photoshop file in chat:', error);
+        return {
+          success: false,
+          error: error.message
+        };
+      }
+    });
+
+    // Get Photoshop files for the tray menu (helper for renderer)
+    ipcMain.handle('get-photoshop-files', async () => {
+      try {
+        const result = await this.fileOperations.getOpenApplicationWindows();
+        if (result.success) {
+          const photoshopFiles = result.files.filter(f =>
+            f.app === 'Photoshop' || f.appDisplayName === 'Photoshop'
+          );
+          return {
+            success: true,
+            files: photoshopFiles
+          };
+        }
+        return result;
+      } catch (error) {
+        console.error('Error getting Photoshop files:', error);
+        return {
+          success: false,
+          error: error.message,
+          files: []
+        };
+      }
+    });
+  }
+
+  registerWindowHandlers() {
+    ipcMain.handle('resize-window', (event, { width, height }) => {
+      if (this.mainWindow) {
+        const [currentWidth, currentHeight] = this.mainWindow.getSize();
+        const newWidth = width || currentWidth;
+        const newHeight = height || currentHeight;
+        this.mainWindow.setSize(newWidth, newHeight, true);
       }
     });
   }

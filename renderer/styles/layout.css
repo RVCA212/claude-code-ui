@@ -103,12 +103,16 @@
 }
 
 /* ============================================================================
-   Center Panel: File Editor (Conditional)
+   Center Panel: File Editor and File Viewer (Conditional)
    ============================================================================ */
-
 
 /* Hide the editor panel unless a file is actively open */
 .editor-container:not(.active) {
+  display: none !important; /* Remain hidden until the "active" class is added */
+}
+
+/* Hide the viewer panel unless a file is actively open */
+.viewer-container:not(.active) {
   display: none !important; /* Remain hidden until the "active" class is added */
 }
 
@@ -119,6 +123,13 @@
   position: relative;
 }
 
+/* When viewer is active, it takes remaining space between sidebars */
+.viewer-container {
+  order: 2;
+  z-index: var(--z-editor); /* Same z-index as editor since only one is active at a time */
+  position: relative;
+}
+
 /* Editor becomes visible and takes remaining space when file is opened */
 .editor-container.active {
   display: flex;
@@ -126,6 +137,24 @@
   min-width: var(--editor-min-width); /* Ensure minimum usable width */
   max-width: none; /* Allow flexible sizing */
   overflow: hidden; /* Prevent content overflow */
+}
+
+/* Viewer becomes visible and takes remaining space when file is opened */
+.viewer-container.active {
+  display: flex;
+  flex: 1 1 auto; /* Allow growing and shrinking, auto basis */
+  min-width: var(--editor-min-width); /* Ensure minimum usable width */
+  max-width: none; /* Allow flexible sizing */
+  overflow: hidden; /* Prevent content overflow */
+}
+
+/* Ensure only one center panel is active at a time */
+.app-content.editor-active .viewer-container {
+  display: none !important;
+}
+
+.app-content.viewer-active .editor-container {
+  display: none !important;
 }
 
 
@@ -200,6 +229,10 @@
   overflow: hidden;
 }
 
+.main-chat.header-hidden .chat-header {
+    display: none;
+}
+
 .chat-header {
   flex-shrink: 0;
 }
@@ -230,3 +263,38 @@
 }
 
 /* Chat sidebar visibility is now handled by the base .chat-sidebar rules in chat-sidebar.css */
+
+.history-link {
+    color: var(--color-text-secondary);
+    text-decoration: none;
+}
+
+.history-link:hover {
+    text-decoration: underline;
+    color: var(--color-primary);
+}
+
+.history-dropdown {
+    position: fixed;
+    z-index: var(--z-modal);
+}
+
+.lock-btn {
+    background: none;
+    border: none;
+    color: var(--color-text-secondary);
+    cursor: pointer;
+    padding: 4px;
+    margin-right: 8px; /* Add some spacing */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.lock-btn:hover {
+    color: var(--color-text);
+}
+
+.lock-btn.locked {
+    color: var(--color-primary);
+}

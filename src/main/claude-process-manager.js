@@ -18,6 +18,11 @@ class ClaudeProcessManager {
     ];
   }
 
+  // Get running session IDs
+  getRunningSessionIds() {
+    return Array.from(this.claudeProcesses.keys());
+  }
+
   // Check if Claude Code CLI is available
   async checkClaudeCliAvailable() {
     return new Promise((resolve) => {

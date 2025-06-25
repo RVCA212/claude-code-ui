@@ -217,7 +217,7 @@
                     <h3>Window Detection</h3>
                     <div class="window-detection-section">
                         <p class="form-text">Control which applications are monitored for open files and workspaces.</p>
-                        
+
                         <div class="form-group">
                             <div class="toggle-switch-container">
                                 <label class="form-label" for="vsCodeDetectionToggle">VS Code Detection</label>
@@ -249,6 +249,17 @@
                                 </label>
                             </div>
                             <small class="form-text">Detect open workbooks and recent files in Microsoft Excel</small>
+                        </div>
+
+                        <div class="form-group">
+                            <div class="toggle-switch-container">
+                                <label class="form-label" for="photoshopDetectionToggle">Photoshop Detection</label>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="photoshopDetectionToggle">
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                            <small class="form-text">Detect open images and recent files in Adobe Photoshop</small>
                         </div>
                     </div>
                 </div>
@@ -391,6 +402,11 @@
             <!-- File editor will be rendered here -->
         </div>
 
+        <!-- File Viewer Container -->
+        <div class="viewer-container" id="viewerContainer">
+            <!-- File viewer will be rendered here -->
+        </div>
+
         <!-- Chat Sidebar (relocated main chat) -->
         <div class="chat-sidebar" id="chatSidebar">
             <div class="main-chat">
@@ -427,13 +443,6 @@
                             <polyline points="12 7 12 12 15 14" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                         </svg>
                     </button>
-
-                    <!-- History Dropdown -->
-                    <div class="history-dropdown" id="historyDropdown" style="display: none;">
-                        <div class="conversations-list" id="conversationsList">
-                            <!-- Conversations will be populated by JavaScript -->
-                        </div>
-                    </div>
                 </div>
             </div>
 
@@ -484,6 +493,9 @@
                     </button>
                 </div>
                 <div class="input-info">
+                    <button class="lock-btn" id="lockBtn" title="Lock window (won't hide on focus loss)">
+                        <span class="codicon codicon-unlock"></span>
+                    </button>
                     <select class="model-select" id="modelSelect">
                         <option value="">Claude 4 Sonnet</option>
                         <option value="claude-3-5-haiku-20241022">Claude 3.5 Haiku</option>
@@ -497,6 +509,13 @@
         </div>
         </div>
     </div>
+    </div>
+
+    <!-- History Dropdown (moved outside for global positioning) -->
+    <div class="history-dropdown" id="historyDropdown" style="display: none;">
+        <div class="conversations-list" id="conversationsList">
+            <!-- Conversations will be populated by JavaScript -->
+        </div>
     </div>
 
     <!-- Delete Confirmation Modal -->
@@ -626,6 +645,7 @@
     <!-- Load component modules -->
     <script src="../src/renderer/components/file-browser.js"></script>
     <script src="../src/renderer/components/file-editor.js"></script>
+    <script src="../src/renderer/components/file-viewer.js"></script>
     <script src="../src/renderer/components/chat-sidebar.js"></script>
     <script src="../src/renderer/components/directory-mismatch-modal.js"></script>
     <script src="../src/renderer/components/session-manager.js"></script>

@@ -56,6 +56,8 @@
 /* Monaco code editor container and styling */
 @import './components/file-editor.css';
 
+/* File viewer component for images and PDFs */
+@import './components/file-viewer.css';
 
 /* Right sidebar chat interface */
 @import './components/chat-sidebar.css';

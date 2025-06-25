@@ -1085,6 +1085,22 @@ class FileBrowser {
     }
   }
 
+  getFileTypeForViewing(filePath) {
+    const extension = filePath.split('.').pop()?.toLowerCase();
+    
+    // Files that should be opened in the file viewer
+    const viewableExtensions = ['png', 'jpg', 'jpeg', 'gif', 'bmp', 'webp', 'pdf'];
+    
+    console.log('File type detection:', filePath, 'extension:', extension, 'viewable:', viewableExtensions.includes(extension));
+    
+    if (viewableExtensions.includes(extension)) {
+      return 'viewable';
+    }
+    
+    // All other files go to the text editor
+    return 'editable';
+  }
+
   getFileIcon(filename) {
     const ext = filename.split('.').pop()?.toLowerCase();
 
@@ -1821,30 +1837,57 @@ class FileBrowser {
         fileItem.classList.add('clicking');
       }
 
-      // Open file in the editor
-      console.log('File clicked:', path);
+      // Determine file type and route to appropriate component
+      const fileType = this.getFileTypeForViewing(path);
+      console.log('File clicked:', path, 'Type:', fileType);
 
-      // Get the file editor component and open the file
-      const fileEditor = window.app?.getComponent('fileEditor');
-      if (fileEditor) {
-        try {
-          fileEditor.openFile(path);
-          // Remove visual feedback after a short delay
-          setTimeout(() => {
+      if (fileType === 'viewable') {
+        // Route to file viewer for images and PDFs
+        const fileViewer = window.app?.getComponent('fileViewer');
+        if (fileViewer) {
+          try {
+            fileViewer.openFile(path);
+            // Remove visual feedback after a short delay
+            setTimeout(() => {
+              if (fileItem) {
+                fileItem.classList.remove('clicking');
+              }
+            }, 200);
+          } catch (error) {
+            console.error('Failed to open file in viewer:', error);
             if (fileItem) {
               fileItem.classList.remove('clicking');
             }
-          }, 200);
-        } catch (error) {
-          console.error('Failed to open file:', error);
+          }
+        } else {
+          console.error('File viewer component not available');
           if (fileItem) {
             fileItem.classList.remove('clicking');
           }
         }
       } else {
-        console.error('File editor component not available');
-        if (fileItem) {
-          fileItem.classList.remove('clicking');
+        // Route to file editor for text files
+        const fileEditor = window.app?.getComponent('fileEditor');
+        if (fileEditor) {
+          try {
+            fileEditor.openFile(path);
+            // Remove visual feedback after a short delay
+            setTimeout(() => {
+              if (fileItem) {
+                fileItem.classList.remove('clicking');
+              }
+            }, 200);
+          } catch (error) {
+            console.error('Failed to open file in editor:', error);
+            if (fileItem) {
+              fileItem.classList.remove('clicking');
+            }
+          }
+        } else {
+          console.error('File editor component not available');
+          if (fileItem) {
+            fileItem.classList.remove('clicking');
+          }
         }
       }
     }
@@ -1870,12 +1913,30 @@ class FileBrowser {
     }
   }
 
+  // Helper method to convert Mac-style paths to Unix paths
+  normalizePath(filePath) {
+    if (!filePath) return filePath;
+    
+    // Convert Mac-style paths (e.g., "Macintosh HD:Users:..." to "/Users/...")
+    if (filePath.includes('Macintosh HD:')) {
+      // Remove "Macintosh HD:" prefix and convert colons to slashes
+      let normalized = filePath.replace(/^Macintosh HD:/, '/');
+      normalized = normalized.replace(/:/g, '/');
+      console.log('Converted Mac path:', filePath, '->', normalized);
+      return normalized;
+    }
+    
+    return filePath;
+  }
+
   async handleOpenFileClick(filePath, itemElement) {
     try {
       // Add visual feedback
       itemElement.classList.add('clicking');
 
-      console.log('Open file clicked:', filePath);
+      // Normalize the path (convert Mac-style paths to Unix paths)
+      const normalizedPath = this.normalizePath(filePath);
+      console.log('Open file clicked:', filePath, 'normalized to:', normalizedPath);
 
       // Check if this is a workspace item (has isWorkspace property)
       const isWorkspace = itemElement.dataset.isWorkspace === 'true';
@@ -1897,11 +1958,11 @@ class FileBrowser {
 
       // Check if this looks like a relative path (no leading slash)
       // This happens when window detector can't find the exact file location
-      if (!filePath.startsWith('/')) {
-        console.log('Detected relative path from window detector:', filePath);
+      if (!normalizedPath.startsWith('/')) {
+        console.log('Detected relative path from window detector:', normalizedPath);
 
         // Extract the directory name (first part of the path)
-        const pathParts = filePath.split('/');
+        const pathParts = normalizedPath.split('/');
         const directoryName = pathParts[0];
 
                         if (directoryName) {
@@ -1965,35 +2026,56 @@ class FileBrowser {
       }
 
       // Handle individual file opening (for absolute paths)
-      const fileEditor = window.app?.getComponent('fileEditor');
-      if (fileEditor) {
-        // Set working directory to file's parent directory first
-        const result = await window.electronAPI.setWorkingDirectoryFromFile(filePath);
-        if (result.success) {
-          console.log('Working directory updated:', result.path);
+      
+      // Set working directory to file's parent directory first
+      const result = await window.electronAPI.setWorkingDirectoryFromFile(normalizedPath);
+      if (result.success) {
+        console.log('Working directory updated:', result.newCwd || result.path);
 
-          // Navigate to the parent directory in file browser
-          await this.navigateToDirectory(result.path);
-        } else {
-          console.warn('Failed to update working directory:', result.error);
-          // Still try to open the file even if directory update failed
-        }
-
-        // Open the file in editor
-        fileEditor.openFile(filePath);
-
-        // Remove visual feedback after a short delay
-        setTimeout(() => {
-          if (itemElement) {
-            itemElement.classList.remove('clicking');
-          }
-        }, 200);
+        // Navigate to the parent directory in file browser
+        await this.navigateToDirectory(result.newCwd || result.path);
       } else {
-        console.error('File editor component not available');
+        console.warn('Failed to update working directory:', result.error);
+        // Still try to open the file even if directory update failed
+      }
+
+      // Determine file type and route to appropriate component
+      const fileType = this.getFileTypeForViewing(normalizedPath);
+      console.log('Open file clicked:', normalizedPath, 'Type:', fileType);
+
+      // Debug: Check component availability
+      console.log('Available components:', window.app ? Object.keys(window.app.components || {}) : 'window.app not available');
+      console.log('FileViewer available:', !!window.app?.getComponent('fileViewer'));
+      console.log('FileEditor available:', !!window.app?.getComponent('fileEditor'));
+
+      if (fileType === 'viewable') {
+        // Route to file viewer for images and PDFs
+        const fileViewer = window.app?.getComponent('fileViewer');
+        if (fileViewer) {
+          console.log('Opening file in viewer:', normalizedPath);
+          fileViewer.openFile(normalizedPath);
+        } else {
+          console.error('File viewer component not available');
+          console.error('App components:', window.app?.components);
+        }
+      } else {
+        // Route to file editor for text files
+        const fileEditor = window.app?.getComponent('fileEditor');
+        if (fileEditor) {
+          console.log('Opening file in editor:', normalizedPath);
+          fileEditor.openFile(normalizedPath);
+        } else {
+          console.error('File editor component not available');
+          console.error('App components:', window.app?.components);
+        }
+      }
+
+      // Remove visual feedback after a short delay
+      setTimeout(() => {
         if (itemElement) {
           itemElement.classList.remove('clicking');
         }
-      }
+      }, 200);
     } catch (error) {
       console.error('Failed to open file:', error);
       if (itemElement) {
@@ -2023,20 +2105,42 @@ class FileBrowser {
         // Navigate to the parent directory
         await this.navigateToDirectory(parentDir);
 
-        // Then open the file in the editor
-        console.log('Global file clicked:', filePath);
-        const fileEditor = window.app?.getComponent('fileEditor');
-        if (fileEditor) {
-          fileEditor.openFile(filePath);
+        // Determine file type and route to appropriate component
+        const fileType = this.getFileTypeForViewing(filePath);
+        console.log('Global file clicked:', filePath, 'Type:', fileType);
+
+        if (fileType === 'viewable') {
+          // Route to file viewer for images and PDFs
+          const fileViewer = window.app?.getComponent('fileViewer');
+          if (fileViewer) {
+            fileViewer.openFile(filePath);
+          } else {
+            console.error('File viewer component not available');
+          }
         } else {
-          console.error('File editor component not available');
+          // Route to file editor for text files
+          const fileEditor = window.app?.getComponent('fileEditor');
+          if (fileEditor) {
+            fileEditor.openFile(filePath);
+          } else {
+            console.error('File editor component not available');
+          }
         }
       } catch (error) {
         console.error('Failed to navigate to file location:', error);
         // Fallback: just try to open the file directly
-        const fileEditor = window.app?.getComponent('fileEditor');
-        if (fileEditor) {
-          fileEditor.openFile(filePath);
+        const fileType = this.getFileTypeForViewing(filePath);
+        
+        if (fileType === 'viewable') {
+          const fileViewer = window.app?.getComponent('fileViewer');
+          if (fileViewer) {
+            fileViewer.openFile(filePath);
+          }
+        } else {
+          const fileEditor = window.app?.getComponent('fileEditor');
+          if (fileEditor) {
+            fileEditor.openFile(filePath);
+          }
         }
       }
     }

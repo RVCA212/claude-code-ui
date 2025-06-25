@@ -5,6 +5,7 @@ class MessageComponent {
     this.isStreaming = false;
     this.editingMessageId = null;
     this.currentRevertMessageId = null;
+    this.isDraftSession = false;
 
     // File mention state
     this.isMentioning = false;
@@ -12,6 +13,9 @@ class MessageComponent {
     this.mentionStartPos = -1;
     this.selectedMentionIndex = 0;
     this.mentionMatches = [];
+
+    // Lock state
+    this.isLocked = false;
 
     // Directory mismatch modal
     this.directoryMismatchModal = new DirectoryMismatchModal();
@@ -32,6 +36,8 @@ class MessageComponent {
     this.inputArea = document.getElementById('inputArea');
     this.charCounter = document.getElementById('charCounter');
     this.sessionInfo = document.getElementById('sessionInfo');
+    this.lockBtn = document.getElementById('lockBtn');
+    this.lockIcon = this.lockBtn.querySelector('.codicon');
 
     // File mention dropdown elements
     this.fileMentionDropdown = document.getElementById('fileMentionDropdown');
@@ -53,6 +59,11 @@ class MessageComponent {
     // Stop button
     if (this.stopBtn) {
       this.stopBtn.addEventListener('click', () => this.stopMessage());
+    }
+
+    // Lock button
+    if (this.lockBtn) {
+      this.lockBtn.addEventListener('click', () => this.toggleLockState());
     }
 
     // Message input
@@ -91,6 +102,23 @@ class MessageComponent {
       } catch (error) {
         console.error('Error handling tray open excel file:', error);
         this.showError('An error occurred while opening the Excel file.');
+      }
+    });
+
+    // Tray event for Photoshop files
+    window.electronAPI.onTrayOpenPhotoshopFile(async (event, filePath) => {
+      if (!filePath) return;
+
+      try {
+        const result = await window.electronAPI.handleTrayOpenPhotoshopFile(filePath);
+        if (result.success && result.relativePath) {
+          this.insertFilePath(`Given the image file in '@${result.relativePath}' `);
+        } else {
+          this.showError(result.error || 'Failed to open Photoshop file from tray.');
+        }
+      } catch (error) {
+        console.error('Error handling tray open photoshop file:', error);
+        this.showError('An error occurred while opening the Photoshop file.');
       }
     });
   }
@@ -245,6 +273,10 @@ class MessageComponent {
       this.messageInput.value = '';
       this.handleInputChange();
 
+      if (window.electronAPI && window.electronAPI.resizeWindow) {
+        window.electronAPI.resizeWindow({ height: 600 });
+      }
+
       // Start streaming
       this.setStreaming(true);
 
@@ -312,6 +344,9 @@ class MessageComponent {
     // Close file mention dropdown when session changes
     this.hideMentionDropdown();
 
+    this.isDraftSession = context?.isDraft || context?.id === 'draft';
+    this.updateInputAreaStyling();
+
     this.loadSessionMessages(context);
     this.updateInputArea(context);
   }
@@ -321,6 +356,7 @@ class MessageComponent {
 
     // Update compact mode state
     this.isCompactMode = newState.isChatOnly;
+    this.updateInputAreaStyling();
 
     // If currently showing empty state, refresh it with new layout mode
     if (this.messagesContainer && this.messagesContainer.querySelector('.empty-state')) {
@@ -649,13 +685,36 @@ class MessageComponent {
     }
   }
 
+  updateInputAreaStyling() {
+    if (!this.inputArea) return;
+
+    if (this.isDraftSession && this.isCompactMode) {
+      this.inputArea.classList.add('welcoming');
+    } else {
+      this.inputArea.classList.remove('welcoming');
+    }
+  }
+
   updateSessionInfo(context) {
     if (!this.sessionInfo) return;
 
-    if (context && context.claudeSessionId) {
+    const isDraft = context?.isDraft || context?.id === 'draft';
+
+    if (isDraft) {
+        this.sessionInfo.innerHTML = '<a href="#" class="history-link">history</a>';
+        const historyLink = this.sessionInfo.querySelector('.history-link');
+        if (historyLink) {
+          historyLink.addEventListener('click', (e) => {
+            e.preventDefault();
+            if (window.sessionManager) {
+              window.sessionManager.toggleHistoryDropdown();
+            }
+          });
+        }
+    } else if (context && context.claudeSessionId) {
       this.sessionInfo.textContent = `Session: ${context.claudeSessionId.substring(0, 8)}...`;
     } else {
-      this.sessionInfo.textContent = 'New session';
+      this.sessionInfo.innerHTML = '';
     }
   }
 
@@ -1117,6 +1176,27 @@ class MessageComponent {
           }
         }
       }, 50);
+    }
+  }
+
+  // Add new methods for lock state management
+  toggleLockState() {
+    this.isLocked = !this.isLocked;
+    this.updateLockState();
+    window.electronAPI.setWindowLock(this.isLocked);
+  }
+
+  updateLockState() {
+    if (this.isLocked) {
+      this.lockBtn.classList.add('locked');
+      this.lockIcon.classList.remove('codicon-unlock');
+      this.lockIcon.classList.add('codicon-lock');
+      this.lockBtn.title = 'Unlock window (will hide on focus loss)';
+    } else {
+      this.lockBtn.classList.remove('locked');
+      this.lockIcon.classList.remove('codicon-lock');
+      this.lockIcon.classList.add('codicon-unlock');
+      this.lockBtn.title = 'Lock window (won\'t hide on focus loss)';
     }
   }
 }

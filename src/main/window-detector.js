@@ -36,6 +36,14 @@ class WindowDetector {
         displayName: 'Excel',
         icon: '📊',
         applescriptName: 'Microsoft Excel'
+      },
+      'Adobe Photoshop': {
+        bundleId: 'com.adobe.Photoshop',
+        processName: 'Adobe Photoshop',
+        processNames: ['Adobe Photoshop', 'Adobe Photoshop 2024', 'Adobe Photoshop 2023', 'Adobe Photoshop 2022'],
+        displayName: 'Photoshop',
+        icon: '🎨',
+        applescriptName: 'Adobe Photoshop'
       }
     };
 
@@ -65,7 +73,8 @@ class WindowDetector {
     return {
       vscode: true,
       cursor: true,
-      excel: false
+      excel: false,
+      photoshop: false
     };
   }
 
@@ -254,6 +263,17 @@ class WindowDetector {
               p.command.includes('Microsoft Excel') ||
               p.command.includes('Excel.app') ||
               p.command.toLowerCase().includes('excel')
+            )) return true;
+          }
+
+          // For Photoshop, also check for Adobe patterns
+          if (appName === 'Adobe Photoshop') {
+            if (p.name && p.name.toLowerCase().includes('photoshop')) return true;
+            if (p.command && (
+              p.command.includes('Adobe Photoshop') ||
+              p.command.includes('Photoshop.app') ||
+              p.command.toLowerCase().includes('photoshop') ||
+              p.command.includes('Adobe') && p.command.includes('Photoshop')
             )) return true;
           }
 
@@ -720,6 +740,178 @@ class WindowDetector {
   }
 
   /**
+   * Get open files from Photoshop using AppleScript
+   */
+  async getPhotoshopOpenFiles(knownWorkspaces) {
+    try {
+      const runAppleScript = await this.getRunAppleScript();
+      if (!runAppleScript) {
+        console.warn('AppleScript runner not available');
+        return [];
+      }
+
+      if (this.debugMode) {
+        console.log('\n=== PHOTOSHOP APPLESCRIPT DEBUG ===');
+      }
+
+      // Try multiple approaches for Photoshop since version names vary
+      const approaches = [
+        // Approach 1: Adobe Photoshop 2024
+        {
+          name: 'Adobe Photoshop 2024',
+          script: `
+            tell application "System Events"
+              if exists (processes whose name is "Adobe Photoshop" or name contains "Photoshop") then
+                tell application "Adobe Photoshop 2024"
+                  set openDocs to {}
+                  try
+                    repeat with theDoc in documents
+                      if exists theDoc then
+                        try
+                          set docName to name of theDoc
+                          set docPath to ""
+                          try
+                            set docPath to file path of theDoc as string
+                          end try
+                          if docName is not "" then
+                            if docPath is not "" then
+                              set end of openDocs to (docPath & "|" & docName)
+                            else
+                              set end of openDocs to docName
+                            end if
+                          end if
+                        end try
+                      end if
+                    end repeat
+                  end try
+                  return openDocs
+                end tell
+              else
+                return {}
+              end if
+            end tell
+          `
+        },
+        // Approach 2: Adobe Photoshop 2023
+        {
+          name: 'Adobe Photoshop 2023',
+          script: `
+            tell application "System Events"
+              if exists (processes whose name is "Adobe Photoshop" or name contains "Photoshop") then
+                tell application "Adobe Photoshop 2023"
+                  set openDocs to {}
+                  try
+                    repeat with theDoc in documents
+                      if exists theDoc then
+                        try
+                          set docName to name of theDoc
+                          set docPath to ""
+                          try
+                            set docPath to file path of theDoc as string
+                          end try
+                          if docName is not "" then
+                            if docPath is not "" then
+                              set end of openDocs to (docPath & "|" & docName)
+                            else
+                              set end of openDocs to docName
+                            end if
+                          end if
+                        end try
+                      end if
+                    end repeat
+                  end try
+                  return openDocs
+                end tell
+              else
+                return {}
+              end if
+            end tell
+          `
+        },
+        // Approach 3: Generic Adobe Photoshop
+        {
+          name: 'Generic Adobe Photoshop',
+          script: `
+            tell application "System Events"
+              if exists (processes whose name is "Adobe Photoshop" or name contains "Photoshop") then
+                tell application "Adobe Photoshop"
+                  set openDocs to {}
+                  try
+                    repeat with theDoc in documents
+                      if exists theDoc then
+                        try
+                          set docName to name of theDoc
+                          set docPath to ""
+                          try
+                            set docPath to file path of theDoc as string
+                          end try
+                          if docName is not "" then
+                            if docPath is not "" then
+                              set end of openDocs to (docPath & "|" & docName)
+                            else
+                              set end of openDocs to docName
+                            end if
+                          end if
+                        end try
+                      end if
+                    end repeat
+                  end try
+                  return openDocs
+                end tell
+              else
+                return {}
+              end if
+            end tell
+          `
+        }
+      ];
+
+      for (const approach of approaches) {
+        try {
+          if (this.debugMode) {
+            console.log(`Trying approach: ${approach.name}`);
+          }
+
+          const result = await runAppleScript(approach.script);
+
+          if (this.debugMode) {
+            console.log(`Result from ${approach.name}:`, result);
+          }
+
+          if (result && result.trim() !== '') {
+            const parsedFiles = this.parsePhotoshopResult(result, 'Photoshop', knownWorkspaces);
+            if (parsedFiles.length > 0) {
+              if (this.debugMode) {
+                console.log(`✅ Success with ${approach.name}, found ${parsedFiles.length} files`);
+                console.log('=== END PHOTOSHOP DEBUG ===\n');
+              }
+              return parsedFiles;
+            }
+          }
+        } catch (error) {
+          if (this.debugMode) {
+            console.log(`❌ Failed with ${approach.name}:`, error.message);
+          }
+          // Continue to next approach
+        }
+      }
+
+      if (this.debugMode) {
+        console.log('❌ All AppleScript approaches failed for Photoshop');
+        console.log('=== END PHOTOSHOP DEBUG ===\n');
+      }
+
+      return [];
+    } catch (error) {
+      console.error('Error getting Photoshop open files:', error);
+      if (this.debugMode) {
+        console.error('Stack trace:', error.stack);
+      }
+      return [];
+    }
+  }
+
+  /**
    * Get recently opened Excel files from macOS Recent Items
    */
   async getRecentExcelFiles() {
@@ -790,6 +982,149 @@ class WindowDetector {
       }
       return [];
     }
+  }
+
+  /**
+   * Get recently opened Photoshop files from file system and common locations
+   */
+  async getRecentPhotoshopFiles() {
+    try {
+      const runAppleScript = await this.getRunAppleScript();
+      if (!runAppleScript) {
+        console.warn('AppleScript runner not available for recent Photoshop files');
+        return [];
+      }
+
+      if (this.debugMode) {
+        console.log('\n=== RECENT PHOTOSHOP FILES DEBUG ===');
+      }
+
+      // For now, focus on file system search since Photoshop's AppleScript
+      // doesn't expose recent files as easily as other apps
+      const recentFiles = await this.getRecentPhotoshopFilesFromSystem();
+
+      if (this.debugMode) {
+        console.log(`✅ Found ${recentFiles.length} recent Photoshop files`);
+        console.log('=== END RECENT PHOTOSHOP DEBUG ===\n');
+      }
+
+      return recentFiles;
+    } catch (error) {
+      console.error('Error getting recent Photoshop files:', error);
+      if (this.debugMode) {
+        console.error('Stack trace:', error.stack);
+      }
+      return [];
+    }
+  }
+
+  /**
+   * Get recent Photoshop files from file system (common locations)
+   */
+  async getRecentPhotoshopFilesFromSystem() {
+    const recentFiles = [];
+    const maxFiles = 10;
+    
+    try {
+      // Common locations for image files with error handling
+      const searchPaths = [
+        path.join(os.homedir(), 'Desktop'),
+        path.join(os.homedir(), 'Documents'),
+        path.join(os.homedir(), 'Downloads'),
+        path.join(os.homedir(), 'Pictures'),
+        path.join(os.homedir(), 'iCloud Drive (Archive)', 'Desktop'),
+        path.join(os.homedir(), 'Library', 'Application Support', 'Adobe', 'Adobe Photoshop 2024', 'Recent Files'),
+        path.join(os.homedir(), 'Library', 'Application Support', 'Adobe', 'Adobe Photoshop 2023', 'Recent Files')
+      ];
+
+      const imageExtensions = [
+        '.psd', '.psb',  // Photoshop native
+        '.jpg', '.jpeg', '.png', '.gif', '.tiff', '.tif', '.bmp', '.webp',  // Common formats
+        '.cr2', '.nef', '.arw', '.dng', '.raw',  // RAW formats
+        '.svg', '.ai', '.eps'  // Vector formats
+      ];
+      const foundFiles = [];
+      let searchErrors = 0;
+
+      if (this.debugMode) {
+        console.log(`Searching for image files in ${searchPaths.length} locations...`);
+      }
+
+      // Search for image files in common locations
+      for (const searchPath of searchPaths) {
+        try {
+          if (!fs.existsSync(searchPath)) {
+            if (this.debugMode) {
+              console.log(`Path does not exist: ${searchPath}`);
+            }
+            continue;
+          }
+          
+          const entries = fs.readdirSync(searchPath, { withFileTypes: true });
+          let filesInDir = 0;
+          
+          for (const entry of entries) {
+            if (entry.isFile() && imageExtensions.some(ext => entry.name.toLowerCase().endsWith(ext))) {
+              const filePath = path.join(searchPath, entry.name);
+              try {
+                const stats = fs.statSync(filePath);
+                foundFiles.push({
+                  name: entry.name,
+                  path: filePath,
+                  directory: searchPath,
+                  app: 'Photoshop',
+                  icon: this.getFileIcon(entry.name),
+                  isDirectory: false,
+                  exists: true,
+                  isWorkspaceFile: false,
+                  isRecent: true,
+                  lastModified: stats.mtime,
+                  size: stats.size
+                });
+                filesInDir++;
+              } catch (statError) {
+                if (this.debugMode) {
+                  console.warn(`Could not stat file ${filePath}: ${statError.message}`);
+                }
+                searchErrors++;
+                continue;
+              }
+            }
+          }
+
+          if (this.debugMode && filesInDir > 0) {
+            console.log(`Found ${filesInDir} image files in ${searchPath}`);
+          }
+        } catch (dirError) {
+          if (this.debugMode) {
+            console.warn(`Could not read directory ${searchPath}: ${dirError.message}`);
+          }
+          searchErrors++;
+          continue;
+        }
+      }
+
+      // Sort by last modified (most recent first) and limit
+      foundFiles.sort((a, b) => b.lastModified - a.lastModified);
+      recentFiles.push(...foundFiles.slice(0, maxFiles));
+
+      if (this.debugMode) {
+        console.log(`Search complete: ${recentFiles.length} image files found (${searchErrors} errors)`);
+      }
+
+      // Log warning if too many errors
+      if (searchErrors > searchPaths.length / 2) {
+        console.warn(`Image file search encountered ${searchErrors} errors - may have permission issues`);
+      }
+
+    } catch (error) {
+      console.error('Critical error searching for recent image files:', error);
+      if (this.debugMode) {
+        console.error('Stack trace:', error.stack);
+      }
+    }
+
+    return recentFiles;
   }
 
   /**
@@ -1064,6 +1399,120 @@ class WindowDetector {
     if (this.debugMode) {
       console.log(`Final result: ${files.length} Excel files extracted`);
       console.log('=== END EXCEL PARSING ===\n');
+    }
+
+    return files;
+  }
+
+  /**
+   * Parse Photoshop AppleScript result and extract image file information
+   */
+  parsePhotoshopResult(result, appName, knownWorkspaces = []) {
+    if (this.debugMode) {
+      console.log(`\n=== PARSING PHOTOSHOP RESULT ===`);
+      console.log('Raw result:', JSON.stringify(result));
+    }
+
+    if (!result || result.trim() === '') {
+      if (this.debugMode) {
+        console.log('❌ Empty or null result');
+        console.log('=== END PHOTOSHOP PARSING ===\n');
+      }
+      return [];
+    }
+
+    const files = [];
+    const documentEntries = result.split(',').map(entry => entry.trim());
+
+    if (this.debugMode) {
+      console.log(`Found ${documentEntries.length} document entries:`, documentEntries);
+    }
+
+    for (const entry of documentEntries) {
+      if (!entry || entry === '') continue;
+
+      if (this.debugMode) {
+        console.log(`Processing entry: "${entry}"`);
+      }
+
+      let fileName, filePath;
+
+      // Check if entry contains path separator (format: "path|name")
+      if (entry.includes('|')) {
+        const parts = entry.split('|');
+        filePath = parts[0].trim();
+        fileName = parts[1].trim();
+      } else {
+        // Just the filename (for unsaved documents or when path unavailable)
+        fileName = entry;
+        filePath = null;
+      }
+
+      // Skip if filename is empty
+      if (!fileName) continue;
+
+      // Check if this is an image file extension
+      const ext = path.extname(fileName).toLowerCase();
+      const isImageFile = [
+        '.psd', '.psb',  // Photoshop native
+        '.jpg', '.jpeg', '.png', '.gif', '.tiff', '.tif', '.bmp', '.webp',  // Common formats
+        '.cr2', '.nef', '.arw', '.dng', '.raw',  // RAW formats
+        '.svg', '.ai', '.eps'  // Vector formats that Photoshop can open
+      ].includes(ext);
+
+      // For files without extensions (like "Untitled-1"), assume it's Photoshop
+      const isUnsavedDocument = !ext && /^(Untitled|New Document)(-\d+)?$/i.test(fileName);
+
+      if (!isImageFile && !isUnsavedDocument) {
+        if (this.debugMode) {
+          console.log(`  ❌ Skipping non-image file: ${fileName}`);
+        }
+        continue;
+      }
+
+      // Check if file exists (for saved documents) and get metadata
+      let exists = false;
+      let lastModified = null;
+      let fileSize = null;
+
+      if (filePath) {
+        try {
+          const stats = fs.statSync(filePath);
+          exists = true;
+          lastModified = stats.mtime;
+          fileSize = stats.size;
+        } catch (error) {
+          // File doesn't exist or can't be accessed
+          exists = false;
+        }
+      }
+
+      const fileInfo = {
+        name: fileName,
+        path: filePath || fileName,
+        directory: filePath ? path.dirname(filePath) : null,
+        app: appName,
+        icon: isUnsavedDocument ? 'codicon-file' : this.getFileIcon(fileName),
+        isDirectory: false,
+        exists: exists,
+        isWorkspaceFile: false,
+        isUnsaved: isUnsavedDocument || !filePath,
+        isOpen: true, // Currently open files are marked as open
+        lastModified: lastModified,
+        size: fileSize,
+        fileType: ext || 'image'
+      };
+
+      files.push(fileInfo);
+
+      if (this.debugMode) {
+        console.log(`  ✅ Added Photoshop file:`, fileInfo);
+      }
+    }
+
+    if (this.debugMode) {
+      console.log(`Final result: ${files.length} Photoshop files extracted`);
+      console.log('=== END PHOTOSHOP PARSING ===\n');
     }
 
     return files;
@@ -1348,7 +1797,26 @@ class WindowDetector {
       '.xlsm': 'codicon-table',
       '.xlsb': 'codicon-table',
       '.xltx': 'codicon-table',
-      '.xltm': 'codicon-table'
+      '.xltm': 'codicon-table',
+      // Image file types
+      '.psd': 'codicon-file-media',
+      '.psb': 'codicon-file-media',
+      '.jpg': 'codicon-file-media',
+      '.jpeg': 'codicon-file-media',
+      '.png': 'codicon-file-media',
+      '.gif': 'codicon-file-media',
+      '.tiff': 'codicon-file-media',
+      '.tif': 'codicon-file-media',
+      '.bmp': 'codicon-file-media',
+      '.webp': 'codicon-file-media',
+      '.svg': 'codicon-file-media',
+      '.ai': 'codicon-file-media',
+      '.eps': 'codicon-file-media',
+      '.cr2': 'codicon-file-media',
+      '.nef': 'codicon-file-media',
+      '.arw': 'codicon-file-media',
+      '.dng': 'codicon-file-media',
+      '.raw': 'codicon-file-media'
     };
 
     return iconMap[ext] || 'codicon-file';
@@ -1410,6 +1878,8 @@ class WindowDetector {
           return detectionSettings.cursor;
         } else if (app.applescriptName === 'Microsoft Excel') {
           return detectionSettings.excel;
+        } else if (app.applescriptName === 'Adobe Photoshop') {
+          return detectionSettings.photoshop;
         }
         return false;
       });
@@ -1444,6 +1914,8 @@ class WindowDetector {
             files = await this.getCursorOpenFiles(knownWorkspaces);
           } else if (app.applescriptName === 'Microsoft Excel') {
             files = await this.getExcelOpenFiles(knownWorkspaces);
+          } else if (app.applescriptName === 'Adobe Photoshop') {
+            files = await this.getPhotoshopOpenFiles(knownWorkspaces);
           }
 
           // Add app metadata to each file
@@ -1485,6 +1957,34 @@ class WindowDetector {
         }
       } else if (this.debugMode) {
         console.log('Excel detection disabled, skipping recent Excel files');
+      }
+
+      // Also get recent Photoshop files (even if Photoshop is not currently running), but only if Photoshop detection is enabled
+      if (detectionSettings.photoshop) {
+        try {
+          const recentPhotoshopFiles = await this.getRecentPhotoshopFiles();
+          if (Array.isArray(recentPhotoshopFiles) && recentPhotoshopFiles.length > 0) {
+            recentPhotoshopFiles.forEach(file => {
+              file.appDisplayName = 'Photoshop';
+              file.appIcon = '🎨';
+              file.isOpen = false; // Mark as recent, not currently open
+            });
+            allOpenFiles.push(...recentPhotoshopFiles);
+            
+            if (this.debugMode) {
+              console.log(`Added ${recentPhotoshopFiles.length} recent Photoshop files to results`);
+            }
+          } else if (this.debugMode) {
+            console.log('No recent Photoshop files found');
+          }
+        } catch (error) {
+          console.error('Error getting recent Photoshop files:', error);
+          if (this.debugMode) {
+            console.error('Recent Photoshop files error stack:', error.stack);
+          }
+        }
+      } else if (this.debugMode) {
+        console.log('Photoshop detection disabled, skipping recent Photoshop files');
       }
 
       // Remove duplicates and sort

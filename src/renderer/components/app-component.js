@@ -24,6 +24,7 @@ class AppComponent {
       // 4. Remaining components that depend on sessionManager
       this.components.messageComponent = new MessageComponent(this.components.sessionManager);
       this.components.fileEditor = new FileEditorComponent();
+      this.components.fileViewer = new FileViewerComponent();
       this.components.chatSidebar = new ChatSidebarComponent();
       this.components.globalSearch = new GlobalSearch();
 
@@ -120,6 +121,7 @@ class AppComponent {
     window.settingsComponent = this.components.settings;
     window.fileBrowser = this.components.fileBrowser;
     window.fileEditor = this.components.fileEditor;
+    window.fileViewer = this.components.fileViewer;
     window.chatSidebar = this.components.chatSidebar;
     window.globalSearch = this.components.globalSearch;
 

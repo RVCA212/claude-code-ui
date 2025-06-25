@@ -1,4 +1,4 @@
-const { app, BrowserWindow, Tray, Menu, nativeImage } = require('electron');
+const { app, BrowserWindow, Tray, Menu, nativeImage, ipcMain } = require('electron');
 const path = require('path');
 
 // Import our modular components
@@ -24,6 +24,7 @@ let ipcHandlers;
 
 // Track if we're quitting to avoid hiding to tray
 let isQuitting = false;
+let isWindowLocked = false;
 
 function createTray() {
   // Create tray icon - try different approaches for macOS compatibility
@@ -117,6 +118,32 @@ function createTray() {
         const openFilesResult = await fileOperations.getOpenApplicationWindows();
         let workspaceItems = [];
         let excelItems = [];
+        let photoshopItems = [];
+        let taskItems = [];
+
+        // Get running tasks from Claude Process Manager
+        const runningSessionIds = claudeProcessManager.getRunningSessionIds();
+        if (runningSessionIds && runningSessionIds.length > 0) {
+          taskItems = runningSessionIds.map(sessionId => {
+            const session = sessionManager.getSession(sessionId);
+            if (!session) return null;
+            return {
+              label: `🧠 ${session.title.length > 35 ? session.title.slice(0, 32) + '…' : session.title}`,
+              click: () => {
+                try {
+                  if (mainWindow) {
+                    showWindow();
+                  }
+                  if (mainWindow && !mainWindow.isDestroyed()) {
+                    mainWindow.webContents.send('tray-select-session', session.id);
+                  }
+                } catch (e) {
+                  console.error('Failed to handle task menu click:', e);
+                }
+              }
+            };
+          }).filter(Boolean);
+        }
 
         if (openFilesResult.success && Array.isArray(openFilesResult.files)) {
           // Filter for workspaces (VS Code/Cursor projects)
@@ -148,6 +175,11 @@ function createTray() {
           // Filter for Excel files (both open and recent)
           const excelFiles = openFilesResult.files.filter(f =>
             f.app === 'Excel' || f.appDisplayName === 'Excel'
+          );
+
+          // Filter for Photoshop files (both open and recent)
+          const photoshopFiles = openFilesResult.files.filter(f =>
+            f.app === 'Photoshop' || f.appDisplayName === 'Photoshop'
           );
 
           const addedExcelPaths = new Set();
@@ -186,6 +218,44 @@ function createTray() {
               }
             };
           }).filter(Boolean);
+
+          // Create Photoshop menu items
+          const addedPhotoshopPaths = new Set();
+          photoshopItems = photoshopFiles.slice(0, 8).map(file => {
+            if (!file.path || addedPhotoshopPaths.has(file.path)) return null;
+            addedPhotoshopPaths.add(file.path);
+
+            const displayName = file.name || path.basename(file.path);
+            const statusIcon = file.isOpen ? '🟢' : '🕒'; // Green dot for open, clock for recent
+
+            // Add size and date info for recent files
+            let extraInfo = '';
+            if (!file.isOpen && file.lastModified) {
+              const date = new Date(file.lastModified);
+              const timeAgo = getTimeAgo(date);
+              extraInfo = ` (${timeAgo})`;
+            }
+
+            const label = `${statusIcon} ${displayName.length > 30 ? displayName.slice(0, 27) + '…' : displayName}${extraInfo}`;
+
+            return {
+              label: label,
+              click: () => {
+                try {
+                  // Show the main window first (like other items do)
+                  if (mainWindow) {
+                    showWindow();
+                  }
+                  // Send IPC to open Photoshop file and navigate to its directory
+                  if (mainWindow && !mainWindow.isDestroyed()) {
+                    mainWindow.webContents.send('tray-open-photoshop-file', file.path);
+                  }
+                } catch (e) {
+                  console.error('Failed to handle Photoshop file menu click:', e);
+                }
+              }
+            };
+          }).filter(Boolean);
         }
 
         const baseTemplate = [
@@ -210,6 +280,16 @@ function createTray() {
           baseTemplate.push({ type: 'separator' });
         }
 
+        // Add running tasks section
+        if (taskItems.length > 0) {
+          baseTemplate.push({
+            label: '🚀 Running Tasks',
+            enabled: false // Header item
+          });
+          baseTemplate.push(...taskItems);
+          baseTemplate.push({ type: 'separator' });
+        }
+
         // Add Excel files section
         if (excelItems.length > 0) {
           baseTemplate.push({
@@ -217,6 +297,16 @@ function createTray() {
             enabled: false // Header item
           });
           baseTemplate.push(...excelItems);
+          baseTemplate.push({ type: 'separator' });
+        }
+
+        // Add Photoshop files section
+        if (photoshopItems.length > 0) {
+          baseTemplate.push({
+            label: '🎨 Photoshop Images',
+            enabled: false // Header item
+          });
+          baseTemplate.push(...photoshopItems);
           baseTemplate.push({ type: 'separator' });
         }
 
@@ -385,10 +475,10 @@ function showAboutDialog() {
 async function createWindow() {
   // Create the browser window
   mainWindow = new BrowserWindow({
-    width: 700,
-    height: 450,
-    minWidth: 400,
-    minHeight: 200,
+    width: 450,
+    height: 250,
+    minWidth: 450,
+    minHeight: 250,
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
@@ -398,6 +488,18 @@ async function createWindow() {
     },
     titleBarStyle: 'hiddenInset',
     show: false // Don't show until ready
+  });
+
+  // Handle window blur to hide window when not locked
+  mainWindow.on('blur', () => {
+    // Do not hide if dev tools are focused
+    if (mainWindow.webContents.isDevToolsFocused()) {
+      return;
+    }
+
+    if (!isWindowLocked && !isQuitting) {
+      hideWindow();
+    }
   });
 
   // Update window references in managers
@@ -537,6 +639,13 @@ app.whenReady().then(async () => {
   await initializeApp();
   await createWindow();
   createTray();
+
+  ipcMain.handle('set-window-lock', (event, locked) => {
+    isWindowLocked = locked;
+    if (mainWindow) {
+      mainWindow.setAlwaysOnTop(locked, 'normal');
+    }
+  });
 });
 
 app.on('window-all-closed', () => {

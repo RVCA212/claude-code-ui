@@ -28,6 +28,7 @@ class SessionManager {
     // History dropdown elements
     this.historyBtn = document.getElementById('historyBtn');
     this.historyDropdown = document.getElementById('historyDropdown');
+    this.historyLink = null; // For the new history link in compact mode
 
     // Sidebar conversation list element (for sidebar history view)
     this.sidebarConversationsList = document.getElementById('sidebarConversationsList');
@@ -84,7 +85,7 @@ class SessionManager {
 
     // Close dropdown when clicking outside
     document.addEventListener('click', (e) => {
-      if (this.historyDropdown && !this.historyBtn?.contains(e.target)) {
+      if (this.historyDropdown && !this.historyBtn?.contains(e.target) && !e.target.closest('.history-link')) {
         this.hideHistoryDropdown();
       }
     });
@@ -118,6 +119,10 @@ class SessionManager {
         this.currentSessionId = null;
         this.updateSessionInfo(null);
       }
+    });
+
+    window.electronAPI.onTraySelectSession((_event, sessionId) => {
+      this.selectSession(sessionId);
     });
   }
 
@@ -275,54 +280,49 @@ class SessionManager {
 
     if (!this.conversationsList) return;
 
-    if (this.sessions.length === 0) {
-      const emptyHTML = `
-        <div class="empty-state">
-          <p>No conversations yet. Create your first conversation to get started!</p>
-        </div>
-      `;
-      this.conversationsList.innerHTML = emptyHTML;
-      if (this.sidebarConversationsList) {
-        this.sidebarConversationsList.innerHTML = emptyHTML;
-      }
-      return;
-    }
+    const emptyHTML = `
+      <div class="empty-state">
+        <p>No conversations yet. Create your first conversation to get started!</p>
+      </div>
+    `;
 
-    const sessionsHTML = this.sessions.map(session => {
-      const isActive = session.id === this.currentSessionId;
-      const statusClass = session.statusInfo?.status || 'active';
-      const preview = this.getSessionPreview(session);
-      const timestamp = DOMUtils.formatTimestamp(session.lastActivity || session.updatedAt);
+    const sessionsHTML = this.sessions.length > 0
+      ? this.sessions.map(session => {
+          const isActive = session.id === this.currentSessionId;
+          const statusClass = session.statusInfo?.status || 'active';
+          const preview = this.getSessionPreview(session);
+          const timestamp = DOMUtils.formatTimestamp(session.lastActivity || session.updatedAt);
 
-      // Add working directory info if available
-      const cwdDisplay = session.statusInfo?.hasWorkingDirectory
-        ? `<span class="conversation-cwd" title="Working directory: ${session.statusInfo.workingDirectory}">📁 ${this.getDisplayPath(session.statusInfo.workingDirectory)}</span>`
-        : '';
+          // Add working directory info if available
+          const cwdDisplay = session.statusInfo?.hasWorkingDirectory
+            ? `<span class="conversation-cwd" title="Working directory: ${session.statusInfo.workingDirectory}">📁 ${this.getDisplayPath(session.statusInfo.workingDirectory)}</span>`
+            : '';
 
-      return `
-        <div class="conversation-item ${isActive ? 'active' : ''}"
-             onclick="sessionManager.selectSession('${session.id}')">
-          <div class="conversation-content">
-            <div class="conversation-header">
-              <div class="conversation-title-text">${DOMUtils.escapeHTML(session.title)}</div>
-              <span class="conversation-status-indicator ${statusClass}"></span>
+          return `
+            <div class="conversation-item ${isActive ? 'active' : ''}"
+                 onclick="sessionManager.selectSession('${session.id}')">
+              <div class="conversation-content">
+                <div class="conversation-header">
+                  <div class="conversation-title-text">${DOMUtils.escapeHTML(session.title)}</div>
+                  <span class="conversation-status-indicator ${statusClass}"></span>
+                </div>
+                <div class="conversation-preview">${DOMUtils.escapeHTML(preview)}</div>
+                <div class="conversation-meta">
+                  <span class="conversation-timestamp">${timestamp}</span>
+                  ${cwdDisplay}
+                </div>
+              </div>
+              <button class="delete-conversation-btn"
+                      onclick="event.stopPropagation(); sessionManager.deleteSession('${session.id}')"
+                      title="Delete conversation">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </button>
             </div>
-            <div class="conversation-preview">${DOMUtils.escapeHTML(preview)}</div>
-            <div class="conversation-meta">
-              <span class="conversation-timestamp">${timestamp}</span>
-              ${cwdDisplay}
-            </div>
-          </div>
-          <button class="delete-conversation-btn"
-                  onclick="event.stopPropagation(); sessionManager.deleteSession('${session.id}')"
-                  title="Delete conversation">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-          </button>
-        </div>
-      `;
-    }).join('');
+          `;
+        }).join('')
+      : emptyHTML;
 
     this.conversationsList.innerHTML = sessionsHTML;
 
@@ -332,12 +332,11 @@ class SessionManager {
 
     // Also update history dropdown
     if (this.historyDropdown) {
-      const dropdownHTML = `
+      this.historyDropdown.innerHTML = `
         <div class="conversations-list">
           ${sessionsHTML}
         </div>
       `;
-      this.historyDropdown.innerHTML = dropdownHTML;
     }
   }
 
@@ -354,6 +353,8 @@ class SessionManager {
   }
 
   updateSessionInfo(session) {
+    const mainChat = document.querySelector('.main-chat');
+
     if (!session) {
       // No session selected
       if (this.conversationTitle) {
@@ -368,6 +369,7 @@ class SessionManager {
       if (this.conversationContext) {
         this.conversationContext.style.display = 'none';
       }
+      if (mainChat) mainChat.classList.add('header-hidden');
       return;
     }
 
@@ -388,8 +390,10 @@ class SessionManager {
       if (this.conversationContext) {
         this.conversationContext.style.display = 'none';
       }
+      if (mainChat) mainChat.classList.add('header-hidden');
     } else {
       // Normal session
+      if (mainChat) mainChat.classList.remove('header-hidden');
       if (this.editTitleBtn) {
         this.editTitleBtn.style.display = 'flex';
       }
@@ -516,7 +520,45 @@ class SessionManager {
   toggleHistoryDropdown() {
     if (this.historyDropdown) {
       const isVisible = this.historyDropdown.style.display === 'block';
-      this.historyDropdown.style.display = isVisible ? 'none' : 'block';
+      if (isVisible) {
+        this.hideHistoryDropdown();
+      } else {
+        this.showHistoryDropdown();
+      }
+    }
+  }
+
+  showHistoryDropdown() {
+    if (!this.historyDropdown) return;
+
+    // Position the dropdown. It could be triggered by the header button or the new link.
+    const historyLinkElement = document.querySelector('.history-link');
+    const triggerElement = this.historyBtn.offsetParent ? this.historyBtn : historyLinkElement;
+
+    this.historyDropdown.style.display = 'block';
+
+    if (triggerElement) {
+        const rect = triggerElement.getBoundingClientRect();
+        const dropdownRect = this.historyDropdown.getBoundingClientRect();
+
+        let top = rect.bottom + 5;
+        let left = rect.left;
+
+        // If it would go off-screen, adjust position
+        if (left + dropdownRect.width > window.innerWidth) {
+            left = window.innerWidth - dropdownRect.width - 10;
+        }
+
+        if (top + dropdownRect.height > window.innerHeight) {
+            top = rect.top - dropdownRect.height - 5;
+        }
+
+        if (top < 0) {
+            top = 5;
+        }
+
+        this.historyDropdown.style.top = `${top}px`;
+        this.historyDropdown.style.left = `${left}px`;
     }
   }
 

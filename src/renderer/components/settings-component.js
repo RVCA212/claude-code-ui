@@ -68,6 +68,7 @@ class SettingsComponent {
   get vsCodeDetectionToggle() { return this._getElement('vsCodeDetectionToggle'); }
   get cursorDetectionToggle() { return this._getElement('cursorDetectionToggle'); }
   get excelDetectionToggle() { return this._getElement('excelDetectionToggle'); }
+  get photoshopDetectionToggle() { return this._getElement('photoshopDetectionToggle'); }
 
   _getElement(id) {
     if (!this._elements[id]) {
@@ -193,6 +194,9 @@ class SettingsComponent {
     if (this.excelDetectionToggle) {
       this.excelDetectionToggle.addEventListener('change', () => this.saveWindowDetectionSettings());
     }
+    if (this.photoshopDetectionToggle) {
+      this.photoshopDetectionToggle.addEventListener('change', () => this.saveWindowDetectionSettings());
+    }
   }
 
   async loadInitialSettings() {
@@ -224,6 +228,10 @@ class SettingsComponent {
     // Show modal immediately for better perceived performance
     this.settingsModal.style.display = 'flex';
 
+    if (window.electronAPI && window.electronAPI.resizeWindow) {
+      window.electronAPI.resizeWindow({ height: 600 });
+    }
+
     // Default to general tab on open, or switch to specified tab
     this.switchTab(tab);
 
@@ -234,6 +242,9 @@ class SettingsComponent {
   closeSettings() {
     if (this.settingsModal) {
       this.settingsModal.style.display = 'none';
+      if (window.electronAPI && window.electronAPI.resizeWindow) {
+        window.electronAPI.resizeWindow({ height: 250 });
+      }
     }
   }
 
@@ -302,7 +313,6 @@ class SettingsComponent {
 
       // Update save button state
       this.updateSaveButtonState();
-
     } catch (error) {
       console.error('Failed to check setup status:', error);
       this.updateCliStatus(false);
@@ -776,6 +786,12 @@ class SettingsComponent {
 
       if (result.success) {
         this.showSuccess(`Successfully cleared ${result.clearedCount} sessions.`);
+
+        // Reload sessions in the session manager to reflect the change
+        if (window.sessionManager) {
+          await window.sessionManager.loadSessions();
+        }
+
         // Close settings modal since sessions are gone
         this.closeSettings();
       } else {
@@ -808,6 +824,9 @@ class SettingsComponent {
       if (this.excelDetectionToggle) {
         this.excelDetectionToggle.checked = settings.excel;
       }
+      if (this.photoshopDetectionToggle) {
+        this.photoshopDetectionToggle.checked = settings.photoshop;
+      }
     } catch (error) {
       console.error('Failed to load window detection settings:', error);
       this.showError('Failed to load window detection settings');
@@ -819,7 +838,8 @@ class SettingsComponent {
       const settings = {
         vscode: this.vsCodeDetectionToggle ? this.vsCodeDetectionToggle.checked : true,
         cursor: this.cursorDetectionToggle ? this.cursorDetectionToggle.checked : true,
-        excel: this.excelDetectionToggle ? this.excelDetectionToggle.checked : false
+        excel: this.excelDetectionToggle ? this.excelDetectionToggle.checked : false,
+        photoshop: this.photoshopDetectionToggle ? this.photoshopDetectionToggle.checked : false
       };
       await window.electronAPI.setWindowDetectionSettings(settings);
       this.invalidateCache('windowDetectionSettings');

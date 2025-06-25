@@ -16,7 +16,8 @@ class ModelConfig {
     this.windowDetectionSettings = {
       vscode: true,    // default on
       cursor: true,    // default on
-      excel: false     // default off
+      excel: false,    // default off
+      photoshop: false // default off
     };
 
     this.modelConfigPath = path.join(os.homedir(), '.claude-code-chat', 'model-config.json');
@@ -43,7 +44,8 @@ class ModelConfig {
       this.windowDetectionSettings = {
         vscode: typeof config.windowDetectionSettings?.vscode === 'boolean' ? config.windowDetectionSettings.vscode : true,
         cursor: typeof config.windowDetectionSettings?.cursor === 'boolean' ? config.windowDetectionSettings.cursor : true,
-        excel: typeof config.windowDetectionSettings?.excel === 'boolean' ? config.windowDetectionSettings.excel : false
+        excel: typeof config.windowDetectionSettings?.excel === 'boolean' ? config.windowDetectionSettings.excel : false,
+        photoshop: typeof config.windowDetectionSettings?.photoshop === 'boolean' ? config.windowDetectionSettings.photoshop : false
       };
 
       // Set the environment variable
@@ -69,7 +71,8 @@ class ModelConfig {
       this.windowDetectionSettings = {
         vscode: true,
         cursor: true,
-        excel: false
+        excel: false,
+        photoshop: false
       };
 
       delete process.env.ANTHROPIC_MODEL;
@@ -183,7 +186,8 @@ class ModelConfig {
     return {
       vscode: this.windowDetectionSettings.vscode,
       cursor: this.windowDetectionSettings.cursor,
-      excel: this.windowDetectionSettings.excel
+      excel: this.windowDetectionSettings.excel,
+      photoshop: this.windowDetectionSettings.photoshop
     };
   }
 
@@ -202,6 +206,9 @@ class ModelConfig {
     }
     if (typeof settings.excel === 'boolean') {
       this.windowDetectionSettings.excel = settings.excel;
+    }
+    if (typeof settings.photoshop === 'boolean') {
+      this.windowDetectionSettings.photoshop = settings.photoshop;
     }
 
     await this.saveModelConfig();
