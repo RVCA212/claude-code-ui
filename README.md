@@ -1,5 +1,26 @@
 # Claude Code Chat
 
+
+task: ```
+add a new 'tasks' tab component below our global header 
+  of our app @renderer/styles/components/global-header.css
+   or our session manager if present 
+  @src/renderer/components/session-manager.js 
+  @renderer/styles/components/session-manager.css 
+  @renderer/index.html . this new component should show 
+  thin hieghted 'tabs' showing the running task in our app
+   @src/renderer/components/tasks-sidebar.js and only show
+   them when running. it should be a small rounded corner 
+  rectangle lock which appears below the global header or 
+  session manager and it should be clickable to open that 
+  session into our chat-sidebar view. note when no task is
+   running, this shouldn't be shown at all and if we are 
+  in the task runnning, it shouldn't be shown.
+```
+
+
+messages
+
 ## Overview
 
 Claude Code Chat is an Electron-based desktop application for interacting with Claude Code, providing a user-friendly interface for AI-powered code assistance and development workflows.
