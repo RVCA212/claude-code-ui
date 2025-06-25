@@ -10,7 +10,7 @@ class FileBrowser {
     this.fileSearchQuery = '';
     this.isQuickAccessCollapsed = true; // Start minimized by default
     this.homeDirectory = '~'; // Default to '~'
-    this.isHistoryView = false; // Sidebar starts in file view mode
+    this.sidebarViewMode = 'file'; // Can be 'file', 'history', or 'tasks'
 
     // Window detection state
     this.openApplicationWindows = [];
@@ -108,6 +108,7 @@ class FileBrowser {
     // Toggle sidebar view button & history container
     this.toggleViewBtn = document.getElementById('toggleSidebarViewBtn');
     this.conversationHistorySidebar = document.getElementById('conversationHistorySidebar');
+    this.tasksSidebar = document.getElementById('tasksSidebar');
 
     // Display elements
     this.breadcrumb = document.getElementById('breadcrumb');
@@ -1558,36 +1559,72 @@ class FileBrowser {
   /* -------------------------- Sidebar View Toggle ------------------------- */
 
   toggleSidebarView() {
-    this.setSidebarView(!this.isHistoryView);
+    // Cycle through: file -> history -> tasks -> file
+    const modes = ['file', 'history', 'tasks'];
+    const currentIndex = modes.indexOf(this.sidebarViewMode);
+    const nextIndex = (currentIndex + 1) % modes.length;
+    this.setSidebarView(modes[nextIndex]);
   }
 
-  setSidebarView(showHistory) {
-    this.isHistoryView = showHistory;
+  setSidebarView(mode) {
+    this.sidebarViewMode = mode;
 
     // Update button label
     if (this.toggleViewBtn) {
-      this.toggleViewBtn.textContent = showHistory ? 'File View' : 'History';
+      switch (mode) {
+        case 'file':
+          this.toggleViewBtn.textContent = 'History';
+          break;
+        case 'history':
+          this.toggleViewBtn.textContent = 'Tasks';
+          break;
+        case 'tasks':
+          this.toggleViewBtn.textContent = 'File View';
+          break;
+      }
     }
 
     // Show/hide conversation history container
     if (this.conversationHistorySidebar) {
-      this.conversationHistorySidebar.style.display = showHistory ? 'flex' : 'none';
+      this.conversationHistorySidebar.style.display = mode === 'history' ? 'flex' : 'none';
     }
 
-    // Show/hide other children of file-browser (except status bar and history container)
+    // Show/hide tasks sidebar container
+    if (this.tasksSidebar) {
+      this.tasksSidebar.style.display = mode === 'tasks' ? 'flex' : 'none';
+    }
+
+    // Show/hide other children of file-browser (except status bar and sidebar containers)
     if (this.root) {
       Array.from(this.root.children).forEach(child => {
-        if (child.classList.contains('file-browser-status') || child.id === 'conversationHistorySidebar') {
+        if (child.classList.contains('file-browser-status') || 
+            child.id === 'conversationHistorySidebar' || 
+            child.id === 'tasksSidebar') {
           return; // Always keep visible
         }
-        child.style.display = showHistory ? 'none' : '';
+        child.style.display = mode === 'file' ? '' : 'none';
       });
     }
 
-    // Ensure conversation list is up to date when entering history view
-    if (showHistory) {
+    // Update content when entering different views
+    if (mode === 'history') {
       window.sessionManager?.renderSessions();
+    } else if (mode === 'tasks') {
+      // Initialize or refresh tasks sidebar
+      if (!window.tasksSidebar) {
+        window.tasksSidebar = new TasksSidebar();
+      }
+      window.tasksSidebar.show();
+    } else if (mode === 'file') {
+      // Hide tasks sidebar when leaving tasks view
+      if (window.tasksSidebar) {
+        window.tasksSidebar.hide();
+      }
     }
+  }
+
+  setSidebarViewMode(mode) {
+    this.setSidebarView(mode);
   }
 
   /**

@@ -46,6 +46,7 @@ class PreloadBridge {
       // Messaging
       sendMessage: (sessionId, message) => ipcRenderer.invoke('send-message', sessionId, message),
       stopMessage: (sessionId) => ipcRenderer.invoke('stop-message', sessionId),
+      getRunningTasks: () => ipcRenderer.invoke('get-running-tasks'),
 
       // Checkpointing
       revertToMessage: (sessionId, messageId) => ipcRenderer.invoke('revert-to-message', sessionId, messageId),

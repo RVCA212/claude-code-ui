@@ -3801,25 +3801,7 @@ body.resizing-chat-sidebar .chat-sidebar-resize-handle {
   opacity: 0.8;
 }
 
-/* Working Directory Badge */
-.cwd-badge {
-  background-color: rgba(59, 130, 246, 0.1);
-  border: 1px solid rgba(59, 130, 246, 0.2);
-  color: #1d4ed8;
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-size: 11px;
-  font-weight: 500;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  margin-left: 8px;
-  cursor: help;
-}
 
-.cwd-badge:hover {
-  background-color: rgba(59, 130, 246, 0.15);
-}
 
 /* Dark mode support */
 @media (prefers-color-scheme: dark) {
@@ -3839,38 +3821,10 @@ body.resizing-chat-sidebar .chat-sidebar-resize-handle {
     background-color: rgba(255, 255, 255, 0.1);
   }
 
-  .cwd-badge {
-    background-color: rgba(59, 130, 246, 0.15);
-    border-color: rgba(59, 130, 246, 0.3);
-    color: #60a5fa;
-  }
 
-  .cwd-badge:hover {
-    background-color: rgba(59, 130, 246, 0.2);
-  }
 }
 
-/* Working Directory in Conversation List */
-.conversation-cwd {
-  font-size: 10px;
-  color: #6b7280;
-  background-color: rgba(107, 114, 128, 0.1);
-  padding: 2px 4px;
-  border-radius: 3px;
-  font-weight: 500;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 120px;
-  display: inline-block;
-}
 
-@media (prefers-color-scheme: dark) {
-  .conversation-cwd {
-    color: #9ca3af;
-    background-color: rgba(156, 163, 175, 0.15);
-  }
-}
 
 /* Directory Mismatch Modal */
 .directory-mismatch-modal {

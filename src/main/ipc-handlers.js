@@ -354,6 +354,41 @@ class IPCHandlers {
     ipcMain.handle('stop-message', async (event, sessionId) => {
       return await this.claudeProcessManager.stopMessage(sessionId);
     });
+
+    ipcMain.handle('get-running-tasks', async () => {
+      try {
+        const runningSessionIds = this.claudeProcessManager.getRunningSessionIds();
+        const tasks = [];
+
+        for (const sessionId of runningSessionIds) {
+          const session = this.sessionManager.getSession(sessionId);
+          const sessionContext = this.sessionManager.getSessionContext(sessionId);
+          
+          if (session) {
+            tasks.push({
+              sessionId: sessionId,
+              sessionTitle: session.title,
+              startTime: session.lastActivity || session.updatedAt,
+              status: 'processing', // Could be enhanced with more specific status
+              workingDirectory: session.cwd,
+              lastMessage: session.lastUserMessage
+            });
+          }
+        }
+
+        return {
+          success: true,
+          tasks: tasks
+        };
+      } catch (error) {
+        console.error('Failed to get running tasks:', error);
+        return {
+          success: false,
+          error: error.message,
+          tasks: []
+        };
+      }
+    });
   }
 
   registerCheckpointHandlers() {

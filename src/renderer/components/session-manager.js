@@ -300,11 +300,6 @@ class SessionManager {
           const preview = this.getSessionPreview(session);
           const timestamp = DOMUtils.formatTimestamp(session.lastActivity || session.updatedAt);
 
-          // Add working directory info if available
-          const cwdDisplay = session.statusInfo?.hasWorkingDirectory
-            ? `<span class="conversation-cwd" title="Working directory: ${session.statusInfo.workingDirectory}">📁 ${this.getDisplayPath(session.statusInfo.workingDirectory)}</span>`
-            : '';
-
           return `
             <div class="conversation-item ${isActive ? 'active' : ''}"
                  onclick="sessionManager.selectSession('${session.id}')">
@@ -316,7 +311,6 @@ class SessionManager {
                 <div class="conversation-preview">${DOMUtils.escapeHTML(preview)}</div>
                 <div class="conversation-meta">
                   <span class="conversation-timestamp">${timestamp}</span>
-                  ${cwdDisplay}
                 </div>
               </div>
               <button class="delete-conversation-btn"
@@ -468,12 +462,7 @@ class SessionManager {
       </div>
     `;
 
-    // Add working directory badge if available
-    const cwdBadge = statusInfo.hasWorkingDirectory
-      ? `<div class="cwd-badge" title="Working directory: ${statusInfo.workingDirectory}">📁 ${this.getDisplayPath(statusInfo.workingDirectory)}</div>`
-      : '';
-
-    return `${statusBadge}${cwdBadge}`;
+    return statusBadge;
   }
 
   createContextHTML(preview) {
