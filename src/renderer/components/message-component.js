@@ -76,6 +76,23 @@ class MessageComponent {
     document.addEventListener('layoutStateChanged', (e) => {
       this.handleLayoutStateChange(e.detail);
     });
+
+    // Tray event for Excel files
+    window.electronAPI.onTrayOpenExcelFile(async (event, filePath) => {
+      if (!filePath) return;
+
+      try {
+        const result = await window.electronAPI.handleTrayOpenExcelFile(filePath);
+        if (result.success && result.relativePath) {
+          this.insertFilePath(`Given the excel file in '@${result.relativePath}' `);
+        } else {
+          this.showError(result.error || 'Failed to open Excel file from tray.');
+        }
+      } catch (error) {
+        console.error('Error handling tray open excel file:', error);
+        this.showError('An error occurred while opening the Excel file.');
+      }
+    });
   }
 
   initializeLayoutState() {

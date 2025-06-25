@@ -104,7 +104,11 @@ class PreloadBridge {
 
       // Tray events
       onTrayOpenWorkspace: (callback) => ipcRenderer.on('tray-open-workspace', callback),
+      onTrayOpenExcelFile: (callback) => ipcRenderer.on('tray-open-excel-file', callback),
       onTrayInteraction: (callback) => ipcRenderer.on('tray-interaction', callback),
+
+      // Excel helpers
+      handleTrayOpenExcelFile: (filePath) => ipcRenderer.invoke('handle-tray-open-excel-file', filePath),
 
       // Remove listeners
       removeAllListeners: (channel) => ipcRenderer.removeAllListeners(channel)
@@ -127,11 +131,15 @@ class PreloadBridge {
       'revertToMessage', 'unrevertFromMessage', 'getMessageCheckpoints', 'hasFileChanges',
       'getDirectoryContents', 'navigateToDirectory', 'getCurrentDirectory', 'getHomeDirectory',
       'getCommonDirectories', 'navigateBack', 'navigateForward', 'navigateUp',
-      'searchFilesByPrefix', 'getOpenApplicationWindows', 'requestWindowDetectionPermissions', 'clearWindowDetectionCache',
+      'setWorkingDirectoryFromFile', 'readFile', 'writeFile', 'watchFile', 'unwatchFile',
+      'searchFilesByPrefix', 'getDirectoryContentsOnly',
+      'createWorkspace', 'getWorkspaces', 'deleteWorkspace', 'setActiveWorkspace', 'getActiveWorkspace', 'clearActiveWorkspace', 'getWorkspaceContext', 'getWorkspaceFolders',
+      'getOpenApplicationWindows', 'requestWindowDetectionPermissions', 'clearWindowDetectionCache',
       'setWindowDetectionDebug', 'getWindowDetectionDiagnostics', 'testAppleScript',
       'getMcpServers', 'saveMcpServer', 'deleteMcpServer', 'toggleMcpServer', 'testMcpServer',
       'onSessionsLoaded', 'onMessageStream', 'onSessionUpdated', 'onSessionDeleted', 'onSessionCreated', 'onAllSessionsCleared',
-      'onTrayOpenWorkspace', 'onTrayInteraction', 'removeAllListeners'
+      'onFileChanged', 'onTrayOpenWorkspace', 'onTrayOpenExcelFile', 'onTrayInteraction',
+      'handleTrayOpenExcelFile', 'removeAllListeners'
     ];
 
     const exposedMethods = Object.keys(this.exposedAPI);

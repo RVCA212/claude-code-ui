@@ -1,5 +1,6 @@
-  const { ipcMain } = require('electron');
-  const McpServerManager = require('./mcp-server-manager');
+const { ipcMain } = require('electron');
+const McpServerManager = require('./mcp-server-manager');
+const path = require('path');
 
 class IPCHandlers {
   constructor(sessionManager, checkpointManager, fileOperations, modelConfig, claudeProcessManager, mainWindow) {
@@ -59,33 +60,33 @@ class IPCHandlers {
     });
   }
 
-      registerModelHandlers() {
-      ipcMain.handle('get-current-model', async () => {
-        return this.modelConfig.getCurrentModel();
-      });
+  registerModelHandlers() {
+    ipcMain.handle('get-current-model', async () => {
+      return this.modelConfig.getCurrentModel();
+    });
 
-      ipcMain.handle('set-current-model', async (event, model) => {
-        return await this.modelConfig.setCurrentModel(model);
-      });
+    ipcMain.handle('set-current-model', async (event, model) => {
+      return await this.modelConfig.setCurrentModel(model);
+    });
 
-      // Task template handlers
-      ipcMain.handle('get-task-template', async () => {
-        return this.modelConfig.getTaskTemplate();
-      });
+    // Task template handlers
+    ipcMain.handle('get-task-template', async () => {
+      return this.modelConfig.getTaskTemplate();
+    });
 
-      ipcMain.handle('set-task-template', async (event, template) => {
-        return await this.modelConfig.setTaskTemplate(template);
-      });
+    ipcMain.handle('set-task-template', async (event, template) => {
+      return await this.modelConfig.setTaskTemplate(template);
+    });
 
-      // System prompt handlers
-      ipcMain.handle('get-system-prompt-config', async () => {
-        return this.modelConfig.getSystemPromptConfig();
-      });
+    // System prompt handlers
+    ipcMain.handle('get-system-prompt-config', async () => {
+      return this.modelConfig.getSystemPromptConfig();
+    });
 
-      ipcMain.handle('set-system-prompt-config', async (event, config) => {
-        return await this.modelConfig.setSystemPromptConfig(config);
-      });
-    }
+    ipcMain.handle('set-system-prompt-config', async (event, config) => {
+      return await this.modelConfig.setSystemPromptConfig(config);
+    });
+  }
 
   registerMcpHandlers() {
     // Retrieve configured MCP servers
@@ -560,38 +561,50 @@ class IPCHandlers {
     const { shell } = require('electron');
 
     // Handle opening Excel files from tray menu
-    ipcMain.on('tray-open-excel-file', async (event, filePath) => {
+    ipcMain.handle('handle-tray-open-excel-file', async (event, filePath) => {
       try {
-        console.log('Opening Excel file from tray:', filePath);
+        console.log('Handling tray open Excel file:', filePath);
 
         // Navigate to the directory containing the Excel file
         const navResult = await this.fileOperations.setWorkingDirectoryFromFile(filePath);
 
-        if (navResult.success) {
-          console.log('Navigated to directory:', navResult.path);
-
-          // Notify the renderer to update the file browser
-          if (this.mainWindow && !this.mainWindow.isDestroyed()) {
-            this.mainWindow.webContents.send('directory-changed', {
-              path: navResult.path,
-              fromExcelFile: true,
-              originalFilePath: filePath
-            });
-          }
-        } else {
+        if (!navResult.success) {
           console.warn('Failed to navigate to Excel file directory:', navResult.error);
+          return { success: false, error: navResult.error };
         }
 
-        // Also open the file in Excel (optional - user might want just navigation)
-        const result = await shell.openPath(filePath);
+        console.log('Navigated to directory:', navResult.path);
 
-        if (result) {
-          console.error('Failed to open Excel file in Excel:', result);
-        } else {
-          console.log('Successfully opened Excel file in Excel:', filePath);
+        // Notify the renderer to update the file browser
+        if (this.mainWindow && !this.mainWindow.isDestroyed()) {
+          this.mainWindow.webContents.send('directory-changed', {
+            path: navResult.path,
+            fromExcelFile: true,
+            originalFilePath: filePath
+          });
         }
+
+        // Open the file in Excel
+        // const openError = await shell.openPath(filePath);
+
+        // if (openError) {
+        //   console.error('Failed to open Excel file in Excel:', openError);
+        // } else {
+        //   console.log('Successfully requested to open Excel file in Excel:', filePath);
+        // }
+
+        const relativePath = path.relative(navResult.path, filePath);
+
+        // Return path info to renderer to update UI
+        return {
+          success: true,
+          newCwd: navResult.path,
+          filePath: filePath,
+          relativePath: relativePath
+        };
       } catch (error) {
-        console.error('Error opening Excel file:', error);
+        console.error('Error handling tray open Excel file:', error);
+        return { success: false, error: error.message };
       }
     });
 
