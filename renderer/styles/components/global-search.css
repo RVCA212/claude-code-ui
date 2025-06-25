@@ -1,0 +1,678 @@
+/**
+ * Global Search Modal Component Styles
+ *
+ * Used by: Global search modal that appears when clicking the search icon in the header
+ * Related files:
+ *   - src/renderer/components/global-search.js (main component logic)
+ *   - renderer/index.html (global-search-modal section)
+ *   - renderer/styles/components/global-header.css (search button styles)
+ *
+ * Features:
+ *   - Full-screen modal overlay
+ *   - Centered search interface at top of screen
+ *   - File search results with icons and paths
+ *   - Keyboard navigation support
+ *   - Smooth animations and transitions
+ */
+
+/* ============================================================================
+   Modal Overlay and Container
+   ============================================================================ */
+
+/* Full-screen modal overlay */
+.modal-overlay#globalSearchModal {
+
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(4px);
+  z-index: var(--z-modals);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 80px; /* Position search modal near top of screen */
+}
+
+/* Main search modal container */
+.global-search-modal {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+  width: 90%;
+  max-width: 600px;
+  max-height: 70vh;
+  overflow: hidden;
+  animation: globalSearchSlideDown 0.2s ease-out;
+}
+
+@keyframes globalSearchSlideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-20px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* ============================================================================
+   Search Input Container
+   ============================================================================ */
+
+/* Search container with input and controls */
+.global-search-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+/* Search input wrapper with icon and close button */
+.global-search-input-wrapper {
+  display: flex;
+  align-items: center;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-background);
+  gap: 12px;
+}
+
+/* Search icon */
+.global-search-icon {
+  color: var(--color-text-secondary);
+  flex-shrink: 0;
+}
+
+/* Main search input field */
+.global-search-input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  font-size: 18px;
+  font-weight: 400;
+  color: var(--color-text);
+  outline: none;
+  padding: 8px 0;
+}
+
+.global-search-input::placeholder {
+  color: var(--color-text-secondary);
+  font-weight: 300;
+}
+
+.global-search-input:focus {
+  color: var(--color-text);
+}
+
+/* Close button */
+.global-search-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: transparent;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  border-radius: 6px;
+  transition: all var(--duration-fast) var(--ease-standard);
+  flex-shrink: 0;
+}
+
+.global-search-close:hover {
+  background: var(--color-secondary);
+  color: var(--color-text);
+}
+
+/* ============================================================================
+   Search Results Container
+   ============================================================================ */
+
+/* Search results container */
+.global-search-results {
+  flex: 1;
+  overflow-y: auto;
+  max-height: 400px;
+  padding: 8px;
+}
+
+/* Custom scrollbar for search results */
+.global-search-results::-webkit-scrollbar {
+  width: 6px;
+}
+
+.global-search-results::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.global-search-results::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 3px;
+}
+
+.global-search-results::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-secondary);
+}
+
+/* ============================================================================
+   Search Result Items
+   ============================================================================ */
+
+/* Individual search result item */
+.global-search-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  margin: 2px 0;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-standard);
+  border: 1px solid transparent;
+}
+
+.global-search-item:hover {
+  background: var(--color-secondary-hover);
+  border-color: var(--color-border);
+  transform: translateX(2px);
+}
+
+.global-search-item.selected {
+  background: var(--color-primary);
+  color: var(--color-btn-primary-text);
+  border-color: var(--color-primary);
+}
+
+.global-search-item.selected .global-search-item-icon,
+.global-search-item.selected .global-search-item-name,
+.global-search-item.selected .global-search-item-path {
+  color: var(--color-btn-primary-text);
+}
+
+/* File/folder icon */
+.global-search-item-icon {
+  font-size: 20px;
+  width: 24px;
+  text-align: center;
+  color: var(--color-text-secondary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* Codicon specific styles */
+.global-search-item-icon.codicon {
+  font-family: "codicon";
+  font-size: 20px;
+  line-height: 1;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Directory icons */
+.global-search-item.directory .global-search-item-icon.codicon {
+  color: #dcb67a; /* Folder color similar to VSCode */
+}
+
+/* File type specific colors (matching file-browser.css) */
+.global-search-item-icon.codicon-symbol-variable {
+  color: #f1c40f; /* JavaScript/TypeScript yellow */
+}
+
+.global-search-item-icon.codicon-json {
+  color: #f39c12; /* JSON orange */
+}
+
+.global-search-item-icon.codicon-markdown {
+  color: #519aba; /* Markdown blue */
+}
+
+.global-search-item-icon.codicon-html {
+  color: #e34c26; /* HTML red/orange */
+}
+
+.global-search-item-icon.codicon-file-media {
+  color: #9b59b6; /* Media purple */
+}
+
+/* Item info container */
+.global-search-item-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* Item name */
+.global-search-item-name {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--color-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Item path */
+.global-search-item-path {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-family: var(--font-family-mono);
+}
+
+/* ============================================================================
+   Empty and Loading States
+   ============================================================================ */
+
+/* Empty state when no search query */
+.global-search-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  color: var(--color-text-secondary);
+  text-align: center;
+}
+
+.global-search-empty .empty-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+  opacity: 0.6;
+}
+
+.global-search-empty .empty-message {
+  font-size: 16px;
+  font-weight: 400;
+}
+
+/* Loading state */
+.global-search-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 20px;
+  color: var(--color-text-secondary);
+}
+
+.global-search-loading .loading-spinner {
+  width: 24px;
+  height: 24px;
+  border: 2px solid var(--color-border);
+  border-top: 2px solid var(--color-primary);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 12px;
+}
+
+.global-search-loading .loading-text {
+  font-size: 14px;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* No results state */
+.global-search-no-results {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 20px;
+  color: var(--color-text-secondary);
+  text-align: center;
+}
+
+.global-search-no-results .empty-icon {
+  font-size: 32px;
+  margin-bottom: 12px;
+  opacity: 0.6;
+}
+
+.global-search-no-results .empty-message {
+  font-size: 14px;
+}
+
+/* ============================================================================
+   Quick Select Workspaces
+   ============================================================================ */
+
+/* Quick select header */
+.quick-select-header {
+  padding: 20px 16px 12px 16px;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-background);
+}
+
+.quick-select-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--color-text);
+  margin-bottom: 4px;
+}
+
+.quick-select-subtitle {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  font-weight: 400;
+}
+
+/* Quick select items container */
+.quick-select-items {
+  padding: 8px;
+}
+
+/* Enhanced quick select item styling */
+.global-search-item.quick-select-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  margin: 2px 0;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-standard);
+  border: 1px solid transparent;
+  background: var(--color-surface);
+  position: relative;
+}
+
+.global-search-item.quick-select-item:hover {
+  background: var(--color-secondary-hover);
+  border-color: var(--color-border);
+  transform: translateX(2px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.global-search-item.quick-select-item.selected,
+.global-search-item.quick-select-item.keyboard-selected {
+  background: var(--color-primary);
+  color: var(--color-btn-primary-text);
+  border-color: var(--color-primary);
+  transform: translateX(2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.global-search-item.quick-select-item.selected .global-search-item-icon,
+.global-search-item.quick-select-item.selected .global-search-item-name,
+.global-search-item.quick-select-item.selected .global-search-item-path,
+.global-search-item.quick-select-item.keyboard-selected .global-search-item-icon,
+.global-search-item.quick-select-item.keyboard-selected .global-search-item-name,
+.global-search-item.quick-select-item.keyboard-selected .global-search-item-path {
+  color: var(--color-btn-primary-text);
+}
+
+/* Quick select workspace icon */
+.global-search-item.quick-select-item .global-search-item-icon {
+  font-size: 22px;
+  width: 28px;
+  text-align: center;
+  color: #dcb67a; /* Workspace folder color */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* Quick select workspace info */
+.global-search-item.quick-select-item .global-search-item-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.global-search-item.quick-select-item .global-search-item-name {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--color-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.global-search-item.quick-select-item .global-search-item-path {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-family: var(--font-family-mono);
+  opacity: 0.8;
+}
+
+/* App badge for quick select items */
+.quick-select-app-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  background: var(--color-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  font-size: 11px;
+  color: var(--color-text-secondary);
+  flex-shrink: 0;
+  transition: all var(--duration-fast) var(--ease-standard);
+}
+
+.global-search-item.quick-select-item:hover .quick-select-app-badge {
+  background: var(--color-background);
+  border-color: var(--color-text-secondary);
+}
+
+.global-search-item.quick-select-item.selected .quick-select-app-badge,
+.global-search-item.quick-select-item.keyboard-selected .quick-select-app-badge {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.3);
+  color: var(--color-btn-primary-text);
+}
+
+.app-badge-icon {
+  font-size: 12px;
+  line-height: 1;
+}
+
+.app-badge-text {
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-size: 10px;
+}
+
+/* Enhanced hover effects for quick select */
+.global-search-item.quick-select-item::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: transparent;
+  border-radius: 0 2px 2px 0;
+  transition: all var(--duration-fast) var(--ease-standard);
+}
+
+.global-search-item.quick-select-item:hover::before {
+  background: var(--color-primary);
+  opacity: 0.6;
+}
+
+.global-search-item.quick-select-item.selected::before,
+.global-search-item.quick-select-item.keyboard-selected::before {
+  background: var(--color-btn-primary-text);
+  opacity: 0.8;
+}
+
+/* Subtle animation for quick select items */
+.global-search-item.quick-select-item {
+  animation: quickSelectFadeIn 0.3s ease-out forwards;
+  opacity: 0;
+  transform: translateY(10px);
+}
+
+.global-search-item.quick-select-item:nth-child(1) { animation-delay: 0.05s; }
+.global-search-item.quick-select-item:nth-child(2) { animation-delay: 0.1s; }
+.global-search-item.quick-select-item:nth-child(3) { animation-delay: 0.15s; }
+.global-search-item.quick-select-item:nth-child(4) { animation-delay: 0.2s; }
+.global-search-item.quick-select-item:nth-child(5) { animation-delay: 0.25s; }
+.global-search-item.quick-select-item:nth-child(6) { animation-delay: 0.3s; }
+.global-search-item.quick-select-item:nth-child(7) { animation-delay: 0.35s; }
+.global-search-item.quick-select-item:nth-child(8) { animation-delay: 0.4s; }
+
+@keyframes quickSelectFadeIn {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ============================================================================
+   Search Results Sections
+   ============================================================================ */
+
+/* Separator between local and global results */
+.global-search-separator {
+  display: flex;
+  align-items: center;
+  margin: 16px 12px 12px 12px;
+  gap: 12px;
+}
+
+.global-search-separator .separator-line {
+  flex: 1;
+  height: 1px;
+  background: var(--color-border);
+}
+
+.global-search-separator .separator-text {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  padding: 0 8px;
+  white-space: nowrap;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Global search results styling */
+.global-search-item.global-result {
+  background: var(--color-background);
+  border-left: 3px solid var(--color-primary);
+  padding-left: 9px; /* Adjust for border */
+}
+
+.global-search-item.global-result:hover {
+  background: var(--color-secondary-hover);
+}
+
+/* ============================================================================
+   Keyboard Navigation
+   ============================================================================ */
+
+/* Highlighted item during keyboard navigation */
+.global-search-item.keyboard-selected {
+  background: var(--color-secondary-hover);
+  border-color: var(--color-primary);
+  transform: translateX(2px);
+}
+
+/* ============================================================================
+   Responsive Design
+   ============================================================================ */
+
+@media (max-width: 768px) {
+  .modal-overlay#globalSearchModal {
+    padding-top: 60px;
+  }
+
+  .global-search-modal {
+    width: 95%;
+    max-height: 80vh;
+  }
+
+  .global-search-input-wrapper {
+    padding: 12px 16px;
+  }
+
+  .global-search-input {
+    font-size: 16px; /* Prevent zoom on iOS */
+  }
+
+  .global-search-item {
+    padding: 10px;
+  }
+
+  .global-search-item-name {
+    font-size: 14px;
+  }
+
+  .global-search-item-path {
+    font-size: 12px;
+  }
+
+  /* Quick select responsive styles */
+  .quick-select-header {
+    padding: 16px 12px 10px 12px;
+  }
+
+  .quick-select-title {
+    font-size: 15px;
+  }
+
+  .quick-select-subtitle {
+    font-size: 12px;
+  }
+
+  .global-search-item.quick-select-item {
+    padding: 10px 12px;
+    gap: 10px;
+  }
+
+  .global-search-item.quick-select-item .global-search-item-icon {
+    font-size: 20px;
+    width: 24px;
+  }
+
+  .global-search-item.quick-select-item .global-search-item-name {
+    font-size: 14px;
+  }
+
+  .global-search-item.quick-select-item .global-search-item-path {
+    font-size: 11px;
+  }
+
+  .quick-select-app-badge {
+    padding: 3px 6px;
+    font-size: 10px;
+  }
+
+  .app-badge-text {
+    font-size: 9px;
+  }
+}
+
+@media (max-width: 480px) {
+  .modal-overlay#globalSearchModal {
+    padding-top: 40px;
+  }
+
+  .global-search-modal {
+    width: 98%;
+    margin: 0 1%;
+  }
+}

@@ -85,7 +85,7 @@ class MessageComponent {
       if (window.app && typeof window.app.getLayoutState === 'function') {
         const layoutState = window.app.getLayoutState();
         this.isCompactMode = layoutState.isChatOnly;
-        
+
         // Apply initial styling class
         if (this.messagesContainer) {
           this.messagesContainer.classList.toggle('compact-mode', this.isCompactMode);
@@ -146,13 +146,25 @@ class MessageComponent {
 
   async sendMessage() {
     const message = this.messageInput?.value.trim();
-    const sessionId = this.sessionManager.getCurrentSessionId();
+    let sessionId = this.sessionManager.getCurrentSessionId();
 
-    if (!message || !sessionId || this.isStreaming) {
+    if (!message || this.isStreaming) {
       return;
     }
 
     try {
+      // If no session exists (draft mode), create one first
+      if (!sessionId) {
+        if (this.sessionManager.isDraftModeActive()) {
+          console.log('Creating session from draft mode before sending message');
+          const session = await this.sessionManager.createSessionFromDraft();
+          sessionId = session.id;
+        } else {
+          this.showError('No session available to send message');
+          return;
+        }
+      }
+
       // Pre-send validation: check directory mismatch
       const validationResult = await window.electronAPI.validateSendDirectory(sessionId);
 
@@ -289,15 +301,15 @@ class MessageComponent {
 
   handleLayoutStateChange(detail) {
     const { newState } = detail;
-    
+
     // Update compact mode state
     this.isCompactMode = newState.isChatOnly;
-    
+
     // If currently showing empty state, refresh it with new layout mode
     if (this.messagesContainer && this.messagesContainer.querySelector('.empty-state')) {
       this.showEmptyState();
     }
-    
+
     // Update messages container class for styling
     if (this.messagesContainer) {
       this.messagesContainer.classList.toggle('compact-mode', this.isCompactMode);
@@ -400,7 +412,7 @@ class MessageComponent {
 
   createMessageActions(message, sessionId) {
     const isReverted = this.currentRevertMessageId === message.id;
-    
+
     if (isReverted) {
       // Show send button for reverted/editable message
       return `
@@ -634,7 +646,11 @@ class MessageComponent {
     if (!this.sendBtn || !this.messageInput) return;
 
     const hasContent = this.messageInput.value.trim().length > 0;
-    const canSend = hasContent && !this.isStreaming && this.sessionManager.getCurrentSessionId();
+    const sessionId = this.sessionManager.getCurrentSessionId();
+    const isDraftMode = this.sessionManager.isDraftModeActive();
+
+    // Can send if we have content, not streaming, and either have a session or are in draft mode
+    const canSend = hasContent && !this.isStreaming && (sessionId || isDraftMode);
 
     this.sendBtn.disabled = !canSend;
   }
@@ -909,15 +925,15 @@ class MessageComponent {
 
     // Get the original text content
     const originalText = messageContent.textContent;
-    
+
     // Replace with editable textarea
     messageContent.innerHTML = `
       <textarea class="editable-message" id="edit-${messageId}" rows="3">${DOMUtils.escapeHTML(originalText)}</textarea>
     `;
-    
+
     // Add editable class to message for styling
     messageElement.classList.add('message-editable');
-    
+
     // Auto-resize the textarea and focus it
     const textarea = messageContent.querySelector('.editable-message');
     if (textarea) {
@@ -941,10 +957,10 @@ class MessageComponent {
 
     // Get the current text from textarea
     const currentText = textarea.value;
-    
+
     // Replace with normal text display
     messageContent.innerHTML = DOMUtils.escapeHTML(currentText);
-    
+
     // Remove editable class
     messageElement.classList.remove('message-editable');
 
@@ -959,7 +975,7 @@ class MessageComponent {
 
     const sessionId = this.sessionManager.getCurrentSessionId();
     const message = { id: messageId }; // Minimal message object for actions
-    
+
     actionsContainer.innerHTML = this.createMessageActions(message, sessionId).replace('<div class="message-actions">', '').replace('</div>', '');
   }
 
@@ -978,7 +994,7 @@ class MessageComponent {
       // Send the edited message while keeping files in reverted state
       // This allows Claude to process the message with the reverted codebase
       await this.proceedWithSendMessage(editedMessage, sessionId);
-      
+
     } catch (error) {
       console.error('Failed to send edited message:', error);
       this.showError('Failed to send edited message');
@@ -990,23 +1006,23 @@ class MessageComponent {
     if (this.unrevertClickHandler) {
       this.removeUnrevertClickHandler();
     }
-    
+
     this.unrevertClickHandler = (event) => {
       if (!this.currentRevertMessageId) return;
-      
+
       // Check if click is on a message below the reverted one
       const clickedMessage = event.target.closest('.conversation-turn');
       if (!clickedMessage) return;
-      
+
       const clickedMessageId = clickedMessage.id.replace('message-', '');
       const revertedElement = document.getElementById(`message-${this.currentRevertMessageId}`);
-      
+
       if (revertedElement && this.isElementAfter(revertedElement, clickedMessage)) {
         const sessionId = this.sessionManager.getCurrentSessionId();
         this.unrevertFromMessage(sessionId, this.currentRevertMessageId);
       }
     };
-    
+
     if (this.messagesContainer) {
       this.messagesContainer.addEventListener('click', this.unrevertClickHandler);
     }
@@ -1032,18 +1048,18 @@ class MessageComponent {
     const sidebar = document.querySelector('.sidebar');
     if (sidebar && sidebar.classList.contains('hidden')) {
       sidebar.classList.remove('hidden');
-      
+
       // Update global header button state
       if (window.globalHeader) {
         window.globalHeader.updateButtonStates();
       }
-      
+
       // Trigger layout state change detection
       setTimeout(() => {
         if (window.app && typeof window.app.getLayoutState === 'function') {
           const newLayoutState = window.app.getLayoutState();
           this.isCompactMode = newLayoutState.isChatOnly;
-          
+
           // Update styling class
           if (this.messagesContainer) {
             this.messagesContainer.classList.toggle('compact-mode', this.isCompactMode);

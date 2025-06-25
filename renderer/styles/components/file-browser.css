@@ -1,12 +1,12 @@
 /**
  * File Browser Component Styles
- * 
+ *
  * Used by: Left sidebar file browser for project navigation
  * Related files:
  *   - src/renderer/components/file-browser.js (main component logic)
  *   - src/renderer/components/file-editor.js (file opening integration)
  *   - renderer/index.html (file-browser section in sidebar)
- * 
+ *
  * Features:
  *   - Directory navigation with breadcrumbs
  *   - File type icons using VSCode Codicons
@@ -342,20 +342,40 @@
   gap: 8px;
   padding: 8px 12px;
   margin: 1px 0;
-  border-radius: 4px;
+  border-radius: 6px;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   border: 1px solid transparent;
   position: relative;
+  overflow: hidden;
 }
 
 .file-item:hover {
   background: var(--color-secondary-hover);
   border-color: var(--color-border);
+  transform: translateX(2px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
 }
 
 .file-item.directory {
   font-weight: 500;
+}
+
+/* Enhanced folder hover effects */
+.file-item.directory:hover {
+  background: linear-gradient(90deg, var(--color-secondary-hover) 0%, rgba(var(--color-primary-rgb), 0.03) 100%);
+  border-color: rgba(var(--color-primary-rgb), 0.2);
+  transform: translateX(4px);
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.08);
+}
+
+.file-item.directory:hover .file-icon {
+  color: var(--color-primary);
+  transform: scale(1.05);
+}
+
+.file-item.directory:hover .file-name {
+  color: var(--color-text);
 }
 
 .file-item.selected {
@@ -373,9 +393,25 @@
 
 /* Expanded folder styling */
 .file-item.directory.expanded {
-  background: var(--color-background);
-  border-left: 2px solid var(--color-primary);
-  padding-left: 10px;
+  background: rgba(var(--color-primary-rgb), 0.04);
+  border-left: 3px solid var(--color-primary);
+  padding-left: 9px;
+  border-radius: 6px 0 0 6px;
+}
+
+.file-item.directory.expanded:hover {
+  background: rgba(var(--color-primary-rgb), 0.08);
+  border-left-color: var(--color-primary);
+  transform: translateX(2px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.file-item.directory.expanded .file-icon {
+  color: var(--color-primary);
+}
+
+.file-item.directory.expanded .folder-expand-btn .codicon {
+  color: var(--color-primary);
 }
 
 /* Folder expansion button */
@@ -389,25 +425,56 @@
   background: none;
   color: var(--color-text-secondary);
   cursor: pointer;
-  border-radius: 2px;
-  transition: all var(--duration-fast) var(--ease-standard);
+  border-radius: 4px;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   flex-shrink: 0;
   margin-right: 4px;
+  position: relative;
 }
 
 .folder-expand-btn:hover {
-  background: var(--color-secondary-hover);
-  color: var(--color-text);
+  background: var(--color-primary);
+  color: white;
+  transform: scale(1.1);
+  box-shadow: 0 2px 8px rgba(var(--color-primary-rgb), 0.3);
 }
 
 .folder-expand-btn:active {
-  background: var(--color-secondary);
+  background: var(--color-primary);
   transform: scale(0.95);
 }
 
 .folder-expand-btn .codicon {
   font-size: 12px;
-  transition: transform var(--duration-fast) var(--ease-standard);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Folder expand button hover effects with ripple-like animation */
+.folder-expand-btn::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background: rgba(var(--color-primary-rgb), 0.2);
+  transition: all 0.3s ease;
+  transform: translate(-50%, -50%);
+}
+
+.folder-expand-btn:hover::before {
+  width: 32px;
+  height: 32px;
+}
+
+/* Enhanced folder icon animations */
+.file-item.directory .file-icon {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.file-item.directory:hover .file-icon {
+  transform: scale(1.05) translateY(-1px);
 }
 
 /* Spacer for files to align with directories */
@@ -420,16 +487,47 @@
 /* Nested item styling */
 .file-item[data-indent-level="1"] {
   border-left: 1px solid var(--color-border);
+  background: rgba(var(--color-secondary-rgb), 0.02);
+}
+
+.file-item[data-indent-level="1"]:hover {
+  border-left-color: rgba(var(--color-primary-rgb), 0.4);
+  background: rgba(var(--color-secondary-rgb), 0.05);
+}
+
+.file-item[data-indent-level="1"].directory:hover {
+  border-left-color: var(--color-primary);
+  background: linear-gradient(90deg, rgba(var(--color-secondary-rgb), 0.08) 0%, rgba(var(--color-primary-rgb), 0.05) 100%);
 }
 
 .file-item[data-indent-level="2"] {
   border-left: 1px solid var(--color-border);
-  background: rgba(var(--color-secondary-rgb, 128, 128, 128), 0.1);
+  background: rgba(var(--color-secondary-rgb), 0.05);
+}
+
+.file-item[data-indent-level="2"]:hover {
+  border-left-color: rgba(var(--color-primary-rgb), 0.5);
+  background: rgba(var(--color-secondary-rgb), 0.08);
+}
+
+.file-item[data-indent-level="2"].directory:hover {
+  border-left-color: var(--color-primary);
+  background: linear-gradient(90deg, rgba(var(--color-secondary-rgb), 0.1) 0%, rgba(var(--color-primary-rgb), 0.06) 100%);
 }
 
 .file-item[data-indent-level="3"] {
   border-left: 1px solid var(--color-border);
-  background: rgba(var(--color-secondary-rgb, 128, 128, 128), 0.15);
+  background: rgba(var(--color-secondary-rgb), 0.08);
+}
+
+.file-item[data-indent-level="3"]:hover {
+  border-left-color: rgba(var(--color-primary-rgb), 0.6);
+  background: rgba(var(--color-secondary-rgb), 0.12);
+}
+
+.file-item[data-indent-level="3"].directory:hover {
+  border-left-color: var(--color-primary);
+  background: linear-gradient(90deg, rgba(var(--color-secondary-rgb), 0.12) 0%, rgba(var(--color-primary-rgb), 0.08) 100%);
 }
 
 .file-icon {
@@ -907,10 +1005,18 @@
 }
 
 .quick-access-item.workspace-item:hover {
-  background: var(--color-primary-hover);
-  border-color: var(--color-primary);
+  background: linear-gradient(90deg, var(--color-secondary-hover) 0%, rgba(var(--color-primary-rgb), 0.03) 100%);
+  border-color: rgba(var(--color-primary-rgb), 0.2);
   transform: translateX(4px);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.08);
+}
+
+.quick-access-item.workspace-item:hover .quick-access-icon {
+  transform: scale(1.05);
+}
+
+.quick-access-item.workspace-item:hover .open-file-name {
+  color: var(--color-text);
 }
 
 .quick-access-item.workspace-item .quick-access-icon {
@@ -927,8 +1033,6 @@
   padding: 2px 6px;
   border-radius: 10px;
   margin-top: 2px;
-}
-  transform: scale(0.98);
 }
 
 /* File info layout */
@@ -1100,15 +1204,15 @@
     padding: var(--space-8);
     min-height: 48px;
   }
-  
+
   .open-file-name {
     font-size: 0.9rem;
   }
-  
+
   .open-file-dir {
     font-size: 0.75rem;
   }
-  
+
   .app-indicator {
     font-size: 1rem;
   }

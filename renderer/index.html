@@ -28,6 +28,14 @@
                     <!-- Breadcrumb segments will be populated by JavaScript -->
                 </div>
             </div>
+
+            <!-- Global Search Button -->
+            <button id="globalSearchBtn" class="global-header-btn global-search-btn" title="Search files in current directory">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="11" cy="11" r="8" stroke="currentColor" stroke-width="2"/>
+                    <path d="m21 21l-4.35-4.35" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            </button>
         </div>
 
         <div class="global-header-right">
@@ -129,6 +137,39 @@
                 <div class="modal-actions">
                     <button class="btn btn--secondary" id="cancelSettingsBtn">Cancel</button>
                     <button class="btn btn--primary" id="saveSettingsBtn">Save Settings</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Global Search Modal -->
+        <div class="modal-overlay" id="globalSearchModal" style="display: none;">
+            <div class="global-search-modal">
+                <div class="global-search-container">
+                    <div class="global-search-input-wrapper">
+                        <svg class="global-search-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <circle cx="11" cy="11" r="8" stroke="currentColor" stroke-width="2"/>
+                            <path d="m21 21l-4.35-4.35" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                        <input
+                            type="text"
+                            id="globalSearchInput"
+                            class="global-search-input"
+                            placeholder="Search files in current directory..."
+                            autocomplete="off"
+                        >
+                        <button class="global-search-close" id="globalSearchClose" title="Close search">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                        </button>
+                    </div>
+
+                    <div class="global-search-results" id="globalSearchResults">
+                        <div class="global-search-empty" id="globalSearchEmpty">
+                            <div class="empty-icon">🔍</div>
+                            <div class="empty-message">Type to search for files and folders</div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -466,6 +507,7 @@
     <script src="../src/renderer/components/session-manager.js"></script>
     <script src="../src/renderer/components/message-component.js"></script>
     <script src="../src/renderer/components/settings-component.js"></script>
+    <script src="../src/renderer/components/global-search.js"></script>
     <script src="../src/renderer/components/app-component.js"></script>
 
     <!-- Load main app -->
@@ -480,6 +522,7 @@
           this.sidebarToggleBtn = document.getElementById('globalSidebarToggleBtn');
           this.chatToggleBtn = document.getElementById('globalChatToggleBtn');
           this.settingsBtn = document.getElementById('globalSettingsBtn');
+          this.searchBtn = document.getElementById('globalSearchBtn');
 
           this.init();
         }
@@ -492,6 +535,10 @@
 
           if (this.chatToggleBtn) {
             this.chatToggleBtn.addEventListener('click', () => this.toggleRightSidebar());
+          }
+
+          if (this.searchBtn) {
+            this.searchBtn.addEventListener('click', () => this.toggleGlobalSearch());
           }
 
           // Settings button is handled by SettingsComponent, skip here to avoid conflicts
@@ -516,7 +563,7 @@
           // Determine current layout mode
           const editorContainer = document.getElementById('editorContainer');
           const isEditorActive = editorContainer && editorContainer.classList.contains('active');
-          
+
 
           // Prevent rapid toggling during layout transitions
           if (window.app && window.app.layoutTransitionInProgress) {
@@ -528,7 +575,7 @@
           if (window.chatSidebar && typeof window.chatSidebar.toggle === 'function') {
             const isVisible = window.chatSidebar.toggle();
             console.log('Chat sidebar toggled via component:', isVisible ? 'shown' : 'hidden');
-            
+
             // Update app component state tracking
             if (window.app) {
               window.app.chatSidebarWasVisible = isVisible;
@@ -544,20 +591,36 @@
             chatSidebar.classList.toggle('hidden');
             const isVisible = !chatSidebar.classList.contains('hidden');
             console.log('Chat sidebar toggled via DOM:', isVisible ? 'shown' : 'hidden');
-            
+
             // Update app component state tracking
             if (window.app) {
               window.app.chatSidebarWasVisible = isVisible;
             }
           }
-          
+
           // Update button states with delay to ensure DOM changes are complete
           requestAnimationFrame(() => {
             this.updateButtonStates();
           });
-          
+
           // Emit event for app-component coordination
           document.dispatchEvent(new CustomEvent('chatSidebarToggled'));
+        }
+
+        toggleGlobalSearch() {
+          console.log('Global search button clicked');
+          console.log('window.globalSearch available:', !!window.globalSearch);
+
+          // Use the global search component's toggle method if available
+          if (window.globalSearch && typeof window.globalSearch.toggle === 'function') {
+            console.log('Calling globalSearch.toggle()');
+            window.globalSearch.toggle();
+          } else {
+            console.warn('Global search component not available:', {
+              globalSearchExists: !!window.globalSearch,
+              toggleMethod: window.globalSearch ? typeof window.globalSearch.toggle : 'undefined'
+            });
+          }
         }
 
 
@@ -582,14 +645,14 @@
           const editorContainer = document.getElementById('editorContainer');
           const isEditorActive = editorContainer && editorContainer.classList.contains('active');
           const chatSidebar = document.getElementById('chatSidebar');
-          
+
           if (this.chatToggleBtn) {
             if (isEditorActive) {
               // When editor is active, button controls chat sidebar visibility
               if (chatSidebar) {
                 const isHidden = chatSidebar.classList.contains('hidden');
                 console.log('Updating chat button state (editor mode): sidebar hidden =', isHidden);
-                
+
                 if (isHidden) {
                   this.chatToggleBtn.classList.remove('active');
                   console.log('Chat button: removing active class');

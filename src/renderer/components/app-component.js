@@ -4,7 +4,7 @@ class AppComponent {
     this.components = {};
     this.isInitialized = false;
     this.isHandlingResize = false; // Flag to prevent recursive resize handling
-    
+
 
     this.initializeComponents();
     this.setupGlobalEventListeners();
@@ -25,6 +25,13 @@ class AppComponent {
       this.components.messageComponent = new MessageComponent(this.components.sessionManager);
       this.components.fileEditor = new FileEditorComponent();
       this.components.chatSidebar = new ChatSidebarComponent();
+      this.components.globalSearch = new GlobalSearch();
+
+      // Hide folder sidebar by default
+      this.hideFolderSidebarByDefault();
+
+      // Set chat area to blank by default
+      this.setChatAreaBlankByDefault();
 
       // Initialize session manager after other components are ready
       this.components.sessionManager.init();
@@ -50,6 +57,62 @@ class AppComponent {
     }
   }
 
+  hideFolderSidebarByDefault() {
+    // Hide the folder sidebar by default for a compact layout
+    const sidebar = document.querySelector('.sidebar');
+    if (sidebar) {
+      sidebar.classList.add('hidden');
+      console.log('Folder sidebar hidden by default for compact layout');
+    }
+  }
+
+  setChatAreaBlankByDefault() {
+    // Set the chat area to blank by default (no welcome message)
+    const applyBlankState = () => {
+      const emptyState = document.querySelector('.empty-state');
+      if (emptyState && !emptyState.classList.contains('compact')) {
+        emptyState.classList.add('compact');
+        console.log('Chat area set to blank by default');
+      }
+    };
+
+    // Try immediately
+    applyBlankState();
+
+    // Use a slight delay to ensure DOM elements are available
+    setTimeout(applyBlankState, 100);
+
+    // Set up a mutation observer to catch dynamically created empty states
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        if (mutation.type === 'childList') {
+          mutation.addedNodes.forEach((node) => {
+            if (node.nodeType === Node.ELEMENT_NODE) {
+              // Check if the added node is an empty state or contains one
+              if (node.classList?.contains('empty-state')) {
+                node.classList.add('compact');
+              } else if (node.querySelector) {
+                const emptyState = node.querySelector('.empty-state');
+                if (emptyState) {
+                  emptyState.classList.add('compact');
+                }
+              }
+            }
+          });
+        }
+      });
+    });
+
+    // Observe the messages container for changes
+    const messagesContainer = document.querySelector('#messagesContainer');
+    if (messagesContainer) {
+      observer.observe(messagesContainer, { childList: true, subtree: true });
+    }
+
+    // Store observer for cleanup if needed
+    this.blankStateObserver = observer;
+  }
+
   setupComponentCommunication() {
     // Make components available globally for cross-component communication
     window.sessionManager = this.components.sessionManager;
@@ -58,7 +121,8 @@ class AppComponent {
     window.fileBrowser = this.components.fileBrowser;
     window.fileEditor = this.components.fileEditor;
     window.chatSidebar = this.components.chatSidebar;
-    
+    window.globalSearch = this.components.globalSearch;
+
     // Make app instance and debug methods globally available
     window.app = this;
     window.debugApp = () => this.logDebugInfo();
@@ -79,7 +143,7 @@ class AppComponent {
 
     // Set up cross-component integration
     this.setupCrossComponentIntegration();
-    
+
 
     // Set up periodic status updates
     this.setupPeriodicUpdates();
@@ -169,6 +233,9 @@ class AppComponent {
   }
 
   handleBeforeUnload(e) {
+    // Clean up observers
+    this.cleanup();
+
     // Warn if there's active streaming
     if (this.components.messageComponent?.getIsStreaming()) {
       e.preventDefault();
@@ -179,6 +246,19 @@ class AppComponent {
     if (this.components.fileEditor?.isEditorDirty()) {
       e.preventDefault();
       e.returnValue = 'You have unsaved changes. Are you sure you want to leave?';
+    }
+  }
+
+  cleanup() {
+    // Clean up mutation observers
+    if (this.blankStateObserver) {
+      this.blankStateObserver.disconnect();
+      this.blankStateObserver = null;
+    }
+
+    if (this.layoutObserver) {
+      this.layoutObserver.disconnect();
+      this.layoutObserver = null;
     }
   }
 
@@ -385,7 +465,7 @@ class AppComponent {
   setupLayoutChangeMonitoring() {
     // Monitor layout state changes for compact mode
     let currentLayoutState = this.getLayoutState();
-    
+
     // Set up mutation observer to watch for layout changes
     const observer = new MutationObserver(() => {
       const newLayoutState = this.getLayoutState();
@@ -422,14 +502,14 @@ class AppComponent {
     const sidebar = document.querySelector('.sidebar');
     const editorContainer = document.getElementById('editorContainer');
     const chatSidebar = document.getElementById('chatSidebar');
-    
+
     const isFileBrowserVisible = sidebar && !sidebar.classList.contains('hidden');
     const isEditorVisible = editorContainer && editorContainer.classList.contains('active');
     const isChatSidebarVisible = chatSidebar && !chatSidebar.classList.contains('hidden');
-    
+
     // Chat-only mode: file browser and editor are both closed/hidden
     const isChatOnly = !isFileBrowserVisible && !isEditorVisible && isChatSidebarVisible;
-    
+
     return {
       isFileBrowserVisible,
       isEditorVisible,
@@ -448,7 +528,7 @@ class AppComponent {
       }
     });
     document.dispatchEvent(event);
-    
+
     console.log('Layout state changed:', {
       from: oldState.isChatOnly ? 'chat-only' : 'split-view',
       to: newState.isChatOnly ? 'chat-only' : 'split-view'
@@ -563,7 +643,7 @@ class AppComponent {
     const editorContainer = document.getElementById('editorContainer');
     const chatSidebar = document.getElementById('chatSidebar');
     const appContent = document.querySelector('.app-content');
-    
+
     return {
       isInitialized: this.isInitialized,
       components: Object.keys(this.components),
@@ -597,18 +677,18 @@ class AppComponent {
   diagnoseChatLayout() {
     const debug = this.getDebugInfo();
     const chatSidebar = document.getElementById('chatSidebar');
-    
+
     console.group('🧪 Chat Layout Diagnosis');
-    
+
     console.log('Current Layout Mode:', debug.layoutState.editorActive ? 'Editor + Sidebar' : 'Chat Only');
     console.log('Expected Visibility:');
     console.log('  - Chat Sidebar:', !debug.layoutState.chatSidebarHidden ? 'visible' : 'hidden');
-    
+
     console.log('Actual DOM State:');
     console.log('  - Editor Active:', debug.layoutState.editorActive);
     console.log('  - App Content Editor Active:', debug.layoutState.appContentEditorActive);
     console.log('  - Chat Sidebar Hidden:', debug.layoutState.chatSidebarHidden);
-    
+
     // Check CSS computed styles
     if (chatSidebar) {
       const computedStyle = window.getComputedStyle(chatSidebar);
@@ -620,16 +700,16 @@ class AppComponent {
       console.log('  - Height:', computedStyle.height);
       console.log('  - Position:', computedStyle.position);
       console.log('  - Z-Index:', computedStyle.zIndex);
-      
+
       console.log('CSS Classes Applied:', Array.from(chatSidebar.classList));
     }
-    
+
     // Check for mismatches
     const issues = [];
     if (debug.layoutState.editorActive !== debug.layoutState.appContentEditorActive) {
       issues.push('Mismatch: editor container and app-content editor-active state');
     }
-    
+
     // CSS-specific checks
     if (chatSidebar) {
       const computedStyle = window.getComputedStyle(chatSidebar);
@@ -640,16 +720,16 @@ class AppComponent {
         issues.push('Warning: Chat sidebar is displayed but has zero width');
       }
     }
-    
+
     if (issues.length > 0) {
       console.warn('🚨 Layout Issues Detected:', issues);
     } else {
       console.log('✅ Layout appears consistent');
     }
-    
+
     console.groupEnd();
   }
-  
+
   // Visual debug method to highlight chat sidebar
   toggleChatSidebarDebug() {
     const chatSidebar = document.getElementById('chatSidebar');

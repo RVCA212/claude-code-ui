@@ -16,8 +16,7 @@ class FileBrowser {
     this.openApplicationWindows = [];
     this.windowDetectionEnabled = true;
     this.windowDetectionLastUpdate = null;
-    this.windowDetectionRefreshInterval = 10000; // 10 seconds
-    this.windowDetectionTimer = null;
+    // Note: Automatic refresh removed - detection now triggered manually
 
     // Folder expansion state management
     this.expandedFolders = new Set(); // Set of expanded folder paths
@@ -55,6 +54,36 @@ class FileBrowser {
     document.addEventListener('directoryChanged', (event) => {
       this.handleDirectoryChange(event.detail);
     });
+
+    // Listen for tray events that should trigger window detection refresh
+    if (window.electronAPI?.onTrayInteraction) {
+      window.electronAPI.onTrayInteraction(() => {
+        if (this.windowDetectionEnabled) {
+          console.log('Tray interaction detected - refreshing window detection');
+          this.refreshWindowDetection();
+        }
+      });
+    }
+
+    // Listen for tray workspace open event (sent from main process)
+    if (window.electronAPI?.onTrayOpenWorkspace) {
+      window.electronAPI.onTrayOpenWorkspace(async (event, workspacePath) => {
+        if (workspacePath && typeof workspacePath === 'string') {
+          console.log('Tray requested open workspace:', workspacePath);
+          await this.navigateToDirectory(workspacePath);
+
+          try {
+            const title = workspacePath.split('/').pop() || 'New Conversation';
+            const newSession = await window.electronAPI.createSession(title);
+            if (newSession && window.sessionManager?.selectSession) {
+              await window.sessionManager.selectSession(newSession.id);
+            }
+          } catch (err) {
+            console.warn('Failed to create session for workspace:', err);
+          }
+        }
+      });
+    }
   }
 
   initializeElements() {
@@ -222,8 +251,7 @@ class FileBrowser {
         // Re-render quick access to include new window data
         this.renderQuickAccess();
 
-        // Schedule next refresh
-        this.scheduleWindowDetectionRefresh();
+        // Note: Automatic refresh removed - now only triggered manually
       } else if (result.requiresPermissions) {
         console.warn('Window detection requires accessibility permissions');
         this.handlePermissionRequired();
@@ -239,16 +267,10 @@ class FileBrowser {
     }
   }
 
-  scheduleWindowDetectionRefresh() {
-    // Clear existing timer
-    if (this.windowDetectionTimer) {
-      clearTimeout(this.windowDetectionTimer);
-    }
-
-    // Schedule next refresh
-    this.windowDetectionTimer = setTimeout(() => {
-      this.loadOpenApplicationWindows();
-    }, this.windowDetectionRefreshInterval);
+  // Manual refresh method for specific triggers
+  async refreshWindowDetection() {
+    console.log('Manually refreshing window detection...');
+    await this.loadOpenApplicationWindows();
   }
 
   async handlePermissionRequired() {
@@ -278,18 +300,14 @@ class FileBrowser {
     if (this.windowDetectionEnabled) {
       this.loadOpenApplicationWindows();
     } else {
-      // Clear timer and reset data
-      if (this.windowDetectionTimer) {
-        clearTimeout(this.windowDetectionTimer);
-        this.windowDetectionTimer = null;
-      }
+      // Reset data
       this.openApplicationWindows = [];
       this.renderQuickAccess();
     }
   }
 
-  async refreshWindowDetection() {
-    // Clear cache and force refresh
+  async forceRefreshWindowDetection() {
+    // Clear cache and force refresh (used for debugging)
     try {
       await window.electronAPI.clearWindowDetectionCache();
       await this.loadOpenApplicationWindows();
@@ -906,6 +924,12 @@ class FileBrowser {
 
     if (this.quickAccessToggle) {
       this.quickAccessToggle.classList.toggle('collapsed', this.isQuickAccessCollapsed);
+    }
+
+    // Refresh window detection when quick access is opened
+    if (!this.isQuickAccessCollapsed && this.windowDetectionEnabled) {
+      console.log('Quick access opened - refreshing window detection');
+      this.refreshWindowDetection();
     }
   }
 

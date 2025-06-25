@@ -279,10 +279,10 @@ class FileEditorComponent {
           language: this.currentFile.language,
           theme: this.getTheme(),
           automaticLayout: true,
-          fontSize: 14,
+          fontSize: 13,
           fontFamily: 'SF Mono, Monaco, Inconsolata, "Roboto Mono", Consolas, "Courier New", monospace',
           lineNumbers: 'on',
-          wordWrap: 'on',
+          wordWrap: 'off',
           // Disable the right-hand minimap for a cleaner interface
           minimap: { enabled: false },
           scrollBeyondLastLine: false,
@@ -304,7 +304,9 @@ class FileEditorComponent {
         // Ensure minimap stays disabled when switching files
         this.editor.updateOptions({
           language: this.currentFile.language,
-          minimap: { enabled: false }
+          minimap: { enabled: false },
+          fontSize: 12,
+          wordWrap: 'off'
         });
       }
 

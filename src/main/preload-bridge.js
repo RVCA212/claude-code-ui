@@ -61,7 +61,7 @@ class PreloadBridge {
       getOpenApplicationWindows: () => ipcRenderer.invoke('get-open-application-windows'),
       requestWindowDetectionPermissions: () => ipcRenderer.invoke('request-window-detection-permissions'),
       clearWindowDetectionCache: () => ipcRenderer.invoke('clear-window-detection-cache'),
-      
+
       // Window detection debugging
       setWindowDetectionDebug: (enabled) => ipcRenderer.invoke('set-window-detection-debug', enabled),
       getWindowDetectionDiagnostics: () => ipcRenderer.invoke('get-window-detection-diagnostics'),
@@ -81,6 +81,10 @@ class PreloadBridge {
       onSessionDeleted: (callback) => ipcRenderer.on('session-deleted', callback),
       onSessionCreated: (callback) => ipcRenderer.on('session-created', callback),
       onFileChanged: (callback) => ipcRenderer.on('file-changed', callback),
+
+      // Tray events
+      onTrayOpenWorkspace: (callback) => ipcRenderer.on('tray-open-workspace', callback),
+      onTrayInteraction: (callback) => ipcRenderer.on('tray-interaction', callback),
 
       // Remove listeners
       removeAllListeners: (channel) => ipcRenderer.removeAllListeners(channel)
@@ -106,7 +110,7 @@ class PreloadBridge {
       'setWindowDetectionDebug', 'getWindowDetectionDiagnostics', 'testAppleScript',
       'getMcpServers', 'saveMcpServer', 'deleteMcpServer', 'toggleMcpServer', 'testMcpServer',
       'onSessionsLoaded', 'onMessageStream', 'onSessionUpdated', 'onSessionDeleted', 'onSessionCreated',
-      'removeAllListeners'
+      'onTrayOpenWorkspace', 'onTrayInteraction', 'removeAllListeners'
     ];
 
     const exposedMethods = Object.keys(this.exposedAPI);

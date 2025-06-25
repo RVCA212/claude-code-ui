@@ -1,11 +1,11 @@
 /**
  * Settings Component Styles
- * 
+ *
  * Used by: Settings modal and configuration UI
  * Related files:
  *   - src/renderer/components/settings-component.js (main settings logic)
  *   - renderer/index.html (settings modal section)
- * 
+ *
  * Features:
  *   - Tabbed settings interface (General, MCP Servers)
  *   - Setup status indicators with color coding

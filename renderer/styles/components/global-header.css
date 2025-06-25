@@ -1,12 +1,12 @@
 /**
  * Global Header Component Styles
- * 
+ *
  * Used by: Global header bar spanning the entire application
- * Related files: 
+ * Related files:
  *   - renderer/index.html (global-header section)
  *   - src/renderer/components/app-component.js (global header functionality)
  *   - GlobalHeader class in index.html inline script
- * 
+ *
  * Features:
  *   - Cross-platform window drag support
  *   - Settings and sidebar toggle buttons
@@ -149,6 +149,28 @@
 
 .global-status-dot.info {
   background: var(--color-info);
+}
+
+/* ============================================================================
+   Global Search Button
+   ============================================================================ */
+
+/* Global search button in header */
+.global-search-btn {
+  margin-left: var(--space-8);
+  opacity: 0.7;
+  transition: all var(--duration-fast) var(--ease-standard);
+}
+
+.global-search-btn:hover {
+  opacity: 1;
+  background: var(--color-secondary);
+  color: var(--color-text);
+}
+
+.global-search-btn:focus-visible {
+  outline: var(--focus-outline);
+  outline-offset: 2px;
 }
 
 /* ============================================================================

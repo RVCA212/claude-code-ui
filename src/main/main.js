@@ -112,41 +112,95 @@ function createTray() {
     }
 
     // Create context menu
-    const contextMenu = Menu.buildFromTemplate([
-      {
-        label: 'Show Claude Code Chat',
-        click: () => {
-          console.log('Tray menu: Show clicked');
-          showWindow();
+    const buildContextMenu = async () => {
+      try {
+        const openFilesResult = await fileOperations.getOpenApplicationWindows();
+        let workspaceItems = [];
+        if (openFilesResult.success && Array.isArray(openFilesResult.files)) {
+          const workspaces = openFilesResult.files.filter(f => f.isWorkspace || f.isDirectory);
+          const addedPaths = new Set();
+          workspaceItems = workspaces.slice(0, 10).map(ws => {
+            const workspacePath = ws.workspaceDirectory || ws.path || ws.directory;
+            const displayName = ws.workspaceName || ws.name || path.basename(workspacePath);
+            if (!workspacePath || addedPaths.has(workspacePath)) return null;
+            addedPaths.add(workspacePath);
+            return {
+              label: displayName.length > 40 ? displayName.slice(0, 37) + '…' : displayName,
+              click: () => {
+                try {
+                  if (mainWindow) {
+                    showWindow();
+                  }
+                  // Send IPC to renderer to open the workspace
+                  if (mainWindow && !mainWindow.isDestroyed()) {
+                    mainWindow.webContents.send('tray-open-workspace', workspacePath);
+                  }
+                } catch (e) {
+                  console.error('Failed to handle workspace menu click:', e);
+                }
+              }
+            };
+          }).filter(Boolean);
         }
-      },
-      {
-        label: 'Hide Claude Code Chat',
-        click: () => {
-          console.log('Tray menu: Hide clicked');
-          hideWindow();
-        }
-      },
-      { type: 'separator' },
-      {
-        label: 'About',
-        click: () => {
-          console.log('Tray menu: About clicked');
-          showAboutDialog();
-        }
-      },
-      { type: 'separator' },
-      {
-        label: 'Quit',
-        click: () => {
-          console.log('Tray menu: Quit clicked');
-          isQuitting = true;
-          app.quit();
-        }
-      }
-    ]);
 
-    tray.setContextMenu(contextMenu);
+        const baseTemplate = [
+          {
+            label: 'Show Claude Code Chat',
+            click: () => {
+              showWindow();
+            }
+          },
+          {
+            label: 'Hide Claude Code Chat',
+            click: () => {
+              hideWindow();
+            }
+          },
+          { type: 'separator' }
+        ];
+
+        // Add workspace items directly to the main menu
+        if (workspaceItems.length > 0) {
+          baseTemplate.push(...workspaceItems);
+          baseTemplate.push({ type: 'separator' });
+        }
+
+        baseTemplate.push(
+          {
+            label: 'About',
+            click: () => {
+              showAboutDialog();
+            }
+          },
+          { type: 'separator' },
+          {
+            label: 'Quit',
+            click: () => {
+              isQuitting = true;
+              app.quit();
+            }
+          }
+        );
+
+        const menu = Menu.buildFromTemplate(baseTemplate);
+        tray.setContextMenu(menu);
+      } catch (err) {
+        console.error('Failed to build tray context menu:', err);
+      }
+    };
+
+    // Initial build
+    buildContextMenu();
+
+    // Rebuild menu each time the tray icon is right-clicked (before menu shows)
+    tray.on('right-click', async () => {
+      await buildContextMenu();
+      tray.popUpContextMenu();
+    });
+
+    // Also refresh menu every 60 seconds to keep workspace list up to date
+    setInterval(buildContextMenu, 60000);
+
     tray.setToolTip('Claude Code Chat - Click to show/hide window');
 
     // Add some debugging info
@@ -158,6 +212,10 @@ function createTray() {
     // Handle tray click (double-click on macOS)
     tray.on('click', () => {
       console.log('Tray clicked');
+      // Trigger window detection refresh
+      if (mainWindow && mainWindow.webContents) {
+        mainWindow.webContents.send('tray-interaction');
+      }
       if (process.platform === 'darwin') {
         // On macOS, single click shows context menu by default
         // Double click will show/hide window
@@ -169,11 +227,19 @@ function createTray() {
 
     tray.on('double-click', () => {
       console.log('Tray double-clicked');
+      // Trigger window detection refresh
+      if (mainWindow && mainWindow.webContents) {
+        mainWindow.webContents.send('tray-interaction');
+      }
       toggleWindow();
     });
 
     tray.on('right-click', () => {
       console.log('Tray right-clicked');
+      // Trigger window detection refresh for context menu
+      if (mainWindow && mainWindow.webContents) {
+        mainWindow.webContents.send('tray-interaction');
+      }
     });
 
     console.log('✅ System tray created successfully and should be visible in menu bar');
@@ -198,6 +264,11 @@ function showWindow() {
     }
     mainWindow.show();
     mainWindow.focus();
+
+    // Trigger window detection refresh when window is shown
+    if (mainWindow.webContents) {
+      mainWindow.webContents.send('tray-interaction');
+    }
 
     // On macOS, also show in dock when window is shown
     if (process.platform === 'darwin') {
@@ -241,10 +312,10 @@ function showAboutDialog() {
 async function createWindow() {
   // Create the browser window
   mainWindow = new BrowserWindow({
-    width: 1200,
-    height: 800,
+    width: 700,
+    height: 450,
     minWidth: 400,
-    minHeight: 245,
+    minHeight: 200,
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,

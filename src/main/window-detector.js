@@ -30,12 +30,12 @@ class WindowDetector {
       }
     };
 
-    // Cache for performance
+    // Cache for performance (longer TTL since detection is now triggered manually)
     this.cache = {
       runningApps: null,
       openFiles: new Map(),
       lastUpdate: null,
-      ttl: 5000 // 5 second cache
+      ttl: 30000 // 30 second cache (increased since manual triggers are less frequent)
     };
 
     // Cache for run-applescript dynamic import

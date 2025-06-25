@@ -4,6 +4,8 @@ class SessionManager {
     this.sessions = [];
     this.currentSessionId = null;
     this.isStreaming = false;
+    this.isDraftMode = false; // Track when we're in draft mode (no actual session created yet)
+    this.draftTitle = null; // Store draft session title
 
     this.initializeElements();
     this.setupEventListeners();
@@ -125,11 +127,10 @@ class SessionManager {
       this.sessions = sessions;
 
       // If this is the first time the user opens the app (no sessions yet),
-      // automatically create a brand-new conversation so the UI is immediately ready.
+      // put the app in draft mode ready for the user to start typing.
       if (this.sessions.length === 0) {
-        await this.createNewSession();
-        // createNewSession will trigger the onSessionCreated event which
-        // handles rendering and selection, so we can return early here.
+        this.enterDraftMode('New Conversation');
+        this.renderSessions(); // Render empty state
         return;
       }
 
@@ -144,17 +145,11 @@ class SessionManager {
   }
 
   async createNewSession() {
-    try {
-      const title = 'New Conversation';
-      const session = await window.electronAPI.createSession(title);
-      // onSessionCreated will add to list and re-render.
-      // We must explicitly select the session now.
-      await this.selectSession(session.id);
-      return session;
-    } catch (error) {
-      console.error('Failed to create new session:', error);
-      return null;
-    }
+    // Instead of creating a session immediately, enter draft mode
+    // The actual session will be created when the first message is sent
+    const title = 'New Conversation';
+    this.enterDraftMode(title);
+    return { isDraft: true, title: title };
   }
 
   async selectSession(sessionId) {
@@ -164,6 +159,9 @@ class SessionManager {
     }
 
     try {
+      // Exit draft mode when selecting an existing session
+      this.exitDraftMode();
+
       this.currentSessionId = sessionId;
 
       // Update UI to show selected session
@@ -361,20 +359,36 @@ class SessionManager {
     if (this.conversationTitle) {
       this.conversationTitle.textContent = session.title;
     }
-    if (this.editTitleBtn) {
-      this.editTitleBtn.style.display = 'flex';
-    }
 
-    // Update status
-    if (this.conversationStatus && session.statusInfo) {
-      this.conversationStatus.style.display = 'flex';
-      this.conversationStatus.innerHTML = this.createStatusHTML(session.statusInfo);
-    }
+    // For draft mode, hide edit button and show draft indicator
+    if (session.isDraft) {
+      if (this.editTitleBtn) {
+        this.editTitleBtn.style.display = 'none';
+      }
+      if (this.conversationStatus) {
+        this.conversationStatus.style.display = 'flex';
+        this.conversationStatus.innerHTML = '<div class="status-badge draft"><span class="status-dot"></span> Draft</div>';
+      }
+      if (this.conversationContext) {
+        this.conversationContext.style.display = 'none';
+      }
+    } else {
+      // Normal session
+      if (this.editTitleBtn) {
+        this.editTitleBtn.style.display = 'flex';
+      }
 
-    // Update context/preview
-    if (this.conversationContext && session.conversationPreview) {
-      this.conversationContext.style.display = 'block';
-      this.conversationContext.innerHTML = this.createContextHTML(session.conversationPreview);
+      // Update status
+      if (this.conversationStatus && session.statusInfo) {
+        this.conversationStatus.style.display = 'flex';
+        this.conversationStatus.innerHTML = this.createStatusHTML(session.statusInfo);
+      }
+
+      // Update context/preview
+      if (this.conversationContext && session.conversationPreview) {
+        this.conversationContext.style.display = 'block';
+        this.conversationContext.innerHTML = this.createContextHTML(session.conversationPreview);
+      }
     }
 
     // Move the status element next to the title (inside the title container) so
@@ -513,11 +527,75 @@ class SessionManager {
   }
 
   getCurrentSessionId() {
-    return this.currentSessionId;
+    // Return null when in draft mode (no actual session created yet)
+    return this.isDraftMode ? null : this.currentSessionId;
   }
 
   getCurrentSession() {
     return this.sessions.find(s => s.id === this.currentSessionId);
+  }
+
+    // Enter draft mode - UI is ready for conversation but no session created yet
+  enterDraftMode(title) {
+    this.isDraftMode = true;
+    this.draftTitle = title;
+    this.currentSessionId = null;
+
+    // Update UI to show draft state
+    this.updateSessionInfo({
+      title: title,
+      isDraft: true,
+      id: null
+    });
+
+    // Notify other components about draft mode
+    this.notifySessionChange(null, {
+      id: 'draft',
+      title: title,
+      isDraft: true
+    });
+
+    console.log('Entered draft mode with title:', title);
+  }
+
+  // Create actual session from draft mode (called when first message is sent)
+  async createSessionFromDraft() {
+    if (!this.isDraftMode) {
+      throw new Error('Not in draft mode');
+    }
+
+    try {
+      const session = await window.electronAPI.createSession(this.draftTitle);
+
+      // Exit draft mode and select the new session
+      this.isDraftMode = false;
+      this.draftTitle = null;
+
+      // Add session to list and select it
+      this.sessions.unshift(session);
+      this.renderSessions();
+      await this.selectSession(session.id);
+
+      console.log('Created session from draft:', session.id);
+      return session;
+    } catch (error) {
+      console.error('Failed to create session from draft:', error);
+      throw error;
+    }
+  }
+
+  // Check if currently in draft mode
+  isDraftModeActive() {
+    return this.isDraftMode;
+  }
+
+  // Exit draft mode without creating session (when user selects existing session)
+  exitDraftMode() {
+    if (this.isDraftMode) {
+      this.isDraftMode = false;
+      this.draftTitle = null;
+      console.log('Exited draft mode');
+    }
   }
 
   // Notify other components about session changes

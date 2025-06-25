@@ -1,14 +1,14 @@
 /**
  * Main CSS Entry Point for Claude Code Chat Electron App
- * 
+ *
  * This file orchestrates all stylesheets for the application using CSS imports.
  * Import order is critical for proper style cascading and theme application.
- * 
+ *
  * Architecture:
  *   1. Foundation Layer: Variables, themes, base styles, utilities
  *   2. Layout Layer: Core app layout and responsive design
  *   3. Component Layer: Individual component styles
- * 
+ *
  * Related files:
  *   - renderer/index.html (references this as main stylesheet)
  *   - All component JavaScript files use these styles
@@ -43,6 +43,9 @@
 
 /* Global application header with window controls and navigation */
 @import './components/global-header.css';
+
+/* Global search modal component */
+@import './components/global-search.css';
 
 /* Left sidebar container and general sidebar behavior */
 @import './components/sidebar.css';
