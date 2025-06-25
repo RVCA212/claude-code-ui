@@ -819,3 +819,297 @@
   background: var(--color-secondary-hover);
   border-color: var(--color-primary);
 }
+
+/* ============================================================================
+   Window Detection & Open Files
+   ============================================================================ */
+
+/* Separator between sections in quick access */
+.quick-access-separator {
+  display: flex;
+  align-items: center;
+  margin: var(--space-12) 0 var(--space-8) 0;
+  opacity: 0.7;
+}
+
+.separator-line {
+  flex: 1;
+  height: 1px;
+  background: var(--color-border);
+}
+
+.separator-text {
+  padding: 0 var(--space-8);
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Application header for grouping files */
+.quick-access-app-header {
+  display: flex;
+  align-items: center;
+  padding: var(--space-6) var(--space-8);
+  background: var(--color-background-alt);
+  border-radius: var(--border-radius-sm);
+  margin-bottom: var(--space-4);
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.app-header-icon {
+  margin-right: var(--space-6);
+  font-size: 1rem;
+}
+
+.app-header-name {
+  flex: 1;
+}
+
+.app-header-count {
+  color: var(--color-text-secondary);
+  font-weight: 400;
+  font-size: 0.75rem;
+}
+
+/* Open file items in quick access */
+.quick-access-item.open-file {
+  position: relative;
+  padding: var(--space-6) var(--space-8);
+  border-radius: var(--border-radius-sm);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  border: 1px solid transparent;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+}
+
+.quick-access-item.open-file:hover {
+  background: var(--color-secondary-hover);
+  border-color: var(--color-border-hover);
+  transform: translateX(2px);
+}
+
+.quick-access-item.open-file:active,
+.quick-access-item.open-file.clicking {
+  background: var(--color-secondary-active);
+}
+
+/* Workspace-specific styling */
+.quick-access-item.workspace-item {
+  background: var(--color-background-alt);
+  border: 1px solid var(--color-border);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.quick-access-item.workspace-item:hover {
+  background: var(--color-primary-hover);
+  border-color: var(--color-primary);
+  transform: translateX(4px);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+}
+
+.quick-access-item.workspace-item .quick-access-icon {
+  color: var(--color-primary);
+  font-size: 16px;
+}
+
+/* Workspace indicator styling */
+.workspace-indicator {
+  font-size: 0.7rem;
+  color: var(--color-primary);
+  font-weight: 500;
+  background: var(--color-primary-background);
+  padding: 2px 6px;
+  border-radius: 10px;
+  margin-top: 2px;
+}
+  transform: scale(0.98);
+}
+
+/* File info layout */
+.open-file-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  margin-left: var(--space-6);
+  min-width: 0; /* Allow text truncation */
+}
+
+.open-file-name {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--color-text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.open-file-dir {
+  font-size: 0.7rem;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 1px;
+}
+
+/* App indicator icon */
+.app-indicator {
+  margin-left: var(--space-6);
+  font-size: 0.9rem;
+  opacity: 0.6;
+  transition: opacity 0.15s ease;
+}
+
+.quick-access-item.open-file:hover .app-indicator {
+  opacity: 0.9;
+}
+
+/* More files indicator */
+.quick-access-more {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-4) var(--space-8);
+  margin-bottom: var(--space-4);
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+  font-style: italic;
+}
+
+.more-text {
+  opacity: 0.8;
+}
+
+/* Empty state for open files */
+.quick-access-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-16) var(--space-8);
+  text-align: center;
+  opacity: 0.6;
+}
+
+.empty-icon {
+  margin-right: var(--space-6);
+  font-size: 1.1rem;
+  color: var(--color-text-secondary);
+}
+
+.empty-text {
+  font-size: 0.8rem;
+  color: var(--color-text-secondary);
+}
+
+/* Loading state for window detection */
+.window-detection-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-12) var(--space-8);
+  font-size: 0.8rem;
+  color: var(--color-text-secondary);
+}
+
+.window-detection-loading .codicon {
+  margin-right: var(--space-6);
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Permission request banner */
+.window-detection-permissions {
+  background: var(--color-warning-background);
+  border: 1px solid var(--color-warning-border);
+  border-radius: var(--border-radius-sm);
+  padding: var(--space-8);
+  margin: var(--space-4) 0;
+  font-size: 0.8rem;
+  color: var(--color-warning-text);
+}
+
+.permissions-title {
+  font-weight: 600;
+  margin-bottom: var(--space-4);
+}
+
+.permissions-text {
+  margin-bottom: var(--space-6);
+  line-height: 1.4;
+}
+
+.permissions-actions {
+  display: flex;
+  gap: var(--space-6);
+}
+
+.permissions-btn {
+  padding: var(--space-4) var(--space-8);
+  border: 1px solid var(--color-warning-border);
+  background: var(--color-warning-background);
+  color: var(--color-warning-text);
+  border-radius: var(--border-radius-sm);
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.permissions-btn:hover {
+  background: var(--color-warning-hover);
+  border-color: var(--color-warning-text);
+}
+
+.permissions-btn.primary {
+  background: var(--color-warning-text);
+  color: var(--color-warning-background);
+}
+
+.permissions-btn.primary:hover {
+  opacity: 0.9;
+}
+
+/* Enhanced file icons for different apps */
+.quick-access-item.open-file .quick-access-icon {
+  font-size: 1rem;
+  color: var(--color-primary);
+}
+
+/* VS Code files */
+.quick-access-item[data-app-name="VS Code"] .quick-access-icon {
+  color: #007ACC;
+}
+
+/* Cursor files */
+.quick-access-item[data-app-name="Cursor"] .quick-access-icon {
+  color: #FF6B35;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .quick-access-item.open-file {
+    padding: var(--space-8);
+    min-height: 48px;
+  }
+  
+  .open-file-name {
+    font-size: 0.9rem;
+  }
+  
+  .open-file-dir {
+    font-size: 0.75rem;
+  }
+  
+  .app-indicator {
+    font-size: 1rem;
+  }
+}

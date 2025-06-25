@@ -159,11 +159,100 @@ function getAppComponent(name) {
   return app?.getComponent(name);
 }
 
+// Window Detection Debug Function
+async function debugWindowDetection() {
+  console.log('\n🔍 Starting Window Detection Debug Session...\n');
+  
+  if (!app) {
+    console.error('❌ App not initialized');
+    return null;
+  }
+  
+  const fileBrowser = app.getComponent('fileBrowser');
+  if (!fileBrowser) {
+    console.error('❌ File browser component not found');
+    return null;
+  }
+  
+  try {
+    const debugResult = await fileBrowser.debugWindowDetection();
+    
+    console.log('\n📊 Debug Summary:');
+    console.log('==================');
+    
+    if (debugResult.diagnostics?.success) {
+      const diag = debugResult.diagnostics.diagnostics;
+      console.log(`✅ Total processes found: ${diag.processes.total}`);
+      console.log(`✅ Relevant processes: ${diag.processes.relevant.length}`);
+      console.log(`✅ Matching app processes: ${diag.processes.matching.length}`);
+      console.log(`✅ AppleScript available: ${diag.applescript.available}`);
+      console.log(`✅ Accessibility permissions: ${diag.accessibility.hasPermissions}`);
+      
+      console.log('\n📋 Relevant Processes:');
+      diag.processes.relevant.forEach(p => {
+        console.log(`  - ${p.name} (PID: ${p.pid})`);
+        console.log(`    Command: ${p.command}`);
+      });
+      
+      console.log('\n🎯 Matching App Processes:');
+      diag.processes.matching.forEach(match => {
+        console.log(`  ${match.appName}:`);
+        match.processes.forEach(p => {
+          console.log(`    - ${p.name} (PID: ${p.pid})`);
+        });
+      });
+    } else {
+      console.error('❌ Failed to get diagnostics:', debugResult.diagnostics?.error);
+    }
+    
+    if (debugResult.appleScriptTest?.success) {
+      console.log(`\n✅ AppleScript test successful - found ${debugResult.appleScriptTest.test?.processCount || 0} processes`);
+    } else {
+      console.error('❌ AppleScript test failed:', debugResult.appleScriptTest?.error);
+    }
+    
+    console.log(`\n📁 Currently detected open files: ${debugResult.currentOpenFiles?.length || 0}`);
+    if (debugResult.currentOpenFiles?.length > 0) {
+      debugResult.currentOpenFiles.forEach(file => {
+        console.log(`  - ${file.name} (${file.app})`);
+        console.log(`    Path: ${file.path}`);
+        console.log(`    Exists: ${file.exists}`);
+      });
+    }
+    
+    console.log('\n🔧 Debug session complete! Check console logs above for detailed information.');
+    console.log('💡 Tip: If Cursor files aren\'t detected, check:');
+    console.log('   1. Cursor is running with open files');
+    console.log('   2. Accessibility permissions are granted');
+    console.log('   3. AppleScript is working correctly');
+    
+    return debugResult;
+    
+  } catch (error) {
+    console.error('❌ Debug session failed:', error);
+    return { error: error.message };
+  }
+}
+
+// Quick test functions for individual components
+async function testAppleScript() {
+  const fileBrowser = app?.getComponent('fileBrowser');
+  return await fileBrowser?.testAppleScript();
+}
+
+async function getWindowDiagnostics() {
+  const fileBrowser = app?.getComponent('fileBrowser');
+  return await fileBrowser?.getWindowDetectionDiagnostics();
+}
+
 // Export for module compatibility
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     initializeApp,
     debugApp,
-    getAppComponent
+    getAppComponent,
+    debugWindowDetection,
+    testAppleScript,
+    getWindowDiagnostics
   };
 }

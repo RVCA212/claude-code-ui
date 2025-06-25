@@ -45,6 +45,7 @@ class PreloadBridge {
       navigateBack: () => ipcRenderer.invoke('navigate-back'),
       navigateForward: () => ipcRenderer.invoke('navigate-forward'),
       navigateUp: () => ipcRenderer.invoke('navigate-up'),
+      setWorkingDirectoryFromFile: (filePath) => ipcRenderer.invoke('set-working-directory-from-file', filePath),
 
       // File editor operations
       readFile: (filePath) => ipcRenderer.invoke('read-file', filePath),
@@ -55,6 +56,16 @@ class PreloadBridge {
       // File search operations
       searchFilesByPrefix: (query, maxResults) => ipcRenderer.invoke('search-files-by-prefix', query, maxResults),
       getDirectoryContentsOnly: (dirPath) => ipcRenderer.invoke('get-directory-contents-only', dirPath),
+
+      // Window detection operations
+      getOpenApplicationWindows: () => ipcRenderer.invoke('get-open-application-windows'),
+      requestWindowDetectionPermissions: () => ipcRenderer.invoke('request-window-detection-permissions'),
+      clearWindowDetectionCache: () => ipcRenderer.invoke('clear-window-detection-cache'),
+      
+      // Window detection debugging
+      setWindowDetectionDebug: (enabled) => ipcRenderer.invoke('set-window-detection-debug', enabled),
+      getWindowDetectionDiagnostics: () => ipcRenderer.invoke('get-window-detection-diagnostics'),
+      testAppleScript: () => ipcRenderer.invoke('test-applescript'),
 
       // MCP server management
       getMcpServers: () => ipcRenderer.invoke('get-mcp-servers'),
@@ -91,7 +102,8 @@ class PreloadBridge {
       'revertToMessage', 'unrevertFromMessage', 'getMessageCheckpoints', 'hasFileChanges',
       'getDirectoryContents', 'navigateToDirectory', 'getCurrentDirectory', 'getHomeDirectory',
       'getCommonDirectories', 'navigateBack', 'navigateForward', 'navigateUp',
-      'searchFilesByPrefix',
+      'searchFilesByPrefix', 'getOpenApplicationWindows', 'requestWindowDetectionPermissions', 'clearWindowDetectionCache',
+      'setWindowDetectionDebug', 'getWindowDetectionDiagnostics', 'testAppleScript',
       'getMcpServers', 'saveMcpServer', 'deleteMcpServer', 'toggleMcpServer', 'testMcpServer',
       'onSessionsLoaded', 'onMessageStream', 'onSessionUpdated', 'onSessionDeleted', 'onSessionCreated',
       'removeAllListeners'

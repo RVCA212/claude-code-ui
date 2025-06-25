@@ -387,6 +387,11 @@ class IPCHandlers {
       return await this.fileOperations.navigateUp();
     });
 
+    // Set working directory from file path (navigates to parent directory)
+    ipcMain.handle('set-working-directory-from-file', async (event, filePath) => {
+      return await this.fileOperations.setWorkingDirectoryFromFile(filePath);
+    });
+
     // File editor operations
     ipcMain.handle('read-file', async (event, filePath) => {
       return await this.fileOperations.readFile(filePath);
@@ -418,6 +423,32 @@ class IPCHandlers {
     // Get directory contents without changing current working directory (for folder expansion)
     ipcMain.handle('get-directory-contents-only', async (event, dirPath) => {
       return await this.fileOperations.getDirectoryContentsOnly(dirPath);
+    });
+
+    // Window detection operations
+    ipcMain.handle('get-open-application-windows', async () => {
+      return await this.fileOperations.getOpenApplicationWindows();
+    });
+
+    ipcMain.handle('request-window-detection-permissions', async () => {
+      return await this.fileOperations.requestWindowDetectionPermissions();
+    });
+
+    ipcMain.handle('clear-window-detection-cache', async () => {
+      return this.fileOperations.clearWindowDetectionCache();
+    });
+
+    // Window detection debugging
+    ipcMain.handle('set-window-detection-debug', async (event, enabled) => {
+      return this.fileOperations.setWindowDetectionDebugMode(enabled);
+    });
+
+    ipcMain.handle('get-window-detection-diagnostics', async () => {
+      return await this.fileOperations.getWindowDetectionDiagnostics();
+    });
+
+    ipcMain.handle('test-applescript', async () => {
+      return await this.fileOperations.testAppleScript();
     });
   }
 

@@ -1,12 +1,14 @@
 const fs = require('fs').promises;
 const path = require('path');
 const os = require('os');
+const WindowDetector = require('./window-detector');
 
 class FileOperations {
   constructor() {
     this.currentWorkingDirectory = os.homedir(); // Start in user's home directory
     this.directoryHistory = []; // Navigation history for back/forward
     this.historyIndex = -1; // Current position in history
+    this.windowDetector = new WindowDetector(); // Initialize window detector
   }
 
   // Helper function to get directory contents with file info
@@ -306,6 +308,47 @@ class FileOperations {
   // Set the current working directory
   setCurrentWorkingDirectory(dirPath) {
     this.currentWorkingDirectory = dirPath;
+  }
+
+  // Set working directory from a file path (navigates to parent directory)
+  async setWorkingDirectoryFromFile(filePath) {
+    try {
+      // Start with the immediate parent of the provided file path
+      let candidateDir = path.dirname(filePath);
+      let resolvedPath = path.resolve(candidateDir);
+
+      // Walk up the directory tree until we find an existing directory
+      // Prevent infinite loop by stopping at filesystem root
+      while (!(await this.validateDirectory(resolvedPath)) && resolvedPath !== path.dirname(resolvedPath)) {
+        resolvedPath = path.dirname(resolvedPath);
+      }
+
+      // If even the root directory is invalid, abort
+      const isValid = await this.validateDirectory(resolvedPath);
+      if (!isValid) {
+        throw new Error(`No existing parent directory found for ${filePath}`);
+      }
+
+      // Update working directory and history
+      this.currentWorkingDirectory = resolvedPath;
+      this.updateDirectoryHistory(resolvedPath);
+
+      console.log('Set working directory from file (fallback):', filePath, '=>', resolvedPath);
+
+      return {
+        success: true,
+        path: resolvedPath,
+        originalFilePath: filePath,
+        message: `Working directory set to ${resolvedPath}`
+      };
+    } catch (error) {
+      console.error('Failed to set working directory from file:', error);
+      return {
+        success: false,
+        error: error.message,
+        originalFilePath: filePath
+      };
+    }
   }
 
   // Security helper to validate file path is within workspace
@@ -718,6 +761,111 @@ class FileOperations {
     };
 
     return iconMap[ext] || 'codicon-symbol-file';
+  }
+
+  // Get open application windows (VS Code, Cursor, etc.)
+  async getOpenApplicationWindows() {
+    try {
+      console.log('Detecting open application windows...');
+      const result = await this.windowDetector.getOpenFiles();
+
+      if (!result.success) {
+        return result; // Return error result as-is
+      }
+
+      console.log(`Found ${result.files.length} open files from ${result.runningApps?.length || 0} applications`);
+
+      return {
+        success: true,
+        files: result.files || [],
+        runningApps: result.runningApps || [],
+        permissions: {
+          hasAccessibilityPermissions: await this.windowDetector.checkAccessibilityPermissions()
+        }
+      };
+    } catch (error) {
+      console.error('Error getting open application windows:', error);
+      return {
+        success: false,
+        error: error.message,
+        files: [],
+        runningApps: []
+      };
+    }
+  }
+
+  // Request accessibility permissions for window detection
+  async requestWindowDetectionPermissions() {
+    try {
+      const granted = await this.windowDetector.requestAccessibilityPermissions();
+      return {
+        success: true,
+        granted: granted,
+        message: granted ?
+          'Accessibility permissions granted' :
+          'User must manually grant permissions in System Preferences'
+      };
+    } catch (error) {
+      console.error('Error requesting window detection permissions:', error);
+      return {
+        success: false,
+        error: error.message,
+        granted: false
+      };
+    }
+  }
+
+  // Clear window detection cache (useful for testing)
+  clearWindowDetectionCache() {
+    this.windowDetector.clearCache();
+    return {
+      success: true,
+      message: 'Window detection cache cleared'
+    };
+  }
+
+  // Enable/disable window detection debug mode
+  setWindowDetectionDebugMode(enabled) {
+    this.windowDetector.setDebugMode(enabled);
+    return {
+      success: true,
+      debugMode: enabled,
+      message: `Window detection debug mode ${enabled ? 'enabled' : 'disabled'}`
+    };
+  }
+
+  // Get comprehensive diagnostic information
+  async getWindowDetectionDiagnostics() {
+    try {
+      const diagnostics = await this.windowDetector.getDiagnosticInfo();
+      return {
+        success: true,
+        diagnostics: diagnostics
+      };
+    } catch (error) {
+      console.error('Error getting window detection diagnostics:', error);
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+  }
+
+  // Test AppleScript execution
+  async testAppleScript() {
+    try {
+      const result = await this.windowDetector.testAppleScript();
+      return {
+        success: true,
+        test: result
+      };
+    } catch (error) {
+      console.error('Error testing AppleScript:', error);
+      return {
+        success: false,
+        error: error.message
+      };
+    }
   }
 }
 

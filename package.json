@@ -32,7 +32,10 @@
     "better-sqlite3": "^11.10.0",
     "diff": "^5.2.0",
     "monaco-editor": "^0.52.2",
+    "node-mac-permissions": "^2.5.0",
     "node-pty": "^1.0.0",
+    "run-applescript": "^7.0.0",
+    "systeminformation": "^5.27.6",
     "uuid": "^9.0.1"
   },
   "build": {
@@ -50,7 +53,12 @@
       "package.json"
     ],
     "mac": {
-      "category": "public.app-category.developer-tools"
+      "category": "public.app-category.developer-tools",
+      "icon": "assets/icon.icns",
+      "extendInfo": {
+        "LSUIElement": false,
+        "LSBackgroundOnly": false
+      }
     },
     "win": {
       "target": "nsis"

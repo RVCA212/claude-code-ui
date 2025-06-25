@@ -166,7 +166,7 @@ class FileEditorComponent {
     return isDark ? 'vs-dark' : 'vs';
   }
 
-    async openFile(filePath) {
+    async openFile(filePath, options = {}) {
     if (!filePath) {
       console.error('No file path provided');
       return;
@@ -174,6 +174,9 @@ class FileEditorComponent {
 
     try {
       console.log('Opening file:', filePath);
+
+      // Check if we need to handle directory context
+      const autoNavigateToDirectory = options.autoNavigateToDirectory !== false; // Default to true
 
       // Initialize Monaco if needed FIRST
       if (!this.isInitialized) {
@@ -196,8 +199,35 @@ class FileEditorComponent {
         this.showLightweightLoading(this.getFileName(filePath));
       }
 
-      // Read file content via IPC
-      const result = await window.electronAPI.readFile(filePath);
+      // Try to read the file first
+      let result = await window.electronAPI.readFile(filePath);
+
+      // If file read fails and auto-navigation is enabled, try to navigate to the file's directory
+      if (!result.success && autoNavigateToDirectory) {
+        console.log('File read failed, attempting to navigate to file directory...');
+
+        try {
+          const dirResult = await window.electronAPI.setWorkingDirectoryFromFile(filePath);
+          if (dirResult.success) {
+            console.log('Successfully navigated to file directory:', dirResult.path);
+
+            // Dispatch directory change event for file browser
+            document.dispatchEvent(new CustomEvent('directoryChanged', {
+              detail: {
+                success: true,
+                path: dirResult.path,
+                contents: [] // Will be populated by file browser
+              }
+            }));
+
+            // Try reading the file again
+            result = await window.electronAPI.readFile(filePath);
+          }
+        } catch (navError) {
+          console.warn('Failed to navigate to file directory:', navError);
+          // Continue with original error handling
+        }
+      }
 
       if (!result.success) {
         throw new Error(result.error || 'Failed to read file');
@@ -220,10 +250,10 @@ class FileEditorComponent {
       // Create or update editor
       const monacoEditorElement = document.getElementById('monacoEditor');
       const needsNewEditor = !this.editor || !monacoEditorElement || !monacoEditorElement.isConnected;
-      
+
       if (needsNewEditor) {
         console.log('Creating Monaco editor instance...');
-        
+
         // Dispose of any existing editor first
         if (this.editor) {
           try {
@@ -234,7 +264,7 @@ class FileEditorComponent {
           }
           this.editor = null;
         }
-        
+
         // Clear the loading content and create editor
         const editorContent = document.getElementById('editorContent');
         if (!editorContent) {

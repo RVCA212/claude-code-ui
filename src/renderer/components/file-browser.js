@@ -11,11 +11,18 @@ class FileBrowser {
     this.isQuickAccessCollapsed = true; // Start minimized by default
     this.homeDirectory = '~'; // Default to '~'
     this.isHistoryView = false; // Sidebar starts in file view mode
-    
+
+    // Window detection state
+    this.openApplicationWindows = [];
+    this.windowDetectionEnabled = true;
+    this.windowDetectionLastUpdate = null;
+    this.windowDetectionRefreshInterval = 10000; // 10 seconds
+    this.windowDetectionTimer = null;
+
     // Folder expansion state management
     this.expandedFolders = new Set(); // Set of expanded folder paths
     this.expandedFolderContents = new Map(); // Map of folder path to its contents
-    
+
     // Progressive search state
     this.globalSearchResults = [];
     this.isGlobalSearching = false;
@@ -42,6 +49,7 @@ class FileBrowser {
     this.setupEventListeners();
     this.applyInitialQuickAccessState();
     this.loadInitialDirectory();
+    this.loadOpenApplicationWindows();
 
     // Listen for directory changes from session switching
     document.addEventListener('directoryChanged', (event) => {
@@ -197,8 +205,176 @@ class FileBrowser {
     }
   }
 
+  async loadOpenApplicationWindows() {
+    if (!this.windowDetectionEnabled) {
+      return;
+    }
+
+    try {
+      console.log('Loading open application windows...');
+      const result = await window.electronAPI.getOpenApplicationWindows();
+
+      if (result.success) {
+        this.openApplicationWindows = result.files || [];
+        this.windowDetectionLastUpdate = Date.now();
+        console.log(`Loaded ${this.openApplicationWindows.length} open files from applications`);
+
+        // Re-render quick access to include new window data
+        this.renderQuickAccess();
+
+        // Schedule next refresh
+        this.scheduleWindowDetectionRefresh();
+      } else if (result.requiresPermissions) {
+        console.warn('Window detection requires accessibility permissions');
+        this.handlePermissionRequired();
+      } else {
+        console.error('Failed to load open application windows:', result.error);
+        this.openApplicationWindows = [];
+        this.renderQuickAccess();
+      }
+    } catch (error) {
+      console.error('Error loading open application windows:', error);
+      this.openApplicationWindows = [];
+      this.renderQuickAccess();
+    }
+  }
+
+  scheduleWindowDetectionRefresh() {
+    // Clear existing timer
+    if (this.windowDetectionTimer) {
+      clearTimeout(this.windowDetectionTimer);
+    }
+
+    // Schedule next refresh
+    this.windowDetectionTimer = setTimeout(() => {
+      this.loadOpenApplicationWindows();
+    }, this.windowDetectionRefreshInterval);
+  }
+
+  async handlePermissionRequired() {
+    // Show a subtle notification about permissions
+    this.setStatus('Window detection requires accessibility permissions');
+
+    // Optionally auto-request permissions (user will see system dialog)
+    try {
+      const permissionResult = await window.electronAPI.requestWindowDetectionPermissions();
+      if (permissionResult.granted) {
+        console.log('Accessibility permissions granted');
+        this.setStatus('Window detection enabled');
+        // Retry loading windows
+        setTimeout(() => this.loadOpenApplicationWindows(), 1000);
+      } else {
+        console.log('User needs to manually grant permissions in System Preferences');
+        this.setStatus('Open System Preferences > Security & Privacy > Accessibility to enable window detection');
+      }
+    } catch (error) {
+      console.error('Error requesting permissions:', error);
+    }
+  }
+
+  toggleWindowDetection() {
+    this.windowDetectionEnabled = !this.windowDetectionEnabled;
+
+    if (this.windowDetectionEnabled) {
+      this.loadOpenApplicationWindows();
+    } else {
+      // Clear timer and reset data
+      if (this.windowDetectionTimer) {
+        clearTimeout(this.windowDetectionTimer);
+        this.windowDetectionTimer = null;
+      }
+      this.openApplicationWindows = [];
+      this.renderQuickAccess();
+    }
+  }
+
+  async refreshWindowDetection() {
+    // Clear cache and force refresh
+    try {
+      await window.electronAPI.clearWindowDetectionCache();
+      await this.loadOpenApplicationWindows();
+    } catch (error) {
+      console.error('Error refreshing window detection:', error);
+    }
+  }
+
+  // Window Detection Debug Methods
+  async enableWindowDetectionDebug() {
+    try {
+      const result = await window.electronAPI.setWindowDetectionDebug(true);
+      console.log('Window detection debug enabled:', result);
+      return result;
+    } catch (error) {
+      console.error('Error enabling window detection debug:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  async disableWindowDetectionDebug() {
+    try {
+      const result = await window.electronAPI.setWindowDetectionDebug(false);
+      console.log('Window detection debug disabled:', result);
+      return result;
+    } catch (error) {
+      console.error('Error disabling window detection debug:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  async getWindowDetectionDiagnostics() {
+    try {
+      const result = await window.electronAPI.getWindowDetectionDiagnostics();
+      console.log('Window detection diagnostics:', result);
+      return result;
+    } catch (error) {
+      console.error('Error getting window detection diagnostics:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  async testAppleScript() {
+    try {
+      const result = await window.electronAPI.testAppleScript();
+      console.log('AppleScript test result:', result);
+      return result;
+    } catch (error) {
+      console.error('Error testing AppleScript:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  // Debug helper to log all window detection information
+  async debugWindowDetection() {
+    console.log('\n=== WINDOW DETECTION DEBUG SESSION ===');
+
+    // Enable debug mode
+    console.log('1. Enabling debug mode...');
+    await this.enableWindowDetectionDebug();
+
+    // Get diagnostics
+    console.log('2. Getting diagnostics...');
+    const diagnostics = await this.getWindowDetectionDiagnostics();
+
+    // Test AppleScript
+    console.log('3. Testing AppleScript...');
+    const appleScriptTest = await this.testAppleScript();
+
+    // Clear cache and reload
+    console.log('4. Clearing cache and reloading...');
+    await window.electronAPI.clearWindowDetectionCache();
+    await this.loadOpenApplicationWindows();
+
+    console.log('=== DEBUG SESSION COMPLETE ===\n');
+
+    return {
+      diagnostics,
+      appleScriptTest,
+      currentOpenFiles: this.openApplicationWindows
+    };
+  }
+
   /* -------------------------- Folder Expansion Methods ------------------------- */
-  
+
   // Toggle folder expansion state
   async toggleFolderExpansion(folderPath) {
     if (this.expandedFolders.has(folderPath)) {
@@ -217,10 +393,10 @@ class FileBrowser {
       }
 
       this.setStatus('Loading folder contents...');
-      
+
       // Fetch folder contents without changing current directory
       const result = await window.electronAPI.getDirectoryContentsOnly(folderPath);
-      
+
       if (result.success) {
         this.expandedFolders.add(folderPath);
         this.expandedFolderContents.set(folderPath, result.contents || []);
@@ -240,7 +416,7 @@ class FileBrowser {
   collapseFolder(folderPath) {
     this.expandedFolders.delete(folderPath);
     this.expandedFolderContents.delete(folderPath);
-    
+
     // Also collapse any nested expanded folders
     for (const expandedPath of this.expandedFolders) {
       if (expandedPath.startsWith(folderPath + '/')) {
@@ -248,7 +424,7 @@ class FileBrowser {
         this.expandedFolderContents.delete(expandedPath);
       }
     }
-    
+
     this.renderFileList();
     this.updateFileCount();
   }
@@ -267,7 +443,7 @@ class FileBrowser {
   async navigateToDirectory(path) {
     // Clear search input when navigating to any directory
     this.clearSearchInput();
-    
+
     // Clear expanded folders when navigating to a new directory
     this.clearExpandedFolders();
 
@@ -435,9 +611,9 @@ class FileBrowser {
       const localResults = this.directoryContents.filter(item =>
         item.name.toLowerCase().includes(this.fileSearchQuery)
       );
-      
+
       this.filteredContents = [...localResults];
-      
+
       // If no local results found, trigger progressive global search
       if (localResults.length === 0 && this.fileSearchQuery.length >= 2) {
         this.triggerGlobalSearch(this.fileSearchQuery);
@@ -480,7 +656,7 @@ class FileBrowser {
       } else {
         emptyMessage = 'This directory is empty';
       }
-      
+
       this.fileList.innerHTML = `
         <div class="empty-directory">
           <div class="empty-icon codicon ${this.isGlobalSearching ? 'codicon-loading' : 'codicon-folder'}"></div>
@@ -513,7 +689,7 @@ class FileBrowser {
       fileListHTML += this.globalSearchResults.map(item => {
         const icon = item.isDirectory ? this.getFileIcon('folder') : this.getFileIcon(item.name);
         const relativePath = item.relativePath || item.path;
-        
+
         return `
           <div class="file-item ${item.isDirectory ? 'directory' : 'file'} global-result"
                data-file-path="${DOMUtils.escapeHTML(item.path)}"
@@ -529,7 +705,7 @@ class FileBrowser {
     }
 
     this.fileList.innerHTML = fileListHTML;
-    
+
     // Add hover event listeners for tooltips
     this.addTooltipListeners();
 
@@ -544,19 +720,19 @@ class FileBrowser {
       const isExpanded = this.isFolderExpanded(item.path);
       const hasDropdown = item.isDirectory;
       const indentStyle = `padding-left: ${12 + (indentLevel * 20)}px`;
-      
+
       let itemHTML = `
         <div class="file-item ${item.isDirectory ? 'directory' : 'file'} ${isExpanded ? 'expanded' : ''}"
              data-file-path="${DOMUtils.escapeHTML(item.path)}"
              data-indent-level="${indentLevel}"
              style="${indentStyle}">
       `;
-      
+
       // Add dropdown icon for directories
       if (hasDropdown) {
         const dropdownIcon = isExpanded ? 'codicon-chevron-down' : 'codicon-chevron-right';
         itemHTML += `
-          <button class="folder-expand-btn" 
+          <button class="folder-expand-btn"
                   data-folder-path="${DOMUtils.escapeHTML(item.path)}"
                   title="${isExpanded ? 'Collapse folder' : 'Expand folder'}">
             <span class="codicon ${dropdownIcon}"></span>
@@ -566,7 +742,7 @@ class FileBrowser {
         // Add spacer for files to align with directories
         itemHTML += `<div class="folder-expand-spacer"></div>`;
       }
-      
+
       itemHTML += `
           <span class="file-icon codicon ${icon}"></span>
           <div class="file-info">
@@ -574,7 +750,7 @@ class FileBrowser {
           </div>
         </div>
       `;
-      
+
       // Add expanded folder contents if folder is expanded
       if (isExpanded && this.expandedFolderContents.has(item.path)) {
         const expandedContents = this.expandedFolderContents.get(item.path);
@@ -582,7 +758,7 @@ class FileBrowser {
           itemHTML += this.renderHierarchicalItems(expandedContents, indentLevel + 1);
         }
       }
-      
+
       return itemHTML;
     }).join('');
   }
@@ -590,19 +766,135 @@ class FileBrowser {
   renderQuickAccess() {
     if (!this.quickAccessList) return;
 
-    const quickAccessHTML = this.commonDirectories.map(dir => `
-      <div class="quick-access-item" 
-           data-file-path="${DOMUtils.escapeHTML(dir.path)}"
-           data-is-quick-access="true">
-        <span class="quick-access-icon">${dir.icon}</span>
-        <span class="quick-access-name">${dir.name}</span>
-      </div>
-    `).join('');
+    let quickAccessHTML = '';
+
+    // Common directories section
+    if (this.commonDirectories && this.commonDirectories.length > 0) {
+      const commonDirsHTML = this.commonDirectories.map(dir => `
+        <div class="quick-access-item"
+             data-file-path="${DOMUtils.escapeHTML(dir.path)}"
+             data-is-quick-access="true">
+          <span class="quick-access-icon">${dir.icon}</span>
+          <span class="quick-access-name">${dir.name}</span>
+        </div>
+      `).join('');
+
+      quickAccessHTML += commonDirsHTML;
+    }
+
+    // Open files section (if any)
+    if (this.openApplicationWindows && this.openApplicationWindows.length > 0) {
+      // Add separator if we have both sections
+      if (quickAccessHTML) {
+        quickAccessHTML += `
+          <div class="quick-access-separator">
+            <div class="separator-line"></div>
+            <div class="separator-text">Open Files</div>
+            <div class="separator-line"></div>
+          </div>
+        `;
+      }
+
+      // Group files by application
+      const filesByApp = this.groupFilesByApplication(this.openApplicationWindows);
+
+      for (const [appName, files] of Object.entries(filesByApp)) {
+        // App header
+        const appIcon = files[0]?.appIcon || '📝';
+        quickAccessHTML += `
+          <div class="quick-access-app-header">
+            <span class="app-header-icon">${appIcon}</span>
+            <span class="app-header-name">${appName}</span>
+            <span class="app-header-count">(${files.length})</span>
+          </div>
+        `;
+
+        // Files for this app (limit to first 5 to avoid clutter)
+        const displayFiles = files.slice(0, 5);
+        const openFilesHTML = displayFiles.map(file => {
+          // Check if this is a workspace item
+          const isWorkspace = file.isWorkspace || false;
+          const workspaceDirectory = file.workspaceDirectory || file.path;
+          const displayName = isWorkspace ? file.name : file.name;
+          const displayPath = isWorkspace ? file.path : (file.directory || file.path);
+
+          return `
+            <div class="quick-access-item open-file ${isWorkspace ? 'workspace-item' : ''}"
+                 data-file-path="${DOMUtils.escapeHTML(file.path)}"
+                 data-is-open-file="true"
+                 data-is-workspace="${isWorkspace}"
+                 data-workspace-directory="${DOMUtils.escapeHTML(workspaceDirectory)}"
+                 data-app-name="${DOMUtils.escapeHTML(file.app)}"
+                 title="${DOMUtils.escapeHTML(isWorkspace ? `Workspace: ${file.path}` : file.path)}">
+              <span class="quick-access-icon codicon ${file.icon}"></span>
+              <div class="open-file-info">
+                <span class="open-file-name">${DOMUtils.escapeHTML(displayName)}</span>
+                ${!isWorkspace && file.directory ? `<span class="open-file-dir">${DOMUtils.escapeHTML(this.truncatePath(file.directory))}</span>` : ''}
+                ${isWorkspace ? `<span class="workspace-indicator">📁 Workspace</span>` : ''}
+              </div>
+              <span class="app-indicator" title="${DOMUtils.escapeHTML(file.app)}">${appIcon}</span>
+            </div>
+          `;
+        }).join('');
+
+        quickAccessHTML += openFilesHTML;
+
+        // Show "and X more" if there are additional files
+        if (files.length > 5) {
+          quickAccessHTML += `
+            <div class="quick-access-more">
+              <span class="more-text">... and ${files.length - 5} more files</span>
+            </div>
+          `;
+        }
+      }
+    } else if (this.windowDetectionEnabled) {
+      // Show empty state for window detection
+      if (quickAccessHTML) {
+        quickAccessHTML += `
+          <div class="quick-access-separator">
+            <div class="separator-line"></div>
+            <div class="separator-text">Open Files</div>
+            <div class="separator-line"></div>
+          </div>
+        `;
+      }
+
+      quickAccessHTML += `
+        <div class="quick-access-empty">
+          <span class="empty-icon codicon codicon-search"></span>
+          <span class="empty-text">No open files detected</span>
+        </div>
+      `;
+    }
 
     this.quickAccessList.innerHTML = quickAccessHTML;
-    
+
     // Add tooltip listeners for quick access items
     this.addQuickAccessTooltipListeners();
+  }
+
+  groupFilesByApplication(files) {
+    const grouped = {};
+
+    files.forEach(file => {
+      const appName = file.appDisplayName || file.app || 'Unknown';
+      if (!grouped[appName]) {
+        grouped[appName] = [];
+      }
+      grouped[appName].push(file);
+    });
+
+    return grouped;
+  }
+
+  truncatePath(path, maxLength = 30) {
+    if (!path || path.length <= maxLength) {
+      return path;
+    }
+
+    // Try to show the most relevant part (end of path)
+    return '...' + path.slice(-(maxLength - 3));
   }
 
   toggleQuickAccess() {
@@ -622,24 +914,24 @@ class FileBrowser {
       const total = this.directoryContents.length;
       const localFiltered = this.filteredContents.length;
       const globalResults = this.globalSearchResults.length;
-      
+
       // Count expanded folder contents
       let expandedItemsCount = 0;
       for (const contents of this.expandedFolderContents.values()) {
         expandedItemsCount += contents.length;
       }
-      
+
       const totalShown = localFiltered + globalResults + expandedItemsCount;
-      
+
       const localDirs = this.filteredContents.filter(item => item.isDirectory).length;
       const globalDirs = this.globalSearchResults.filter(item => item.isDirectory).length;
-      
+
       // Count expanded directories
       let expandedDirs = 0;
       for (const contents of this.expandedFolderContents.values()) {
         expandedDirs += contents.filter(item => item.isDirectory).length;
       }
-      
+
       const totalDirs = localDirs + globalDirs + expandedDirs;
       const totalFiles = totalShown - totalDirs;
 
@@ -859,55 +1151,55 @@ class FileBrowser {
   }
 
   /* -------------------------- Search Methods ------------------------- */
-  
+
   // Progressive global search with debouncing
   triggerGlobalSearch(query) {
     // Clear previous timer
     if (this.searchDebounceTimer) {
       clearTimeout(this.searchDebounceTimer);
     }
-    
+
     // Don't search if query hasn't changed
     if (query === this.lastGlobalSearchQuery) {
       return;
     }
-    
+
     // Debounce the search to avoid excessive API calls
     this.searchDebounceTimer = setTimeout(async () => {
       await this.performGlobalSearch(query);
     }, 300); // 300ms debounce
   }
-  
+
   // Perform the actual global search
   async performGlobalSearch(query) {
     if (this.isGlobalSearching || !query || query.length < 2) {
       return;
     }
-    
+
     this.isGlobalSearching = true;
     this.lastGlobalSearchQuery = query;
-    
+
     // Show loading state
     this.setStatus('Searching project files...');
-    
+
     try {
       const result = await window.electronAPI.searchFilesByPrefix(query, 20);
-      
+
       if (result.success && result.results) {
         // Filter out files that are already in the current directory
         const currentDirFiles = new Set(this.directoryContents.map(item => item.path));
-        this.globalSearchResults = result.results.filter(item => 
+        this.globalSearchResults = result.results.filter(item =>
           !currentDirFiles.has(item.path)
         );
-        
+
         // Re-render if the search query is still current
         if (query === this.fileSearchQuery) {
           this.renderFileList();
           this.updateFileCount();
         }
-        
-        this.setStatus(this.globalSearchResults.length > 0 ? 
-          `Found ${this.globalSearchResults.length} files in project` : 
+
+        this.setStatus(this.globalSearchResults.length > 0 ?
+          `Found ${this.globalSearchResults.length} files in project` :
           'Ready'
         );
       } else {
@@ -939,13 +1231,13 @@ class FileBrowser {
       this.fileSearchQuery = '';
       this.globalSearchResults = [];
       this.lastGlobalSearchQuery = '';
-      
+
       // Clear any pending search timer
       if (this.searchDebounceTimer) {
         clearTimeout(this.searchDebounceTimer);
         this.searchDebounceTimer = null;
       }
-      
+
       this.filterContents();
       this.updateClearButton();
     }
@@ -1077,41 +1369,41 @@ class FileBrowser {
   }
 
   /* -------------------------- Tooltip Methods ------------------------- */
-  
+
   // Create and show tooltip for file path
   showTooltip(element, path) {
     // Clear any existing tooltip
     this.hideTooltip();
-    
+
     // Clear any pending tooltip timer
     if (this.tooltipTimeout) {
       clearTimeout(this.tooltipTimeout);
     }
-    
+
     // Set a delay before showing the tooltip
     this.tooltipTimeout = setTimeout(() => {
       this.createTooltip(element, path);
     }, 500); // 500ms delay
   }
-  
+
   // Create the tooltip element and position it
   createTooltip(element, path) {
     // Check if element is still valid (hasn't been removed from DOM)
     if (!element || !element.isConnected) {
       return;
     }
-    
+
     // Create tooltip element
     this.tooltip = document.createElement('div');
     this.tooltip.className = 'file-tooltip';
     this.tooltip.textContent = path;
-    
+
     // Add to body for proper positioning
     document.body.appendChild(this.tooltip);
-    
+
     // Position the tooltip
     this.positionTooltip(element);
-    
+
     // Show tooltip with animation
     requestAnimationFrame(() => {
       // Check if tooltip still exists (might have been cleaned up)
@@ -1120,20 +1412,20 @@ class FileBrowser {
       }
     });
   }
-  
+
   // Position tooltip near the element but within viewport
   positionTooltip(element) {
     if (!this.tooltip || !element || !element.isConnected) return;
-    
+
     const rect = element.getBoundingClientRect();
     const tooltipRect = this.tooltip.getBoundingClientRect();
     const viewportWidth = window.innerWidth;
     const viewportHeight = window.innerHeight;
-    
+
     // Calculate initial position above the element
     let left = rect.left;
     let top = rect.top - tooltipRect.height - 12; // 12px gap
-    
+
     // Adjust horizontal position if tooltip would go outside viewport
     if (left + tooltipRect.width > viewportWidth - 20) {
       left = viewportWidth - tooltipRect.width - 20;
@@ -1141,21 +1433,21 @@ class FileBrowser {
     if (left < 20) {
       left = 20;
     }
-    
+
     // If tooltip would go above viewport, show below element instead
     if (top < 20) {
       top = rect.bottom + 12;
     }
-    
+
     // Final check - if still outside viewport vertically, position at mouse
     if (top + tooltipRect.height > viewportHeight - 20) {
       top = Math.max(20, viewportHeight - tooltipRect.height - 20);
     }
-    
+
     this.tooltip.style.left = `${left}px`;
     this.tooltip.style.top = `${top}px`;
   }
-  
+
   // Hide and remove tooltip
   hideTooltip() {
     // Clear any pending tooltip timer
@@ -1163,45 +1455,45 @@ class FileBrowser {
       clearTimeout(this.tooltipTimeout);
       this.tooltipTimeout = null;
     }
-    
+
     if (this.tooltip) {
       this.tooltip.remove();
       this.tooltip = null;
     }
   }
-  
+
   // Add hover event listeners to all file items
   addTooltipListeners() {
     if (!this.fileList) return;
-    
+
     const fileItems = this.fileList.querySelectorAll('.file-item[data-file-path]');
-    
+
     fileItems.forEach(item => {
       const filePath = item.getAttribute('data-file-path');
-      
+
       item.addEventListener('mouseenter', () => {
         this.showTooltip(item, filePath);
       });
-      
+
       item.addEventListener('mouseleave', () => {
         this.hideTooltip();
       });
     });
   }
-  
+
   // Add hover event listeners for quick access items
   addQuickAccessTooltipListeners() {
     if (!this.quickAccessList) return;
-    
+
     const quickAccessItems = this.quickAccessList.querySelectorAll('.quick-access-item[data-file-path]');
-    
+
     quickAccessItems.forEach(item => {
       const filePath = item.getAttribute('data-file-path');
-      
+
       item.addEventListener('mouseenter', () => {
         this.showTooltip(item, filePath);
       });
-      
+
       item.addEventListener('mouseleave', () => {
         this.hideTooltip();
       });
@@ -1260,7 +1552,7 @@ class FileBrowser {
     } else {
       // Add visual feedback
       fileItem.classList.add('clicking');
-      
+
       // Open file in the editor
       console.log('File clicked:', path);
 
@@ -1295,9 +1587,150 @@ class FileBrowser {
     const quickAccessItem = event.target.closest('.quick-access-item');
     if (!quickAccessItem) return;
 
-    const directoryPath = quickAccessItem.dataset.filePath;
-    if (directoryPath) {
-      this.navigateToDirectory(directoryPath);
+    const filePath = quickAccessItem.dataset.filePath;
+    if (!filePath) return;
+
+    const isOpenFile = quickAccessItem.dataset.isOpenFile === 'true';
+    const isQuickAccess = quickAccessItem.dataset.isQuickAccess === 'true';
+
+    if (isOpenFile) {
+      // Handle open file click - open in editor
+      this.handleOpenFileClick(filePath, quickAccessItem);
+    } else if (isQuickAccess) {
+      // Handle quick access directory click - navigate to directory
+      this.navigateToDirectory(filePath);
+    }
+  }
+
+  async handleOpenFileClick(filePath, itemElement) {
+    try {
+      // Add visual feedback
+      itemElement.classList.add('clicking');
+
+      console.log('Open file clicked:', filePath);
+
+      // Check if this is a workspace item (has isWorkspace property)
+      const isWorkspace = itemElement.dataset.isWorkspace === 'true';
+      const workspaceDirectory = itemElement.dataset.workspaceDirectory;
+
+      if (isWorkspace && workspaceDirectory) {
+        // Handle workspace navigation - navigate to the workspace directory
+        console.log('Navigating to workspace:', workspaceDirectory);
+        await this.navigateToDirectory(workspaceDirectory);
+
+        // Remove visual feedback
+        setTimeout(() => {
+          if (itemElement) {
+            itemElement.classList.remove('clicking');
+          }
+        }, 200);
+        return;
+      }
+
+      // Check if this looks like a relative path (no leading slash)
+      // This happens when window detector can't find the exact file location
+      if (!filePath.startsWith('/')) {
+        console.log('Detected relative path from window detector:', filePath);
+
+        // Extract the directory name (first part of the path)
+        const pathParts = filePath.split('/');
+        const directoryName = pathParts[0];
+
+                        if (directoryName) {
+          // Try to find this directory in common locations
+          // Get the actual home directory path (this.homeDirectory should be absolute)
+          const actualHomeDir = this.homeDirectory && this.homeDirectory !== '~' ? this.homeDirectory : null;
+
+          const commonPaths = [];
+
+          // Only add paths if we have a valid home directory
+          if (actualHomeDir) {
+            commonPaths.push(
+              `${actualHomeDir}/Desktop/${directoryName}`,
+              `${actualHomeDir}/Documents/${directoryName}`,
+              `${actualHomeDir}/${directoryName}`
+            );
+          }
+
+          // Add some fallback paths that don't rely on process.env
+          commonPaths.push(
+            `/Users/Shared/${directoryName}`,
+            `/${directoryName}` // Root level directory as last resort
+          );
+
+          console.log('Searching for directory in common locations:', commonPaths);
+
+          // Try each common path to see if the directory exists
+          for (const testPath of commonPaths) {
+            try {
+              const result = await window.electronAPI.navigateToDirectory(testPath);
+              if (result.success) {
+                console.log('Found directory at:', testPath);
+                await this.navigateToDirectory(testPath);
+
+                // Remove visual feedback
+                setTimeout(() => {
+                  if (itemElement) {
+                    itemElement.classList.remove('clicking');
+                  }
+                }, 200);
+                return;
+              }
+            } catch (error) {
+              // Continue to next path
+              console.log('Path not found:', testPath);
+            }
+          }
+
+          // If we can't find the directory, show an error
+          console.warn('Could not locate directory:', directoryName);
+          this.showError(`Could not locate directory: ${directoryName}`);
+
+          // Remove visual feedback
+          setTimeout(() => {
+            if (itemElement) {
+              itemElement.classList.remove('clicking');
+            }
+          }, 200);
+          return;
+        }
+      }
+
+      // Handle individual file opening (for absolute paths)
+      const fileEditor = window.app?.getComponent('fileEditor');
+      if (fileEditor) {
+        // Set working directory to file's parent directory first
+        const result = await window.electronAPI.setWorkingDirectoryFromFile(filePath);
+        if (result.success) {
+          console.log('Working directory updated:', result.path);
+
+          // Navigate to the parent directory in file browser
+          await this.navigateToDirectory(result.path);
+        } else {
+          console.warn('Failed to update working directory:', result.error);
+          // Still try to open the file even if directory update failed
+        }
+
+        // Open the file in editor
+        fileEditor.openFile(filePath);
+
+        // Remove visual feedback after a short delay
+        setTimeout(() => {
+          if (itemElement) {
+            itemElement.classList.remove('clicking');
+          }
+        }, 200);
+      } else {
+        console.error('File editor component not available');
+        if (itemElement) {
+          itemElement.classList.remove('clicking');
+        }
+      }
+    } catch (error) {
+      console.error('Failed to open file:', error);
+      if (itemElement) {
+        itemElement.classList.remove('clicking');
+      }
     }
   }
 
@@ -1305,23 +1738,23 @@ class FileBrowser {
   handleFileClick(path, isDirectory) {
     this.handleFileClickWithFeedback(path, isDirectory, null);
   }
-  
+
   // Handle clicks on global search results
   async handleGlobalFileClick(filePath, isDirectory) {
     // Clear search input when a file/folder is selected
     this.clearSearchInput();
-    
+
     if (isDirectory) {
       // Navigate to the directory
       await this.navigateToDirectory(filePath);
     } else {
       // For files, navigate to parent directory first, then open the file
       const parentDir = filePath.substring(0, filePath.lastIndexOf('/'));
-      
+
       try {
         // Navigate to the parent directory
         await this.navigateToDirectory(parentDir);
-        
+
         // Then open the file in the editor
         console.log('Global file clicked:', filePath);
         const fileEditor = window.app?.getComponent('fileEditor');
