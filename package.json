@@ -54,7 +54,7 @@
     ],
     "mac": {
       "category": "public.app-category.developer-tools",
-      "icon": "assets/icon.icns",
+      "icon": "assets/icon.png",
       "extendInfo": {
         "LSUIElement": false,
         "LSBackgroundOnly": false

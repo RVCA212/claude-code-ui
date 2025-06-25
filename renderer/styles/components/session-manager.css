@@ -1,12 +1,12 @@
 /**
  * Session Manager Component Styles
- * 
+ *
  * Used by: Conversation history and session management UI
  * Related files:
  *   - src/renderer/components/session-manager.js (main session logic)
  *   - src/renderer/components/chat-sidebar.js (history dropdown integration)
  *   - renderer/index.html (conversations-list sections)
- * 
+ *
  * Features:
  *   - Conversation list display with metadata
  *   - Status indicators (active, historical, archived)
@@ -212,4 +212,72 @@
   min-width: 300px;
   max-height: 400px;
   overflow-y: auto;
+}
+
+/* ============================================================================
+   Directory Change Notifications
+   ============================================================================ */
+
+/* Directory change notification positioning and base styling */
+.cwd-notification {
+  position: fixed;
+  top: 60px; /* Below global header */
+  right: var(--space-16);
+  min-width: 300px;
+  max-width: 500px;
+  padding: var(--space-12);
+  border-radius: var(--radius-base);
+  box-shadow: var(--shadow-lg);
+  z-index: 1000;
+  opacity: 0;
+  transform: translateX(100%);
+  transition: all var(--duration-standard) var(--ease-standard);
+  font-size: var(--font-size-sm);
+}
+
+.cwd-notification.show {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.cwd-notification.warning {
+  background-color: rgba(255, 193, 7, 0.1);
+  border: 1px solid rgba(255, 193, 7, 0.3);
+  color: #ffc107;
+}
+
+.cwd-notification.success {
+  background-color: rgba(40, 167, 69, 0.1);
+  border: 1px solid rgba(40, 167, 69, 0.3);
+  color: #28a745;
+}
+
+.notification-content {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-8);
+}
+
+.notification-icon {
+  font-size: var(--font-size-base);
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.notification-text {
+  flex: 1;
+  line-height: 1.4;
+}
+
+.notification-text strong {
+  display: block;
+  margin-bottom: var(--space-4);
+}
+
+.notification-text code {
+  background-color: rgba(255, 255, 255, 0.1);
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
 }

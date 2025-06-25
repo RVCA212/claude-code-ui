@@ -44,6 +44,11 @@ class FileBrowser {
     // Sidebar toggle button located in the global header
     this.sidebarToggleBtn = document.getElementById('globalSidebarToggleBtn');
 
+    // Workspace context state
+    this.currentWorkspace = null;
+    this.workspaceFolders = [];
+    this.isWorkspaceActive = false;
+
     this.initializeElements();
     this.setupEventListeners();
     this.applyInitialQuickAccessState();
@@ -92,6 +97,7 @@ class FileBrowser {
     this.forwardBtn = document.getElementById('forwardBtn');
     this.upBtn = document.getElementById('upBtn');
     this.homeBtn = document.getElementById('homeBtn');
+    this.newTaskBtn = document.getElementById('newTaskBtn');
     this.refreshBtn = document.getElementById('refreshBtn');
 
     // Toggle sidebar view button & history container
@@ -128,6 +134,9 @@ class FileBrowser {
     }
     if (this.homeBtn) {
       this.homeBtn.addEventListener('click', () => this.navigateHome());
+    }
+    if (this.newTaskBtn) {
+      this.newTaskBtn.addEventListener('click', () => this.createNewTask());
     }
     if (this.refreshBtn) {
       this.refreshBtn.addEventListener('click', () => this.refreshDirectory());
@@ -208,6 +217,8 @@ class FileBrowser {
       }
 
       await this.loadCommonDirectories();
+      await this.loadWorkspaceContext();
+
       const result = await window.electronAPI.getCurrentDirectory();
       if (result.success) {
         this.updateDirectory(result);
@@ -555,6 +566,46 @@ class FileBrowser {
     }
   }
 
+  async createNewTask() {
+    try {
+      // Get the message input element from the message component
+      const messageInput = document.getElementById('messageInput');
+      if (!messageInput) {
+        console.error('Message input not found');
+        return;
+      }
+
+      // Get the task template from settings
+      let taskTemplate;
+      try {
+        taskTemplate = await window.electronAPI.getTaskTemplate();
+      } catch (error) {
+        console.warn('Failed to load custom task template, using default:', error);
+        // Fallback to default template
+        taskTemplate = 'Create a new folder in the cwd and accomplish the following task into it: \n\n<task>\n\n</task> ultrathink through this task to complete it effectively:';
+      }
+
+      messageInput.value = taskTemplate;
+
+      // Position cursor between the XML tags (after the first newline)
+      const cursorPosition = taskTemplate.indexOf('\n') + 1;
+      DOMUtils.setCursorPosition(messageInput, cursorPosition);
+
+      // Focus the input and trigger input change event
+      messageInput.focus();
+
+      // Trigger input change to update UI state
+      if (window.messageComponent && typeof window.messageComponent.handleInputChange === 'function') {
+        window.messageComponent.handleInputChange();
+      }
+
+      console.log('Task template inserted successfully');
+    } catch (error) {
+      console.error('Failed to create new task:', error);
+      this.showError('Failed to create task template');
+    }
+  }
+
   async refreshDirectory() {
     if (this.currentDirectory) {
       await this.navigateToDirectory(this.currentDirectory);
@@ -571,6 +622,11 @@ class FileBrowser {
     this.updateBreadcrumb();
     this.updateCurrentWorkingDirectory();
     this.filterContents();
+
+    // Update workspace UI if workspace is active
+    if (this.isWorkspaceActive) {
+      this.updateWorkspaceUI();
+    }
   }
 
   updateNavigationButtons() {
@@ -585,24 +641,74 @@ class FileBrowser {
   updateBreadcrumb() {
     if (!this.breadcrumb || !this.currentDirectory) return;
 
-    const pathParts = this.currentDirectory.split('/').filter(part => part);
-    const breadcrumbHTML = pathParts.map((part, index) => {
-      const fullPath = '/' + pathParts.slice(0, index + 1).join('/');
-      const isLast = index === pathParts.length - 1;
+    let breadcrumbHTML = '';
 
-      if (isLast) {
-        return `<span class="breadcrumb-segment current">${part}</span>`;
+    if (this.isWorkspaceActive && this.currentWorkspace) {
+      // Workspace-aware breadcrumb
+      breadcrumbHTML += `
+        <span class="breadcrumb-segment workspace-root" onclick="fileBrowser.showWorkspaceRoot()">
+          <span class="codicon codicon-folder"></span>
+          <span class="breadcrumb-text">${this.escapeHTML(this.currentWorkspace.name)}</span>
+        </span>
+      `;
+
+      // Find which workspace folder contains current directory
+      const currentFolder = this.getCurrentWorkspaceFolder();
+      if (currentFolder) {
+        breadcrumbHTML += `
+          <span class="breadcrumb-separator">/</span>
+          <span class="breadcrumb-segment workspace-folder" onclick="fileBrowser.navigateToDirectory('${currentFolder.path}')">
+            <span class="codicon codicon-folder"></span>
+            <span class="breadcrumb-text">${this.escapeHTML(currentFolder.name)}</span>
+          </span>
+        `;
+
+        // Show relative path within the workspace folder
+        const relativePath = this.currentDirectory.slice(currentFolder.path.length);
+        if (relativePath && relativePath !== '/') {
+          const pathParts = relativePath.split('/').filter(part => part);
+          pathParts.forEach((part, index) => {
+            const fullPath = currentFolder.path + '/' + pathParts.slice(0, index + 1).join('/');
+            const isLast = index === pathParts.length - 1;
+
+            breadcrumbHTML += `<span class="breadcrumb-separator">/</span>`;
+            if (isLast) {
+              breadcrumbHTML += `<span class="breadcrumb-segment current">${this.escapeHTML(part)}</span>`;
+            } else {
+              breadcrumbHTML += `<span class="breadcrumb-segment" onclick="fileBrowser.navigateToDirectory('${fullPath}')">${this.escapeHTML(part)}</span>`;
+            }
+          });
+        }
       } else {
-        return `<span class="breadcrumb-segment" onclick="fileBrowser.navigateToDirectory('${fullPath}')">${part}</span>`;
+        // Current directory is outside workspace folders, show full path
+        breadcrumbHTML += `
+          <span class="breadcrumb-separator">/</span>
+          <span class="breadcrumb-segment current">${this.escapeHTML(this.currentDirectory)}</span>
+        `;
       }
-    }).join('<span class="breadcrumb-separator">/</span>');
+    } else {
+      // Normal breadcrumb for non-workspace mode
+      const pathParts = this.currentDirectory.split('/').filter(part => part);
+      const pathSegments = pathParts.map((part, index) => {
+        const fullPath = '/' + pathParts.slice(0, index + 1).join('/');
+        const isLast = index === pathParts.length - 1;
 
-    this.breadcrumb.innerHTML = `
-      <span class="breadcrumb-segment" onclick="fileBrowser.navigateToDirectory('/')">
-        <span class="breadcrumb-icon">💾</span>
-      </span>
-      ${pathParts.length > 0 ? '<span class="breadcrumb-separator">/</span>' + breadcrumbHTML : ''}
-    `;
+        if (isLast) {
+          return `<span class="breadcrumb-segment current">${this.escapeHTML(part)}</span>`;
+        } else {
+          return `<span class="breadcrumb-segment" onclick="fileBrowser.navigateToDirectory('${fullPath}')">${this.escapeHTML(part)}</span>`;
+        }
+      }).join('<span class="breadcrumb-separator">/</span>');
+
+      breadcrumbHTML = `
+        <span class="breadcrumb-segment" onclick="fileBrowser.navigateToDirectory('/')">
+          <span class="breadcrumb-icon">💾</span>
+        </span>
+        ${pathParts.length > 0 ? '<span class="breadcrumb-separator">/</span>' + pathSegments : ''}
+      `;
+    }
+
+    this.breadcrumb.innerHTML = breadcrumbHTML;
 
     // Ensure the breadcrumb view is scrolled to the far right so the current folder is visible
     const container = this.breadcrumb.closest('.global-breadcrumb-container');
@@ -1122,6 +1228,131 @@ class FileBrowser {
     } else if (this.fileList && !show) {
       this.fileList.style.display = 'block';
     }
+  }
+
+  // ============================================================================
+  // Workspace Management Methods
+  // ============================================================================
+
+  // Load current workspace context
+  async loadWorkspaceContext() {
+    try {
+      const activeWorkspaceResult = await window.electronAPI.getActiveWorkspace();
+      const workspaceFoldersResult = await window.electronAPI.getWorkspaceFolders();
+
+      if (activeWorkspaceResult.success && activeWorkspaceResult.activeWorkspace) {
+        this.currentWorkspace = activeWorkspaceResult.activeWorkspace;
+        this.isWorkspaceActive = true;
+        console.log('Loaded active workspace:', this.currentWorkspace.name);
+      } else {
+        this.currentWorkspace = null;
+        this.isWorkspaceActive = false;
+      }
+
+      if (workspaceFoldersResult.success && workspaceFoldersResult.hasWorkspace) {
+        this.workspaceFolders = workspaceFoldersResult.folders || [];
+        console.log(`Loaded ${this.workspaceFolders.length} workspace folders`);
+      } else {
+        this.workspaceFolders = [];
+      }
+
+      // Update UI to reflect workspace state
+      this.updateWorkspaceUI();
+    } catch (error) {
+      console.error('Error loading workspace context:', error);
+      this.currentWorkspace = null;
+      this.workspaceFolders = [];
+      this.isWorkspaceActive = false;
+    }
+  }
+
+  // Update UI elements to show workspace context
+  updateWorkspaceUI() {
+    // Update breadcrumb to show workspace context
+    this.updateBreadcrumb();
+
+    // Update directory tree to show workspace folders
+    this.renderWorkspaceFolders();
+  }
+
+  // Render workspace folders in the quick access area
+  renderWorkspaceFolders() {
+    if (!this.isWorkspaceActive || this.workspaceFolders.length === 0) {
+      return;
+    }
+
+    // Add workspace folders section to quick access
+    const quickAccessContent = document.querySelector('.quick-access-content');
+    if (!quickAccessContent) return;
+
+    // Remove existing workspace section if it exists
+    const existingWorkspaceSection = quickAccessContent.querySelector('.workspace-folders-section');
+    if (existingWorkspaceSection) {
+      existingWorkspaceSection.remove();
+    }
+
+    // Create workspace folders section
+    const workspaceSection = document.createElement('div');
+    workspaceSection.className = 'workspace-folders-section';
+    workspaceSection.innerHTML = `
+      <div class="workspace-section-header">
+        <span class="codicon codicon-folder"></span>
+        <span class="workspace-section-title">${this.escapeHTML(this.currentWorkspace.name)}</span>
+        <span class="workspace-folder-count">${this.workspaceFolders.length}</span>
+      </div>
+      <div class="workspace-folders-list">
+        ${this.workspaceFolders.map(folder => `
+          <div class="workspace-folder-item"
+               data-folder-path="${this.escapeHTML(folder.path)}"
+               title="${this.escapeHTML(folder.path)}">
+            <span class="codicon codicon-folder"></span>
+            <span class="folder-name">${this.escapeHTML(folder.name)}</span>
+          </div>
+        `).join('')}
+      </div>
+    `;
+
+    // Insert workspace section at the top of quick access
+    quickAccessContent.insertBefore(workspaceSection, quickAccessContent.firstChild);
+
+    // Add click handlers for workspace folders
+    workspaceSection.querySelectorAll('.workspace-folder-item').forEach(item => {
+      item.addEventListener('click', async (e) => {
+        e.preventDefault();
+        const folderPath = item.dataset.folderPath;
+        if (folderPath) {
+          await this.navigateToDirectory(folderPath);
+        }
+      });
+    });
+  }
+
+  // Check if current directory is within workspace
+  getCurrentWorkspaceFolder() {
+    if (!this.isWorkspaceActive || !this.currentDirectory) {
+      return null;
+    }
+
+    return this.workspaceFolders.find(folder =>
+      this.currentDirectory.startsWith(folder.path)
+    );
+  }
+
+
+  // Show workspace root (used by breadcrumb)
+  showWorkspaceRoot() {
+    if (this.isWorkspaceActive && this.workspaceFolders.length > 0) {
+      // Navigate to the first workspace folder as the root
+      this.navigateToDirectory(this.workspaceFolders[0].path);
+    }
+  }
+
+  // Utility method to escape HTML
+  escapeHTML(str) {
+    if (!str) return '';
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
   }
 
   setStatus(message) {

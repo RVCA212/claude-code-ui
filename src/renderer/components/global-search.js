@@ -501,20 +501,19 @@ class GlobalSearch {
   activateSelection() {
     // Handle quick select activation when no search query
     if (!this.searchQuery) {
-      if (this.quickSelectWorkspaces.length === 0) return;
-
       let targetIndex = this.searchSelectionIndex;
       if (targetIndex === -1) {
         targetIndex = 0;
       }
 
-      const workspace = this.quickSelectWorkspaces[targetIndex];
-      if (!workspace) return;
+      // Select workspace from the list
+      if (targetIndex >= 0 && targetIndex < this.quickSelectWorkspaces.length) {
+        const workspace = this.quickSelectWorkspaces[targetIndex];
+        this.close();
 
-      this.close();
-
-      if (window.fileBrowser) {
-        window.fileBrowser.navigateToDirectory(workspace.path);
+        if (window.fileBrowser) {
+          window.fileBrowser.navigateToDirectory(workspace.path);
+        }
       }
     } else {
       // Normal search results activation
@@ -566,11 +565,10 @@ class GlobalSearch {
       return;
     }
 
-    // Render quick select header
+    // Render quick select header with create workspace button
     let quickSelectHTML = `
       <div class="quick-select-header">
-        <div class="quick-select-title">Recent Workspaces</div>
-        <div class="quick-select-subtitle">Choose a workspace to navigate to</div>
+        <div class="quick-select-title">Recent</div>
       </div>
     `;
 

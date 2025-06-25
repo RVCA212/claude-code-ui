@@ -2,6 +2,9 @@
 class SettingsComponent {
   constructor() {
     this.currentModel = '';
+    this.cache = new Map();
+    this.CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+    this._elements = {};
 
     this.initializeElements();
     this.setupEventListeners();
@@ -9,45 +12,61 @@ class SettingsComponent {
   }
 
   initializeElements() {
-    // Settings modal elements
+    // Core elements needed immediately
     this.settingsModal = document.getElementById('settingsModal');
-    this.settingsBtn = document.getElementById('globalSettingsBtn'); // Updated to use global settings button
+    this.settingsBtn = document.getElementById('globalSettingsBtn');
     this.saveSettingsBtn = document.getElementById('saveSettingsBtn');
     this.cancelSettingsBtn = document.getElementById('cancelSettingsBtn');
-
-    // Status elements
-    this.setupStatus = document.getElementById('setupStatus');
-    this.cliStatus = document.getElementById('cliStatus');
-    this.apiKeyStatus = document.getElementById('apiKeyStatus');
-
-    // Input elements
-    this.apiKeyInput = document.getElementById('apiKeyInput');
-
-    // Model selection
-    this.modelSelect = document.getElementById('modelSelect');
-
-    // MCP elements
-    this.initializeMcpElements();
-
-    // Tab elements
-    this.generalTabBtn = document.getElementById('generalTabBtn');
-    this.mcpTabBtn = document.getElementById('mcpTabBtn');
-    this.generalSection = document.getElementById('generalSettingsSection');
-    this.mcpSection = document.getElementById('mcpSettingsSection');
+    
+    // Other elements will be initialized lazily via getters
   }
 
-  initializeMcpElements() {
-    this.mcpServersList = document.getElementById('mcpServersList');
-    this.mcpServerForm = document.getElementById('mcpServerForm');
-    this.addMcpServerBtn = document.getElementById('addMcpServerBtn');
-    this.saveMcpServerBtn = document.getElementById('saveMcpServerBtn');
-    this.cancelMcpServerBtn = document.getElementById('cancelMcpServerBtn');
-    this.mcpServerIdInput = document.getElementById('mcpServerId');
-    this.mcpServerNameInput = document.getElementById('mcpServerName');
-    this.mcpTransportTypeSelect = document.getElementById('mcpTransportType');
-    this.mcpServerUrlInput = document.getElementById('mcpServerUrl');
-    this.mcpHeadersContainer = document.getElementById('mcpHeaders');
-    this.addHeaderBtn = document.getElementById('addHeaderBtn');
+  // Lazy getters for DOM elements - improves initial load performance
+  get setupStatus() { return this._getElement('setupStatus'); }
+  get cliStatus() { return this._getElement('cliStatus'); }
+  get apiKeyStatus() { return this._getElement('apiKeyStatus'); }
+  get apiKeyInput() { return this._getElement('apiKeyInput'); }
+  get modelSelect() { return this._getElement('modelSelect'); }
+  get clearAllSessionsBtn() { return this._getElement('clearAllSessionsBtn'); }
+  
+  // Tab elements
+  get generalTabBtn() { return this._getElement('generalTabBtn'); }
+  get mcpTabBtn() { return this._getElement('mcpTabBtn'); }
+  get taskTemplateTabBtn() { return this._getElement('taskTemplateTabBtn'); }
+  get systemPromptTabBtn() { return this._getElement('systemPromptTabBtn'); }
+  get generalSection() { return this._getElement('generalSettingsSection'); }
+  get mcpSection() { return this._getElement('mcpSettingsSection'); }
+  get taskTemplateSection() { return this._getElement('taskTemplateSettingsSection'); }
+  get systemPromptSection() { return this._getElement('systemPromptSettingsSection'); }
+  
+  // MCP elements
+  get mcpServersList() { return this._getElement('mcpServersList'); }
+  get mcpServerForm() { return this._getElement('mcpServerForm'); }
+  get addMcpServerBtn() { return this._getElement('addMcpServerBtn'); }
+  get saveMcpServerBtn() { return this._getElement('saveMcpServerBtn'); }
+  get cancelMcpServerBtn() { return this._getElement('cancelMcpServerBtn'); }
+  get mcpServerIdInput() { return this._getElement('mcpServerId'); }
+  get mcpServerNameInput() { return this._getElement('mcpServerName'); }
+  get mcpTransportTypeSelect() { return this._getElement('mcpTransportType'); }
+  get mcpServerUrlInput() { return this._getElement('mcpServerUrl'); }
+  get mcpHeadersContainer() { return this._getElement('mcpHeaders'); }
+  get addHeaderBtn() { return this._getElement('addHeaderBtn'); }
+  
+  // Task template elements
+  get taskTemplateInput() { return this._getElement('taskTemplateInput'); }
+  get saveTaskTemplateBtn() { return this._getElement('saveTaskTemplateBtn'); }
+  get resetTaskTemplateBtn() { return this._getElement('resetTaskTemplateBtn'); }
+  
+  // System prompt elements
+  get systemPromptInput() { return this._getElement('systemPromptInput'); }
+  get systemPromptEnabledToggle() { return this._getElement('systemPromptEnabledToggle'); }
+  get systemPromptModeToggle() { return this._getElement('systemPromptModeToggle'); }
+
+  _getElement(id) {
+    if (!this._elements[id]) {
+      this._elements[id] = document.getElementById(id);
+    }
+    return this._elements[id];
   }
 
   setupEventListeners() {
@@ -67,6 +86,11 @@ class SettingsComponent {
     // Model selection
     if (this.modelSelect) {
       this.modelSelect.addEventListener('change', () => this.handleModelChange());
+    }
+
+    // Clear sessions button
+    if (this.clearAllSessionsBtn) {
+      this.clearAllSessionsBtn.addEventListener('click', () => this.clearAllSessions());
     }
 
     // Close modal when clicking outside
@@ -95,6 +119,18 @@ class SettingsComponent {
     if (this.mcpTabBtn) {
       this.mcpTabBtn.addEventListener('click', () => this.switchTab('mcp'));
     }
+    if (this.taskTemplateTabBtn) {
+      this.taskTemplateTabBtn.addEventListener('click', () => this.switchTab('taskTemplate'));
+    }
+    if (this.systemPromptTabBtn) {
+      this.systemPromptTabBtn.addEventListener('click', () => this.switchTab('systemPrompt'));
+    }
+
+    // Task template event listeners
+    this.setupTaskTemplateEventListeners();
+
+    // System prompt event listeners
+    this.setupSystemPromptEventListeners();
   }
 
   setupMcpEventListeners() {
@@ -112,18 +148,41 @@ class SettingsComponent {
     }
   }
 
+  setupTaskTemplateEventListeners() {
+    if (this.saveTaskTemplateBtn) {
+      this.saveTaskTemplateBtn.addEventListener('click', () => this.saveTaskTemplate());
+    }
+    if (this.resetTaskTemplateBtn) {
+      this.resetTaskTemplateBtn.addEventListener('click', () => this.resetTaskTemplate());
+    }
+  }
+
+  setupSystemPromptEventListeners() {
+    if (this.systemPromptEnabledToggle) {
+      this.systemPromptEnabledToggle.addEventListener('change', () => this.saveSystemPromptConfig());
+    }
+    if (this.systemPromptInput) {
+      // Using 'blur' to save on focus out, to avoid saving on every keystroke
+      this.systemPromptInput.addEventListener('blur', () => this.saveSystemPromptConfig());
+    }
+    if (this.systemPromptModeToggle) {
+      this.systemPromptModeToggle.addEventListener('change', () => this.saveSystemPromptConfig());
+    }
+  }
+
   async loadInitialSettings() {
     try {
-      // Load current model
-      const currentModel = await window.electronAPI.getCurrentModel();
+      // Load data in parallel for better performance
+      const [currentModel, setupStatus] = await Promise.all([
+        this.getCachedData('currentModel', () => window.electronAPI.getCurrentModel()),
+        this.getCachedData('setupStatus', () => window.electronAPI.checkSetup())
+      ]);
+
       this.currentModel = currentModel;
       this.updateModelSelect();
-
-      // Check setup status
-      await this.checkSetupStatus();
-
-      // Load MCP servers list
-      await this.loadMcpServers();
+      this.updateCliStatus(setupStatus.cliAvailable);
+      this.updateApiKeyStatus(setupStatus.apiKeySet ? 'Set' : 'Not set', setupStatus.apiKeySet ? 'success' : 'warning');
+      this.updateSaveButtonState();
     } catch (error) {
       console.error('Failed to load initial settings:', error);
     }
@@ -132,22 +191,19 @@ class SettingsComponent {
   async openSettings() {
     if (!this.settingsModal) return;
 
-    // Refresh setup status when opening
-    await this.checkSetupStatus();
-
-    // Default to general tab on open
-    this.switchTab('general');
-
-    // Reload MCP servers list each time modal opens
-    await this.loadMcpServers();
-
     // Clear API key input for security
     if (this.apiKeyInput) {
       this.apiKeyInput.value = '';
     }
 
-    // Show modal
+    // Show modal immediately for better perceived performance
     this.settingsModal.style.display = 'flex';
+
+    // Default to general tab on open
+    this.switchTab('general');
+
+    // Load fresh setup status
+    await this.checkSetupStatus();
   }
 
   closeSettings() {
@@ -214,7 +270,7 @@ class SettingsComponent {
 
   async checkSetupStatus() {
     try {
-      const status = await window.electronAPI.checkSetup();
+      const status = await this.getCachedData('setupStatus', () => window.electronAPI.checkSetup());
 
       this.updateCliStatus(status.cliAvailable);
       this.updateApiKeyStatus(status.apiKeySet ? 'Set' : 'Not set', status.apiKeySet ? 'success' : 'warning');
@@ -226,6 +282,28 @@ class SettingsComponent {
       console.error('Failed to check setup status:', error);
       this.updateCliStatus(false);
       this.updateApiKeyStatus('Error checking', 'error');
+    }
+  }
+
+  // Cache management methods
+  async getCachedData(key, fetchFn) {
+    const cached = this.cache.get(key);
+    const now = Date.now();
+    
+    if (cached && (now - cached.timestamp) < this.CACHE_TTL) {
+      return cached.data;
+    }
+    
+    const data = await fetchFn();
+    this.cache.set(key, { data, timestamp: now });
+    return data;
+  }
+
+  invalidateCache(key) {
+    if (key) {
+      this.cache.delete(key);
+    } else {
+      this.cache.clear();
     }
   }
 
@@ -290,7 +368,7 @@ class SettingsComponent {
 
   async loadMcpServers() {
     try {
-      const servers = await window.electronAPI.getMcpServers();
+      const servers = await this.getCachedData('mcpServers', () => window.electronAPI.getMcpServers());
       this.renderMcpServersList(servers);
     } catch (err) {
       console.error('Failed to load MCP servers:', err);
@@ -299,47 +377,56 @@ class SettingsComponent {
 
   renderMcpServersList(servers) {
     if (!this.mcpServersList) return;
-    this.mcpServersList.innerHTML = '';
+    
+    // Use DocumentFragment for better performance
+    const fragment = document.createDocumentFragment();
 
     if (!servers || servers.length === 0) {
       const empty = document.createElement('div');
       empty.textContent = 'No MCP servers configured.';
-      this.mcpServersList.appendChild(empty);
-      return;
+      fragment.appendChild(empty);
+    } else {
+      servers.forEach(server => {
+        const item = this.createMcpServerItem(server);
+        fragment.appendChild(item);
+      });
     }
 
-    servers.forEach(server => {
-      const item = document.createElement('div');
-      item.className = `mcp-server-item ${server.enabled ? '' : 'disabled'}`;
-      item.innerHTML = `
-        <div class="mcp-server-info">
-          <strong>${server.name}</strong><br>
-          <span style="font-size: 12px;">${server.transport.toUpperCase()} – ${server.url}</span>
-        </div>
-        <div class="mcp-server-actions">
-          <button class="btn btn--secondary btn--sm" data-action="toggle">${server.enabled ? 'Disable' : 'Enable'}</button>
-          <button class="btn btn--secondary btn--sm" data-action="edit">Edit</button>
-          <button class="btn btn--secondary btn--sm" data-action="delete">Delete</button>
-        </div>`;
+    // Single DOM update
+    this.mcpServersList.replaceChildren(fragment);
+  }
 
-      // Attach action handlers with event delegation
-      item.querySelectorAll('button').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-          const action = e.target.getAttribute('data-action');
-          if (action === 'toggle') {
-            this.toggleMcpServer(server.id, !server.enabled);
-          } else if (action === 'edit') {
-            this.showMcpServerForm(server);
-          } else if (action === 'delete') {
-            if (confirm(`Delete MCP server "${server.name}"?`)) {
-              this.deleteMcpServer(server.id);
-            }
+  createMcpServerItem(server) {
+    const item = document.createElement('div');
+    item.className = `mcp-server-item ${server.enabled ? '' : 'disabled'}`;
+    item.innerHTML = `
+      <div class="mcp-server-info">
+        <strong>${server.name}</strong><br>
+        <span style="font-size: 12px;">${server.transport.toUpperCase()} – ${server.url}</span>
+      </div>
+      <div class="mcp-server-actions">
+        <button class="btn btn--secondary btn--sm" data-action="toggle">${server.enabled ? 'Disable' : 'Enable'}</button>
+        <button class="btn btn--secondary btn--sm" data-action="edit">Edit</button>
+        <button class="btn btn--secondary btn--sm" data-action="delete">Delete</button>
+      </div>`;
+
+    // Attach action handlers with event delegation
+    item.querySelectorAll('button').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const action = e.target.getAttribute('data-action');
+        if (action === 'toggle') {
+          this.toggleMcpServer(server.id, !server.enabled);
+        } else if (action === 'edit') {
+          this.showMcpServerForm(server);
+        } else if (action === 'delete') {
+          if (confirm(`Delete MCP server "${server.name}"?`)) {
+            this.deleteMcpServer(server.id);
           }
-        });
+        }
       });
-
-      this.mcpServersList.appendChild(item);
     });
+
+    return item;
   }
 
   showMcpServerForm(server = null) {
@@ -435,6 +522,7 @@ class SettingsComponent {
 
       const result = await window.electronAPI.saveMcpServer(serverConfig);
       if (result.success) {
+        this.invalidateCache('mcpServers');
         await this.loadMcpServers();
         this.hideMcpServerForm();
       } else {
@@ -448,6 +536,7 @@ class SettingsComponent {
   async deleteMcpServer(serverId) {
     const res = await window.electronAPI.deleteMcpServer(serverId);
     if (res.success) {
+      this.invalidateCache('mcpServers');
       await this.loadMcpServers();
     } else {
       alert('Failed to delete server');
@@ -457,6 +546,7 @@ class SettingsComponent {
   async toggleMcpServer(serverId, enabled) {
     const res = await window.electronAPI.toggleMcpServer(serverId, enabled);
     if (res.success) {
+      this.invalidateCache('mcpServers');
       await this.loadMcpServers();
     } else {
       alert('Failed to toggle server: ' + res.error);
@@ -469,20 +559,204 @@ class SettingsComponent {
   }
 
   switchTab(tab) {
-    if (!this.generalSection || !this.mcpSection) return;
+    if (!this.generalSection || !this.mcpSection || !this.taskTemplateSection || !this.systemPromptSection) return;
 
+    // Hide all sections first
+    this.generalSection.style.display = 'none';
+    this.mcpSection.style.display = 'none';
+    this.taskTemplateSection.style.display = 'none';
+    this.systemPromptSection.style.display = 'none';
+
+    // Remove active class from all tabs
+    this.generalTabBtn?.classList.remove('active');
+    this.mcpTabBtn?.classList.remove('active');
+    this.taskTemplateTabBtn?.classList.remove('active');
+    this.systemPromptTabBtn?.classList.remove('active');
+
+    // Show the selected section and activate its tab
     if (tab === 'mcp') {
-      this.generalSection.style.display = 'none';
       this.mcpSection.style.display = 'block';
-      this.generalTabBtn?.classList.remove('active');
       this.mcpTabBtn?.classList.add('active');
-      // Ensure list up to date
-      this.loadMcpServers();
+      // Load data only when tab is selected for the first time or cache is stale
+      this.loadTabData('mcp');
+    } else if (tab === 'taskTemplate') {
+      this.taskTemplateSection.style.display = 'block';
+      this.taskTemplateTabBtn?.classList.add('active');
+      this.loadTabData('taskTemplate');
+    } else if (tab === 'systemPrompt') {
+      this.systemPromptSection.style.display = 'block';
+      this.systemPromptTabBtn?.classList.add('active');
+      this.loadTabData('systemPrompt');
     } else {
       this.generalSection.style.display = 'block';
-      this.mcpSection.style.display = 'none';
       this.generalTabBtn?.classList.add('active');
-      this.mcpTabBtn?.classList.remove('active');
+      // General tab data is already loaded on initialization
+    }
+  }
+
+  async loadTabData(tab) {
+    switch (tab) {
+      case 'mcp':
+        await this.loadMcpServers();
+        break;
+      case 'taskTemplate':
+        await this.loadTaskTemplate();
+        break;
+      case 'systemPrompt':
+        await this.loadSystemPromptConfig();
+        break;
+    }
+  }
+
+  /* --------------------------- Task Template Management --------------------------- */
+
+  async loadTaskTemplate() {
+    try {
+      const taskTemplate = await this.getCachedData('taskTemplate', () => window.electronAPI.getTaskTemplate());
+      if (this.taskTemplateInput) {
+        this.taskTemplateInput.value = taskTemplate;
+      }
+    } catch (error) {
+      console.error('Failed to load task template:', error);
+    }
+  }
+
+  async saveTaskTemplate() {
+    try {
+      const template = this.taskTemplateInput?.value?.trim() || '';
+
+      if (!template) {
+        alert('Task template cannot be empty');
+        return;
+      }
+
+      const result = await window.electronAPI.setTaskTemplate(template);
+      this.invalidateCache('taskTemplate');
+      this.showSuccess('Task template saved successfully');
+    } catch (error) {
+      console.error('Failed to save task template:', error);
+      this.showError('Failed to save task template');
+    }
+  }
+
+  async resetTaskTemplate() {
+    const confirmReset = confirm('Are you sure you want to reset the task template to default? This action cannot be undone.');
+
+    if (!confirmReset) {
+      return;
+    }
+
+    try {
+      const defaultTemplate = 'Create a new folder in the cwd and accomplish the following task into it: \n\n<task>\n\n</task> ultrathink through this task to complete it effectively:';
+      await window.electronAPI.setTaskTemplate(defaultTemplate);
+      this.invalidateCache('taskTemplate');
+
+            if (this.taskTemplateInput) {
+        this.taskTemplateInput.value = defaultTemplate;
+      }
+
+      this.showSuccess('Task template reset to default');
+    } catch (error) {
+      console.error('Failed to reset task template:', error);
+      this.showError('Failed to reset task template');
+    }
+  }
+
+  /* ----------------------- System Prompt Management ----------------------- */
+
+  async loadSystemPromptConfig() {
+    try {
+      const config = await this.getCachedData('systemPromptConfig', () => window.electronAPI.getSystemPromptConfig());
+      if (this.systemPromptInput) {
+        this.systemPromptInput.value = config.prompt || '';
+      }
+      if (this.systemPromptEnabledToggle) {
+        this.systemPromptEnabledToggle.checked = config.enabled;
+      }
+      if (this.systemPromptModeToggle) {
+        // 'append' is on, 'override' is off
+        this.systemPromptModeToggle.checked = config.mode === 'append';
+      }
+    } catch (error) {
+      console.error('Failed to load system prompt config:', error);
+      this.showError('Failed to load system prompt config');
+    }
+  }
+
+  async saveSystemPromptConfig() {
+    try {
+      const config = {
+        prompt: this.systemPromptInput.value,
+        enabled: this.systemPromptEnabledToggle.checked,
+        mode: this.systemPromptModeToggle.checked ? 'append' : 'override'
+      };
+      await window.electronAPI.setSystemPromptConfig(config);
+      this.invalidateCache('systemPromptConfig');
+      this.showSuccess('System prompt settings saved');
+    } catch (error) {
+      console.error('Failed to save system prompt config:', error);
+      this.showError('Failed to save system prompt config');
+    }
+  }
+
+  // Clear all sessions with confirmation
+  async clearAllSessions() {
+    try {
+      // Get current session count for confirmation
+      const sessions = await window.electronAPI.getSessions();
+      const sessionCount = sessions.length;
+
+      if (sessionCount === 0) {
+        alert('No sessions to clear.');
+        return;
+      }
+
+      // First confirmation
+      const confirmFirst = confirm(
+        `Are you sure you want to delete all ${sessionCount} conversation sessions?\n\n` +
+        'This action cannot be undone and will permanently remove all your chat history.'
+      );
+
+      if (!confirmFirst) {
+        return;
+      }
+
+      // Second confirmation - make user type confirmation
+      const confirmSecond = confirm(
+        'This will PERMANENTLY DELETE all your conversation sessions.\n\n' +
+        'Click OK to confirm, or Cancel to abort.'
+      );
+
+      if (!confirmSecond) {
+        return;
+      }
+
+      // Disable button to prevent double-clicks
+      if (this.clearAllSessionsBtn) {
+        this.clearAllSessionsBtn.disabled = true;
+        this.clearAllSessionsBtn.textContent = 'Clearing...';
+      }
+
+      // Clear all sessions
+      const result = await window.electronAPI.clearAllSessions();
+
+      if (result.success) {
+        this.showSuccess(`Successfully cleared ${result.clearedCount} sessions.`);
+        // Close settings modal since sessions are gone
+        this.closeSettings();
+      } else {
+        this.showError(`Failed to clear sessions: ${result.error || 'Unknown error'}`);
+      }
+
+    } catch (error) {
+      console.error('Failed to clear all sessions:', error);
+      this.showError('Failed to clear sessions. Please try again.');
+    } finally {
+      // Re-enable button
+      if (this.clearAllSessionsBtn) {
+        this.clearAllSessionsBtn.disabled = false;
+        this.clearAllSessionsBtn.textContent = 'Clear All Sessions';
+      }
     }
   }
 }

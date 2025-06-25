@@ -12,10 +12,19 @@ class PreloadBridge {
       getCurrentModel: () => ipcRenderer.invoke('get-current-model'),
       setCurrentModel: (model) => ipcRenderer.invoke('set-current-model', model),
 
+      // Task template management
+      getTaskTemplate: () => ipcRenderer.invoke('get-task-template'),
+      setTaskTemplate: (template) => ipcRenderer.invoke('set-task-template', template),
+
+      // System Prompt management
+      getSystemPromptConfig: () => ipcRenderer.invoke('get-system-prompt-config'),
+      setSystemPromptConfig: (config) => ipcRenderer.invoke('set-system-prompt-config', config),
+
       // Session management
       getSessions: () => ipcRenderer.invoke('get-sessions'),
       createSession: (title) => ipcRenderer.invoke('create-session', title),
       deleteSession: (sessionId) => ipcRenderer.invoke('delete-session', sessionId),
+      clearAllSessions: () => ipcRenderer.invoke('clear-all-sessions'),
       updateSessionTitle: (sessionId, newTitle) => ipcRenderer.invoke('update-session-title', sessionId, newTitle),
       getSessionContext: (sessionId) => ipcRenderer.invoke('get-session-context', sessionId),
 
@@ -57,6 +66,16 @@ class PreloadBridge {
       searchFilesByPrefix: (query, maxResults) => ipcRenderer.invoke('search-files-by-prefix', query, maxResults),
       getDirectoryContentsOnly: (dirPath) => ipcRenderer.invoke('get-directory-contents-only', dirPath),
 
+      // Workspace management operations
+      createWorkspace: (name, folders) => ipcRenderer.invoke('create-workspace', name, folders),
+      getWorkspaces: () => ipcRenderer.invoke('get-workspaces'),
+      deleteWorkspace: (workspaceId) => ipcRenderer.invoke('delete-workspace', workspaceId),
+      setActiveWorkspace: (workspaceId) => ipcRenderer.invoke('set-active-workspace', workspaceId),
+      getActiveWorkspace: () => ipcRenderer.invoke('get-active-workspace'),
+      clearActiveWorkspace: () => ipcRenderer.invoke('clear-active-workspace'),
+      getWorkspaceContext: () => ipcRenderer.invoke('get-workspace-context'),
+      getWorkspaceFolders: () => ipcRenderer.invoke('get-workspace-folders'),
+
       // Window detection operations
       getOpenApplicationWindows: () => ipcRenderer.invoke('get-open-application-windows'),
       requestWindowDetectionPermissions: () => ipcRenderer.invoke('request-window-detection-permissions'),
@@ -80,6 +99,7 @@ class PreloadBridge {
       onSessionUpdated: (callback) => ipcRenderer.on('session-updated', callback),
       onSessionDeleted: (callback) => ipcRenderer.on('session-deleted', callback),
       onSessionCreated: (callback) => ipcRenderer.on('session-created', callback),
+      onAllSessionsCleared: (callback) => ipcRenderer.on('all-sessions-cleared', callback),
       onFileChanged: (callback) => ipcRenderer.on('file-changed', callback),
 
       // Tray events
@@ -99,8 +119,9 @@ class PreloadBridge {
   // Validate API methods (development helper)
   validateAPI() {
     const requiredMethods = [
-      'checkSetup', 'setApiKey', 'getCurrentModel', 'setCurrentModel',
-      'getSessions', 'createSession', 'deleteSession', 'updateSessionTitle', 'getSessionContext',
+      'checkSetup', 'setApiKey', 'getCurrentModel', 'setCurrentModel', 'getTaskTemplate', 'setTaskTemplate',
+      'getSystemPromptConfig', 'setSystemPromptConfig',
+      'getSessions', 'createSession', 'deleteSession', 'clearAllSessions', 'updateSessionTitle', 'getSessionContext',
       'setSessionCwd', 'getSessionCwd', 'validateSessionCwd', 'restoreSessionCwd', 'validateSendDirectory',
       'sendMessage', 'stopMessage',
       'revertToMessage', 'unrevertFromMessage', 'getMessageCheckpoints', 'hasFileChanges',
@@ -109,7 +130,7 @@ class PreloadBridge {
       'searchFilesByPrefix', 'getOpenApplicationWindows', 'requestWindowDetectionPermissions', 'clearWindowDetectionCache',
       'setWindowDetectionDebug', 'getWindowDetectionDiagnostics', 'testAppleScript',
       'getMcpServers', 'saveMcpServer', 'deleteMcpServer', 'toggleMcpServer', 'testMcpServer',
-      'onSessionsLoaded', 'onMessageStream', 'onSessionUpdated', 'onSessionDeleted', 'onSessionCreated',
+      'onSessionsLoaded', 'onMessageStream', 'onSessionUpdated', 'onSessionDeleted', 'onSessionCreated', 'onAllSessionsCleared',
       'onTrayOpenWorkspace', 'onTrayInteraction', 'removeAllListeners'
     ];
 

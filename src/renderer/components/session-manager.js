@@ -126,19 +126,12 @@ class SessionManager {
       const sessions = await window.electronAPI.getSessions();
       this.sessions = sessions;
 
-      // If this is the first time the user opens the app (no sessions yet),
-      // put the app in draft mode ready for the user to start typing.
-      if (this.sessions.length === 0) {
-        this.enterDraftMode('New Conversation');
-        this.renderSessions(); // Render empty state
-        return;
-      }
-
-      // Otherwise render existing sessions and automatically select the most
-      // recent one so that a conversation is ready as soon as the UI appears.
+      // Always start with a new draft conversation, regardless of whether
+      // previous sessions exist. This ensures the app is always ready for
+      // a fresh conversation while keeping history available in the sidebar.
       this.sortSessions();
       this.renderSessions();
-      this.selectSession(this.sessions[0].id);
+      await this.enterDraftMode('New Conversation', true);
     } catch (error) {
       console.error('Failed to load sessions:', error);
     }
@@ -148,7 +141,30 @@ class SessionManager {
     // Instead of creating a session immediately, enter draft mode
     // The actual session will be created when the first message is sent
     const title = 'New Conversation';
-    this.enterDraftMode(title);
+
+    // Navigate to home directory for new conversations
+    try {
+      console.log('Navigating to home directory for new conversation');
+      const homeResult = await window.electronAPI.getHomeDirectory();
+      if (homeResult.success && homeResult.path) {
+        const navigateResult = await window.electronAPI.navigateToDirectory(homeResult.path);
+        if (navigateResult.success) {
+          console.log('Successfully navigated to home directory:', homeResult.path);
+
+          // Update file browser to show the home directory
+          if (window.fileBrowser && typeof window.fileBrowser.updateDirectory === 'function') {
+            window.fileBrowser.updateDirectory(navigateResult);
+          }
+        } else {
+          console.warn('Failed to navigate to home directory:', navigateResult.error);
+        }
+      }
+    } catch (error) {
+      console.error('Error navigating to home directory for new conversation:', error);
+      // Continue with draft mode even if navigation fails
+    }
+
+    await this.enterDraftMode(title);
     return { isDraft: true, title: title };
   }
 
@@ -535,8 +551,33 @@ class SessionManager {
     return this.sessions.find(s => s.id === this.currentSessionId);
   }
 
-    // Enter draft mode - UI is ready for conversation but no session created yet
-  enterDraftMode(title) {
+  // Enter draft mode - UI is ready for conversation but no session created yet
+  // Note: New conversations automatically navigate to the home directory first
+  async enterDraftMode(title, navigateToHome = false) {
+    // Navigate to home directory if requested (e.g., on app startup)
+    if (navigateToHome) {
+      try {
+        console.log('Navigating to home directory for new draft conversation');
+        const homeResult = await window.electronAPI.getHomeDirectory();
+        if (homeResult.success && homeResult.path) {
+          const navigateResult = await window.electronAPI.navigateToDirectory(homeResult.path);
+          if (navigateResult.success) {
+            console.log('Successfully navigated to home directory:', homeResult.path);
+
+            // Update file browser to show the home directory
+            if (window.fileBrowser && typeof window.fileBrowser.updateDirectory === 'function') {
+              window.fileBrowser.updateDirectory(navigateResult);
+            }
+          } else {
+            console.warn('Failed to navigate to home directory:', navigateResult.error);
+          }
+        }
+      } catch (error) {
+        console.error('Error navigating to home directory for draft mode:', error);
+        // Continue with draft mode even if navigation fails
+      }
+    }
+
     this.isDraftMode = true;
     this.draftTitle = title;
     this.currentSessionId = null;

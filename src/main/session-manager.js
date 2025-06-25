@@ -33,7 +33,9 @@ class SessionManager {
           status: session.status || 'active', // active, historical, archived
           lastUserMessage: session.lastUserMessage || null,
           lastAssistantMessage: session.lastAssistantMessage || null,
-          cwd: session.cwd || null // Working directory where the conversation took place
+          cwd: session.cwd || null, // Working directory where the conversation took place
+          workspaceId: session.workspaceId || null, // ID of the workspace this session belongs to
+          workspaceName: session.workspaceName || null // Name of the workspace for quick reference
         };
         this.sessions.set(session.id, normalizedSession);
       });
@@ -385,6 +387,222 @@ class SessionManager {
 
     } catch (error) {
       console.log('No recovery data found or failed to read recovery state');
+    }
+  }
+
+  // ============================================================================
+  // Workspace Integration Methods
+  // ============================================================================
+
+  // Associate a session with a workspace
+  async setSessionWorkspace(sessionId, workspaceId, workspaceName) {
+    try {
+      const session = this.sessions.get(sessionId);
+      if (!session) {
+        throw new Error('Session not found');
+      }
+
+      session.workspaceId = workspaceId;
+      session.workspaceName = workspaceName;
+      session.updatedAt = new Date().toISOString();
+
+      await this.saveSession(sessionId);
+      console.log(`Associated session ${sessionId} with workspace ${workspaceName}`);
+
+      return {
+        success: true,
+        session: session
+      };
+    } catch (error) {
+      console.error('Failed to set session workspace:', error);
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+  }
+
+  // Clear workspace association from a session
+  async clearSessionWorkspace(sessionId) {
+    try {
+      const session = this.sessions.get(sessionId);
+      if (!session) {
+        throw new Error('Session not found');
+      }
+
+      session.workspaceId = null;
+      session.workspaceName = null;
+      session.updatedAt = new Date().toISOString();
+
+      await this.saveSession(sessionId);
+      console.log(`Cleared workspace association from session ${sessionId}`);
+
+      return {
+        success: true,
+        session: session
+      };
+    } catch (error) {
+      console.error('Failed to clear session workspace:', error);
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+  }
+
+  // Get all sessions for a specific workspace
+  getSessionsByWorkspace(workspaceId) {
+    try {
+      const workspaceSessions = Array.from(this.sessions.values())
+        .filter(session => session.workspaceId === workspaceId)
+        .sort((a, b) => new Date(b.lastActivity) - new Date(a.lastActivity));
+
+      return {
+        success: true,
+        sessions: workspaceSessions
+      };
+    } catch (error) {
+      console.error('Failed to get sessions by workspace:', error);
+      return {
+        success: false,
+        error: error.message,
+        sessions: []
+      };
+    }
+  }
+
+  // Get sessions grouped by workspace
+  getSessionsGroupedByWorkspace() {
+    try {
+      const groupedSessions = {
+        workspaces: {},
+        noWorkspace: []
+      };
+
+      Array.from(this.sessions.values()).forEach(session => {
+        if (session.workspaceId && session.workspaceName) {
+          if (!groupedSessions.workspaces[session.workspaceId]) {
+            groupedSessions.workspaces[session.workspaceId] = {
+              id: session.workspaceId,
+              name: session.workspaceName,
+              sessions: []
+            };
+          }
+          groupedSessions.workspaces[session.workspaceId].sessions.push(session);
+        } else {
+          groupedSessions.noWorkspace.push(session);
+        }
+      });
+
+      // Sort sessions within each group by last activity
+      Object.values(groupedSessions.workspaces).forEach(workspace => {
+        workspace.sessions.sort((a, b) => new Date(b.lastActivity) - new Date(a.lastActivity));
+      });
+      groupedSessions.noWorkspace.sort((a, b) => new Date(b.lastActivity) - new Date(a.lastActivity));
+
+      return {
+        success: true,
+        grouped: groupedSessions
+      };
+    } catch (error) {
+      console.error('Failed to group sessions by workspace:', error);
+      return {
+        success: false,
+        error: error.message,
+        grouped: { workspaces: {}, noWorkspace: [] }
+      };
+    }
+  }
+
+  // Update all sessions associated with a workspace when workspace is renamed
+  async updateWorkspaceName(workspaceId, newWorkspaceName) {
+    try {
+      let updatedCount = 0;
+      
+      for (const session of this.sessions.values()) {
+        if (session.workspaceId === workspaceId) {
+          session.workspaceName = newWorkspaceName;
+          session.updatedAt = new Date().toISOString();
+          updatedCount++;
+        }
+      }
+
+      if (updatedCount > 0) {
+        await this.saveSessions();
+        console.log(`Updated workspace name for ${updatedCount} sessions`);
+      }
+
+      return {
+        success: true,
+        updatedCount: updatedCount
+      };
+    } catch (error) {
+      console.error('Failed to update workspace name in sessions:', error);
+      return {
+        success: false,
+        error: error.message,
+        updatedCount: 0
+      };
+    }
+  }
+
+  // Remove workspace association from all sessions when workspace is deleted
+  async removeWorkspaceFromSessions(workspaceId) {
+    try {
+      let clearedCount = 0;
+      
+      for (const session of this.sessions.values()) {
+        if (session.workspaceId === workspaceId) {
+          session.workspaceId = null;
+          session.workspaceName = null;
+          session.updatedAt = new Date().toISOString();
+          clearedCount++;
+        }
+      }
+
+      if (clearedCount > 0) {
+        await this.saveSessions();
+        console.log(`Cleared workspace association from ${clearedCount} sessions`);
+      }
+
+      return {
+        success: true,
+        clearedCount: clearedCount
+      };
+    } catch (error) {
+      console.error('Failed to remove workspace from sessions:', error);
+      return {
+        success: false,
+        error: error.message,
+        clearedCount: 0
+      };
+    }
+  }
+
+  // Clear all sessions
+  async clearAllSessions() {
+    try {
+      const sessionCount = this.sessions.size;
+      
+      // Clear all sessions from memory
+      this.sessions.clear();
+      
+      // Save empty sessions to storage
+      await this.saveSessions();
+      
+      console.log(`Cleared all ${sessionCount} sessions`);
+      
+      return {
+        success: true,
+        clearedCount: sessionCount
+      };
+    } catch (error) {
+      console.error('Failed to clear all sessions:', error);
+      return {
+        success: false,
+        error: error.message,
+        clearedCount: 0
+      };
     }
   }
 }

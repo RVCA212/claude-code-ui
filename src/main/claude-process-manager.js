@@ -3,11 +3,12 @@ const { v4: uuidv4 } = require('uuid');
 const McpServerManager = require('./mcp-server-manager');
 
 class ClaudeProcessManager {
-  constructor(sessionManager, checkpointManager, fileOperations, mainWindow) {
+  constructor(sessionManager, checkpointManager, fileOperations, mainWindow, modelConfig) {
     this.sessionManager = sessionManager;
     this.checkpointManager = checkpointManager;
     this.fileOperations = fileOperations;
     this.mainWindow = mainWindow;
+    this.modelConfig = modelConfig;
     this.claudeProcesses = new Map(); // Track running Claude processes
 
     this.ALL_TOOLS = [
@@ -125,6 +126,18 @@ class ClaudeProcessManager {
 
     // Create Claude process - follow SDK best practices
     const claudeArgs = [];
+
+    // Add system prompt if enabled
+    const systemPromptConfig = this.modelConfig.getSystemPromptConfig();
+    if (systemPromptConfig.enabled && systemPromptConfig.prompt) {
+      if (systemPromptConfig.mode === 'override') {
+        claudeArgs.push('--system-prompt', systemPromptConfig.prompt);
+        console.log('Using override system prompt.');
+      } else {
+        claudeArgs.push('--append-system-prompt', systemPromptConfig.prompt);
+        console.log('Using append system prompt.');
+      }
+    }
 
     // Add session resume FIRST if we have a Claude session ID (before other flags)
     if (session.claudeSessionId) {
@@ -515,6 +528,24 @@ class ClaudeProcessManager {
       return true;
     }
     return false;
+  }
+
+  // Stop all running Claude processes
+  async stopAllMessages() {
+    console.log('Stopping all Claude processes...');
+    let stoppedCount = 0;
+
+    for (const [sessionId, process] of this.claudeProcesses.entries()) {
+      if (!process.killed) {
+        console.log('Stopping Claude process for session:', sessionId);
+        process.kill();
+        stoppedCount++;
+      }
+    }
+
+    this.claudeProcesses.clear();
+    console.log(`Stopped ${stoppedCount} Claude processes`);
+    return stoppedCount;
   }
 
   // Set API key

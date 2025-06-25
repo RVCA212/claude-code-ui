@@ -21,7 +21,6 @@
 
 /* Full-screen modal overlay */
 .modal-overlay#globalSearchModal {
-
   position: fixed;
   top: 0;
   left: 0;
@@ -352,22 +351,19 @@
 
 /* Quick select header */
 .quick-select-header {
-  padding: 20px 16px 12px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
   border-bottom: 1px solid var(--color-border);
   background: var(--color-background);
 }
 
 .quick-select-title {
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 600;
   color: var(--color-text);
-  margin-bottom: 4px;
-}
-
-.quick-select-subtitle {
-  font-size: 13px;
-  color: var(--color-text-secondary);
-  font-weight: 400;
+  margin: 0;
 }
 
 /* Quick select items container */
@@ -627,14 +623,20 @@
 
   /* Quick select responsive styles */
   .quick-select-header {
-    padding: 16px 12px 10px 12px;
+    padding: 10px 12px;
   }
 
   .quick-select-title {
-    font-size: 15px;
+    font-size: 13px;
   }
 
-  .quick-select-subtitle {
+  .quick-select-create-btn {
+    font-size: 10px;
+    padding: 5px 8px;
+    gap: 4px;
+  }
+
+  .quick-select-create-btn .codicon {
     font-size: 12px;
   }
 

@@ -1,12 +1,12 @@
 /**
  * Input Area Component Styles
- * 
+ *
  * Used by: Chat input area at bottom of chat sidebar
  * Related files:
  *   - src/renderer/components/chat-sidebar.js (input handling)
  *   - src/renderer/components/app-component.js (send message logic)
  *   - renderer/index.html (input-area section)
- * 
+ *
  * Features:
  *   - Multi-line text input with auto-resize
  *   - Send and stop buttons with state management
@@ -186,10 +186,55 @@
 }
 
 .file-mention-item:hover {
-  background: var(--color-secondary-hover);
+  background: var(--color-file-mention-hover);
+}
+
+.file-mention-item:hover .file-mention-icon {
+  color: var(--color-file-mention-icon-hover);
 }
 
 .file-mention-item.selected {
-  background: var(--color-primary);
-  color: var(--color-btn-primary-text);
+  background: var(--color-file-mention-selected);
+  color: var(--color-file-mention-selected-text);
+}
+
+.file-mention-item.selected .file-mention-icon {
+  color: var(--color-file-mention-icon-selected);
+}
+
+.file-mention-item.selected .file-mention-name,
+.file-mention-item.selected .file-mention-path {
+  color: var(--color-file-mention-selected-text);
+}
+
+.file-mention-icon {
+  color: var(--color-file-mention-icon);
+  transition: color var(--duration-fast) var(--ease-standard);
+}
+
+.file-mention-details {
+  flex: 1;
+  min-width: 0;
+}
+
+.file-mention-name {
+  font-size: var(--font-size-sm);
+  color: var(--color-text);
+  font-weight: var(--font-weight-medium);
+}
+
+.file-mention-path {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  font-family: var(--font-family-mono);
+  opacity: 0.8;
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.file-mention-highlight {
+  background: var(--color-file-mention-highlight);
+  font-weight: var(--font-weight-medium);
 }

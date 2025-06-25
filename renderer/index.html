@@ -72,6 +72,8 @@
                 <div class="settings-tabs">
                     <button id="generalTabBtn" class="settings-tab active">General</button>
                     <button id="mcpTabBtn" class="settings-tab">MCP Servers</button>
+                    <button id="taskTemplateTabBtn" class="settings-tab">Task Template</button>
+                    <button id="systemPromptTabBtn" class="settings-tab">System Prompt</button>
                 </div>
                 <div id="generalSettingsSection">
                     <h3>General Settings</h3>
@@ -90,6 +92,14 @@
                         <label class="form-label">Anthropic API Key</label>
                         <input type="password" class="form-control" id="apiKeyInput" placeholder="sk-ant-... (optional - can also use ANTHROPIC_API_KEY env var)">
                         <small class="form-text">Get your API key from <a href="https://console.anthropic.com/" target="_blank">console.anthropic.com</a></small>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Session Management</label>
+                        <button type="button" class="btn btn--danger btn--sm clear-sessions-btn" id="clearAllSessionsBtn">
+                            Clear All Sessions
+                        </button>
+                        <small class="form-text">Permanently delete all conversation sessions. This action cannot be undone.</small>
                     </div>
                 </div>
 
@@ -131,6 +141,73 @@
 
                         <!-- Add server button -->
                         <button type="button" class="btn btn--outline btn--sm" id="addMcpServerBtn">+ Add MCP Server</button>
+                    </div>
+                </div>
+
+                <!-- Task Template Section -->
+                <div id="taskTemplateSettingsSection" style="display:none;">
+                    <h3>Task Template</h3>
+                    <div class="task-template-section">
+                        <div class="form-group">
+                            <label class="form-label">Custom Task Template</label>
+                            <textarea
+                                class="form-control task-template-textarea"
+                                id="taskTemplateInput"
+                                rows="8"
+                                placeholder="Enter your custom task template..."
+                            ></textarea>
+                            <small class="form-text">
+                                This template will be inserted when you click the "New Task" button in the file browser.
+                                Use placeholders like &lt;task&gt;&lt;/task&gt; to position the cursor.
+                            </small>
+                        </div>
+                        <div class="task-template-actions">
+                            <button type="button" class="btn btn--secondary btn--sm" id="resetTaskTemplateBtn">
+                                Reset to Default
+                            </button>
+                            <button type="button" class="btn btn--primary btn--sm" id="saveTaskTemplateBtn">
+                                Save Template
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- System Prompt Section -->
+                <div id="systemPromptSettingsSection" style="display:none;">
+                    <h3>System Prompt</h3>
+                    <div class="system-prompt-section">
+                        <div class="form-group">
+                             <div class="toggle-switch-container">
+                                <label class="form-label" for="systemPromptEnabledToggle">Enable Custom System Prompt</label>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="systemPromptEnabledToggle">
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <textarea
+                                class="form-control system-prompt-textarea"
+                                id="systemPromptInput"
+                                rows="8"
+                                placeholder="Enter your custom system prompt... e.g., 'You are a senior Rust engineer...'"
+                            ></textarea>
+                            <small class="form-text">
+                               This prompt will be used to instruct Claude at a high level.
+                            </small>
+                        </div>
+                        <div class="form-group">
+                            <div class="toggle-switch-container">
+                               <label class="form-label" for="systemPromptModeToggle">Append Mode (On) / Override Mode (Off)</label>
+                               <label class="toggle-switch">
+                                   <input type="checkbox" id="systemPromptModeToggle">
+                                   <span class="toggle-slider"></span>
+                               </label>
+                           </div>
+                           <small class="form-text">
+                               Append (On) adds to the default system prompt. Override (Off) replaces it entirely.
+                           </small>
+                       </div>
                     </div>
                 </div>
 
@@ -217,6 +294,11 @@
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                                     <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                                     <polyline points="9,22 9,12 15,12 15,22" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                </svg>
+                            </button>
+                            <button class="nav-btn" id="newTaskBtn" title="New task template">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                                 </svg>
                             </button>
                         </div>

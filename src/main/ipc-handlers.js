@@ -1,5 +1,5 @@
-const { ipcMain } = require('electron');
-const McpServerManager = require('./mcp-server-manager');
+  const { ipcMain } = require('electron');
+  const McpServerManager = require('./mcp-server-manager');
 
 class IPCHandlers {
   constructor(sessionManager, checkpointManager, fileOperations, modelConfig, claudeProcessManager, mainWindow) {
@@ -33,6 +33,12 @@ class IPCHandlers {
 
     // File system handlers
     this.registerFileSystemHandlers();
+
+    // Workspace management handlers
+    this.registerWorkspaceHandlers();
+
+    // Excel file handlers
+    this.registerExcelHandlers();
   }
 
   registerSetupHandlers() {
@@ -53,15 +59,33 @@ class IPCHandlers {
     });
   }
 
-  registerModelHandlers() {
-    ipcMain.handle('get-current-model', async () => {
-      return this.modelConfig.getCurrentModel();
-    });
+      registerModelHandlers() {
+      ipcMain.handle('get-current-model', async () => {
+        return this.modelConfig.getCurrentModel();
+      });
 
-    ipcMain.handle('set-current-model', async (event, model) => {
-      return await this.modelConfig.setCurrentModel(model);
-    });
-  }
+      ipcMain.handle('set-current-model', async (event, model) => {
+        return await this.modelConfig.setCurrentModel(model);
+      });
+
+      // Task template handlers
+      ipcMain.handle('get-task-template', async () => {
+        return this.modelConfig.getTaskTemplate();
+      });
+
+      ipcMain.handle('set-task-template', async (event, template) => {
+        return await this.modelConfig.setTaskTemplate(template);
+      });
+
+      // System prompt handlers
+      ipcMain.handle('get-system-prompt-config', async () => {
+        return this.modelConfig.getSystemPromptConfig();
+      });
+
+      ipcMain.handle('set-system-prompt-config', async (event, config) => {
+        return await this.modelConfig.setSystemPromptConfig(config);
+      });
+    }
 
   registerMcpHandlers() {
     // Retrieve configured MCP servers
@@ -246,6 +270,30 @@ class IPCHandlers {
       } catch (error) {
         console.error('Failed to validate send directory:', error);
         return { success: false, error: error.message };
+      }
+    });
+
+    ipcMain.handle('clear-all-sessions', async () => {
+      try {
+        // Stop all running Claude processes
+        await this.claudeProcessManager.stopAllMessages();
+
+        // Clear all sessions
+        const result = await this.sessionManager.clearAllSessions();
+
+        // Notify frontend that all sessions were cleared
+        if (result.success && this.mainWindow) {
+          this.mainWindow.webContents.send('all-sessions-cleared', result.clearedCount);
+        }
+
+        return result;
+      } catch (error) {
+        console.error('Failed to clear all sessions:', error);
+        return {
+          success: false,
+          error: error.message,
+          clearedCount: 0
+        };
       }
     });
   }
@@ -464,6 +512,136 @@ class IPCHandlers {
     if (this.mainWindow) {
       this.mainWindow.webContents.send('sessions-loaded', sessions);
     }
+  }
+
+  registerWorkspaceHandlers() {
+    // Create a new workspace
+    ipcMain.handle('create-workspace', async (event, name, folders) => {
+      return await this.fileOperations.createWorkspace(name, folders);
+    });
+
+    // Get all workspaces
+    ipcMain.handle('get-workspaces', async () => {
+      return await this.fileOperations.getWorkspaces();
+    });
+
+    // Delete a workspace
+    ipcMain.handle('delete-workspace', async (event, workspaceId) => {
+      return await this.fileOperations.deleteWorkspace(workspaceId);
+    });
+
+    // Set active workspace
+    ipcMain.handle('set-active-workspace', async (event, workspaceId) => {
+      return await this.fileOperations.setActiveWorkspace(workspaceId);
+    });
+
+    // Get active workspace
+    ipcMain.handle('get-active-workspace', async () => {
+      return this.fileOperations.getActiveWorkspace();
+    });
+
+    // Clear active workspace
+    ipcMain.handle('clear-active-workspace', async () => {
+      return await this.fileOperations.clearActiveWorkspace();
+    });
+
+    // Get current workspace context
+    ipcMain.handle('get-workspace-context', async () => {
+      return this.fileOperations.getCurrentWorkspaceContext();
+    });
+
+    // Get workspace folders for navigation
+    ipcMain.handle('get-workspace-folders', async () => {
+      return this.fileOperations.getWorkspaceFolders();
+    });
+  }
+
+  registerExcelHandlers() {
+    const { shell } = require('electron');
+
+    // Handle opening Excel files from tray menu
+    ipcMain.on('tray-open-excel-file', async (event, filePath) => {
+      try {
+        console.log('Opening Excel file from tray:', filePath);
+
+        // Navigate to the directory containing the Excel file
+        const navResult = await this.fileOperations.setWorkingDirectoryFromFile(filePath);
+
+        if (navResult.success) {
+          console.log('Navigated to directory:', navResult.path);
+
+          // Notify the renderer to update the file browser
+          if (this.mainWindow && !this.mainWindow.isDestroyed()) {
+            this.mainWindow.webContents.send('directory-changed', {
+              path: navResult.path,
+              fromExcelFile: true,
+              originalFilePath: filePath
+            });
+          }
+        } else {
+          console.warn('Failed to navigate to Excel file directory:', navResult.error);
+        }
+
+        // Also open the file in Excel (optional - user might want just navigation)
+        const result = await shell.openPath(filePath);
+
+        if (result) {
+          console.error('Failed to open Excel file in Excel:', result);
+        } else {
+          console.log('Successfully opened Excel file in Excel:', filePath);
+        }
+      } catch (error) {
+        console.error('Error opening Excel file:', error);
+      }
+    });
+
+    // Handle opening Excel files and loading into Claude Code Chat
+    ipcMain.handle('open-excel-in-chat', async (event, filePath) => {
+      try {
+        console.log('Opening Excel file in Claude Code Chat:', filePath);
+
+        // First, open the file in Excel
+        await shell.openPath(filePath);
+
+        // Then, add the file path to the current chat context
+        // This could be used to automatically mention the file in the chat
+        return {
+          success: true,
+          filePath: filePath,
+          message: `Excel file opened: ${filePath}`
+        };
+      } catch (error) {
+        console.error('Error opening Excel file in chat:', error);
+        return {
+          success: false,
+          error: error.message
+        };
+      }
+    });
+
+    // Get Excel files for the tray menu (helper for renderer)
+    ipcMain.handle('get-excel-files', async () => {
+      try {
+        const result = await this.fileOperations.getOpenApplicationWindows();
+        if (result.success) {
+          const excelFiles = result.files.filter(f =>
+            f.app === 'Excel' || f.appDisplayName === 'Excel'
+          );
+          return {
+            success: true,
+            files: excelFiles
+          };
+        }
+        return result;
+      } catch (error) {
+        console.error('Error getting Excel files:', error);
+        return {
+          success: false,
+          error: error.message,
+          files: []
+        };
+      }
+    });
   }
 }
 

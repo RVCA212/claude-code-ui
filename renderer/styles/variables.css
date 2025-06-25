@@ -37,6 +37,15 @@
   --color-warning-rgb: 168, 75, 47;
   --color-info-rgb: 98, 108, 113;
 
+  /* File mention dropdown specific colors */
+  --color-file-mention-hover: rgba(33, 128, 141, 0.08);
+  --color-file-mention-selected: rgba(33, 128, 141, 1);
+  --color-file-mention-selected-text: rgba(252, 252, 249, 1);
+  --color-file-mention-icon: rgba(98, 108, 113, 1);
+  --color-file-mention-icon-hover: rgba(33, 128, 141, 1);
+  --color-file-mention-icon-selected: rgba(252, 252, 249, 0.9);
+  --color-file-mention-highlight: rgba(33, 128, 141, 0.2);
+
   /* Typography */
   --font-family-base: "FKGroteskNeue", "Geist", "Inter", -apple-system,
     BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;

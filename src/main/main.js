@@ -116,7 +116,10 @@ function createTray() {
       try {
         const openFilesResult = await fileOperations.getOpenApplicationWindows();
         let workspaceItems = [];
+        let excelItems = [];
+
         if (openFilesResult.success && Array.isArray(openFilesResult.files)) {
+          // Filter for workspaces (VS Code/Cursor projects)
           const workspaces = openFilesResult.files.filter(f => f.isWorkspace || f.isDirectory);
           const addedPaths = new Set();
           workspaceItems = workspaces.slice(0, 10).map(ws => {
@@ -137,6 +140,48 @@ function createTray() {
                   }
                 } catch (e) {
                   console.error('Failed to handle workspace menu click:', e);
+                }
+              }
+            };
+          }).filter(Boolean);
+
+          // Filter for Excel files (both open and recent)
+          const excelFiles = openFilesResult.files.filter(f =>
+            f.app === 'Excel' || f.appDisplayName === 'Excel'
+          );
+
+          const addedExcelPaths = new Set();
+          excelItems = excelFiles.slice(0, 8).map(file => {
+            if (!file.path || addedExcelPaths.has(file.path)) return null;
+            addedExcelPaths.add(file.path);
+
+            const displayName = file.name || path.basename(file.path);
+            const statusIcon = file.isOpen ? '🟢' : '🕒'; // Green dot for open, clock for recent
+
+            // Add size and date info for recent files
+            let extraInfo = '';
+            if (!file.isOpen && file.lastModified) {
+              const date = new Date(file.lastModified);
+              const timeAgo = getTimeAgo(date);
+              extraInfo = ` (${timeAgo})`;
+            }
+
+            const label = `${statusIcon} ${displayName.length > 30 ? displayName.slice(0, 27) + '…' : displayName}${extraInfo}`;
+
+            return {
+              label: label,
+              click: () => {
+                try {
+                  // Show the main window first (like workspace items do)
+                  if (mainWindow) {
+                    showWindow();
+                  }
+                  // Send IPC to open Excel file and navigate to its directory
+                  if (mainWindow && !mainWindow.isDestroyed()) {
+                    mainWindow.webContents.send('tray-open-excel-file', file.path);
+                  }
+                } catch (e) {
+                  console.error('Failed to handle Excel file menu click:', e);
                 }
               }
             };
@@ -162,6 +207,16 @@ function createTray() {
         // Add workspace items directly to the main menu
         if (workspaceItems.length > 0) {
           baseTemplate.push(...workspaceItems);
+          baseTemplate.push({ type: 'separator' });
+        }
+
+        // Add Excel files section
+        if (excelItems.length > 0) {
+          baseTemplate.push({
+            label: '📊 Excel Files',
+            enabled: false // Header item
+          });
+          baseTemplate.push(...excelItems);
           baseTemplate.push({ type: 'separator' });
         }
 
@@ -298,6 +353,24 @@ function toggleWindow() {
   }
 }
 
+function getTimeAgo(date) {
+  const now = new Date();
+  const diffMs = now - date;
+  const diffMins = Math.floor(diffMs / (1000 * 60));
+  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+  if (diffMins < 60) {
+    return `${diffMins}m ago`;
+  } else if (diffHours < 24) {
+    return `${diffHours}h ago`;
+  } else if (diffDays < 7) {
+    return `${diffDays}d ago`;
+  } else {
+    return date.toLocaleDateString();
+  }
+}
+
 function showAboutDialog() {
   const { dialog } = require('electron');
   dialog.showMessageBox(mainWindow, {
@@ -423,7 +496,8 @@ async function initializeApp() {
       sessionManager,
       checkpointManager,
       fileOperations,
-      null // mainWindow will be set after createWindow()
+      null, // mainWindow will be set after createWindow()
+      modelConfig
     );
 
     // IPC handlers coordinate between all managers (mainWindow will be set later)

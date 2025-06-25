@@ -1,0 +1,13 @@
+Index: package.json
+===================================================================
+--- package.json	before
++++ package.json	after
+@@ -1,7 +1,7 @@
+     "mac": {
+       "category": "public.app-category.developer-tools",
+-      "icon": "assets/icon.icns",
++      "icon": "assets/icon.png",
+       "extendInfo": {
+         "LSUIElement": false,
+         "LSBackgroundOnly": false
+       }

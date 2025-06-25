@@ -17,6 +17,7 @@
   display: flex;
   border-bottom: 1px solid var(--color-border);
   margin-bottom: var(--space-16);
+  will-change: transform;
 }
 
 .settings-tab {
@@ -26,12 +27,16 @@
   color: var(--color-text-secondary);
   cursor: pointer;
   border-bottom: 2px solid transparent;
-  transition: all var(--duration-fast) var(--ease-standard);
+  transition: color var(--duration-fast) var(--ease-standard),
+              border-color var(--duration-fast) var(--ease-standard),
+              transform var(--duration-fast) var(--ease-standard);
+  will-change: color, border-color, transform;
 }
 
 .settings-tab:hover {
   color: var(--color-text);
   background: var(--color-secondary);
+  transform: translateY(-1px);
 }
 
 .settings-tab.active {
@@ -101,6 +106,9 @@
   border: 1px solid var(--color-border);
   border-radius: var(--radius-base);
   margin-bottom: var(--space-8);
+  contain: layout style;
+  transition: transform var(--duration-fast) var(--ease-standard);
+  will-change: transform;
 }
 
 .mcp-server-info h4 {
@@ -125,6 +133,11 @@
   border-radius: var(--radius-base);
   background: var(--color-background);
   margin-bottom: var(--space-16);
+  contain: layout style;
+  opacity: 0;
+  transform: translateY(-10px);
+  transition: opacity var(--duration-fast) var(--ease-standard),
+              transform var(--duration-fast) var(--ease-standard);
 }
 
 .headers-container {
@@ -152,4 +165,154 @@
 
 .remove-header-btn:hover {
   opacity: 0.8;
+}
+
+/* Clear Sessions Button */
+.clear-sessions-btn {
+  background: var(--color-error) !important;
+  color: white !important;
+  border: 1px solid var(--color-error) !important;
+  margin-top: var(--space-4);
+}
+
+.clear-sessions-btn:hover {
+  background: rgba(var(--color-error-rgb), 0.8) !important;
+  transform: none;
+}
+
+.clear-sessions-btn:active {
+  transform: translateY(1px);
+}
+
+/* Task Template Section */
+.task-template-section {
+  margin-top: var(--space-16);
+}
+
+.task-template-textarea {
+  font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+  font-size: var(--font-size-sm);
+  line-height: 1.5;
+  resize: vertical;
+  min-height: 120px;
+}
+
+.task-template-actions {
+  display: flex;
+  gap: var(--space-8);
+  margin-top: var(--space-12);
+}
+
+/* System Prompt Section */
+.system-prompt-section {
+  margin-top: var(--space-16);
+}
+
+.system-prompt-textarea {
+  font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+  font-size: var(--font-size-sm);
+  line-height: 1.5;
+  resize: vertical;
+  min-height: 120px;
+}
+
+.toggle-switch-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.toggle-switch {
+  position: relative;
+  display: inline-block;
+  width: 44px;
+  height: 24px;
+}
+
+.toggle-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.toggle-slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: var(--color-border);
+  transition: background-color .4s var(--ease-standard);
+  border-radius: 24px;
+  will-change: background-color;
+}
+
+.toggle-slider:before {
+  position: absolute;
+  content: "";
+  height: 18px;
+  width: 18px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  transition: transform .4s var(--ease-standard);
+  border-radius: 50%;
+  will-change: transform;
+}
+
+input:checked + .toggle-slider {
+  background-color: var(--color-primary);
+}
+
+input:focus + .toggle-slider {
+  box-shadow: 0 0 1px var(--color-primary);
+}
+
+input:checked + .toggle-slider:before {
+  transform: translateX(20px);
+}
+
+/* Performance optimizations */
+.mcp-server-form[style*="display: block"] {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.mcp-server-item:hover {
+  transform: translateY(-1px);
+}
+
+/* Loading states */
+.settings-loading {
+  position: relative;
+  overflow: hidden;
+}
+
+.settings-loading::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--color-primary), transparent);
+  animation: loading 1.5s infinite;
+}
+
+@keyframes loading {
+  0% { left: -100%; }
+  100% { left: 100%; }
+}
+
+/* Skeleton loading states */
+.skeleton {
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: skeleton-loading 2s infinite;
+}
+
+@keyframes skeleton-loading {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
 }

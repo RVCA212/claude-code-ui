@@ -86,3 +86,6 @@ Bootstrap a CLAUDE.md for your codebase with the following command:
 * **Be specific**: "Use 2-space indentation" is better than "Format code properly".
 * **Use structure to organize**: Format each individual memory as a bullet point and group related memories under descriptive markdown headings.
 * **Review periodically**: Update memories as your project evolves to ensure Claude is always using the most up to date information and context.
+
+
+how can we improve our @src/main/window-detector.js to also detect opened or recently opened excel files and display them into our mac tray dropdown for easy access to opening them in our app?

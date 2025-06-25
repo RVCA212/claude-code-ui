@@ -7,7 +7,7 @@ const { URL } = require('url');
 
 /**
  * Window Detection Service
- * Detects running applications and extracts open file information from VS Code and Cursor
+ * Detects running applications and extracts open file information from VS Code, Cursor, and Excel
  */
 class WindowDetector {
   constructor() {
@@ -27,6 +27,14 @@ class WindowDetector {
         displayName: 'Cursor',
         icon: '⚡',
         applescriptName: 'Cursor'
+      },
+      'Microsoft Excel': {
+        bundleId: 'com.microsoft.Excel',
+        processName: 'Microsoft Excel',
+        processNames: ['Microsoft Excel', 'Excel'],
+        displayName: 'Excel',
+        icon: '📊',
+        applescriptName: 'Microsoft Excel'
       }
     };
 
@@ -177,9 +185,10 @@ class WindowDetector {
         const relevantProcesses = processes.list.filter(p => {
           const name = (p.name || '').toLowerCase();
           const command = (p.command || '').toLowerCase();
-          return name.includes('code') || name.includes('cursor') ||
-                 command.includes('code') || command.includes('cursor') ||
-                 name.includes('electron') || command.includes('electron');
+          return name.includes('code') || name.includes('cursor') || name.includes('excel') ||
+                 command.includes('code') || command.includes('cursor') || command.includes('excel') ||
+                 name.includes('electron') || command.includes('electron') ||
+                 name.includes('microsoft excel') || command.includes('microsoft excel');
         });
 
         console.log('\nPotentially relevant processes:');
@@ -219,6 +228,16 @@ class WindowDetector {
               p.command.includes('todesktop') ||
               p.command.includes('230313mzl4w4u92') ||
               p.command.toLowerCase().includes('cursor')
+            )) return true;
+          }
+
+          // For Excel, also check for Microsoft Office patterns
+          if (appName === 'Microsoft Excel') {
+            if (p.name && p.name.toLowerCase().includes('excel')) return true;
+            if (p.command && (
+              p.command.includes('Microsoft Excel') ||
+              p.command.includes('Excel.app') ||
+              p.command.toLowerCase().includes('excel')
             )) return true;
           }
 
@@ -557,6 +576,484 @@ class WindowDetector {
   }
 
   /**
+   * Get open files from Excel using AppleScript
+   */
+  async getExcelOpenFiles(knownWorkspaces) {
+    try {
+      const runAppleScript = await this.getRunAppleScript();
+      if (!runAppleScript) {
+        console.warn('AppleScript runner not available');
+        return [];
+      }
+
+      if (this.debugMode) {
+        console.log('\n=== EXCEL APPLESCRIPT DEBUG ===');
+      }
+
+      // Try multiple approaches for Excel
+      const approaches = [
+        // Approach 1: Direct workbook enumeration
+        {
+          name: 'Direct workbook enumeration',
+          script: `
+            tell application "System Events"
+              if exists (processes whose name is "Microsoft Excel") then
+                tell application "Microsoft Excel"
+                  set openDocs to {}
+                  try
+                    repeat with wb in workbooks
+                      if exists wb then
+                        try
+                          set workbookName to name of wb
+                          set workbookPath to ""
+                          try
+                            set workbookPath to full name of wb
+                          end try
+                          if workbookName is not "" then
+                            if workbookPath is not "" then
+                              set end of openDocs to (workbookPath & "|" & workbookName)
+                            else
+                              set end of openDocs to workbookName
+                            end if
+                          end if
+                        end try
+                      end if
+                    end repeat
+                  end try
+                  return openDocs
+                end tell
+              else
+                return {}
+              end if
+            end tell
+          `
+        },
+        // Approach 2: Window-based approach (fallback)
+        {
+          name: 'Window-based approach',
+          script: `
+            tell application "System Events"
+              if exists (processes whose name is "Microsoft Excel") then
+                tell application "Microsoft Excel"
+                  set openDocs to {}
+                  try
+                    repeat with theWindow in windows
+                      if exists theWindow then
+                        try
+                          set windowTitle to name of theWindow
+                          if windowTitle is not "" and windowTitle is not "Microsoft Excel" then
+                            set end of openDocs to windowTitle
+                          end if
+                        end try
+                      end if
+                    end repeat
+                  end try
+                  return openDocs
+                end tell
+              else
+                return {}
+              end if
+            end tell
+          `
+        }
+      ];
+
+      for (const approach of approaches) {
+        try {
+          if (this.debugMode) {
+            console.log(`Trying approach: ${approach.name}`);
+          }
+
+          const result = await runAppleScript(approach.script);
+
+          if (this.debugMode) {
+            console.log(`Result from ${approach.name}:`, result);
+          }
+
+          if (result && result.trim() !== '') {
+            const parsedFiles = this.parseExcelResult(result, 'Excel', knownWorkspaces);
+            if (parsedFiles.length > 0) {
+              if (this.debugMode) {
+                console.log(`✅ Success with ${approach.name}, found ${parsedFiles.length} files`);
+                console.log('=== END EXCEL DEBUG ===\n');
+              }
+              return parsedFiles;
+            }
+          }
+        } catch (error) {
+          if (this.debugMode) {
+            console.log(`❌ Failed with ${approach.name}:`, error.message);
+          }
+          // Continue to next approach
+        }
+      }
+
+      if (this.debugMode) {
+        console.log('❌ All AppleScript approaches failed for Excel');
+        console.log('=== END EXCEL DEBUG ===\n');
+      }
+
+      return [];
+    } catch (error) {
+      console.error('Error getting Excel open files:', error);
+      if (this.debugMode) {
+        console.error('Stack trace:', error.stack);
+      }
+      return [];
+    }
+  }
+
+  /**
+   * Get recently opened Excel files from macOS Recent Items
+   */
+  async getRecentExcelFiles() {
+    try {
+      const runAppleScript = await this.getRunAppleScript();
+      if (!runAppleScript) {
+        console.warn('AppleScript runner not available for recent Excel files');
+        return [];
+      }
+
+      if (this.debugMode) {
+        console.log('\n=== RECENT EXCEL FILES DEBUG ===');
+      }
+
+      // AppleScript to get recent documents from Excel
+      const script = `
+        tell application "System Events"
+          try
+            set recentDocs to {}
+            -- Try to get recent documents from Excel's recent items
+            set excelApp to application "Microsoft Excel"
+            if exists excelApp then
+              tell excelApp
+                try
+                  -- Excel doesn't expose recent documents via AppleScript directly
+                  -- So we'll use System Events to get recent documents
+                end try
+              end tell
+            end if
+            
+            -- Alternative approach: check recent documents in System Events
+            tell application "System Events"
+              try
+                set recentItems to {}
+                -- Get recent applications and their documents
+                -- This is a fallback approach since Excel's AppleScript support for recent docs is limited
+                return {}
+              end try
+            end tell
+            
+            return recentDocs
+          on error errMsg
+            return {}
+          end try
+        end tell
+      `;
+
+      const result = await runAppleScript(script);
+
+      if (this.debugMode) {
+        console.log('Recent Excel files result:', result);
+      }
+
+      // For now, we'll focus on open files since recent files via AppleScript
+      // has limitations with Excel. We'll enhance this with file system checks.
+      const recentFiles = await this.getRecentExcelFilesFromSystem();
+
+      if (this.debugMode) {
+        console.log(`✅ Found ${recentFiles.length} recent Excel files`);
+        console.log('=== END RECENT EXCEL DEBUG ===\n');
+      }
+
+      return recentFiles;
+    } catch (error) {
+      console.error('Error getting recent Excel files:', error);
+      if (this.debugMode) {
+        console.error('Stack trace:', error.stack);
+      }
+      return [];
+    }
+  }
+
+  /**
+   * Get recent Excel files from file system (macOS Recent Items and common locations)
+   */
+  async getRecentExcelFilesFromSystem() {
+    const recentFiles = [];
+    const maxFiles = 10;
+    
+    try {
+      // Common locations for Excel files with error handling
+      const searchPaths = [
+        path.join(os.homedir(), 'Desktop'),
+        path.join(os.homedir(), 'Documents'),
+        path.join(os.homedir(), 'Downloads'),
+        path.join(os.homedir(), 'iCloud Drive (Archive)', 'Desktop'),
+        path.join(os.homedir(), 'Library', 'Containers', 'com.microsoft.Excel', 'Data', 'Documents')
+      ];
+
+      const excelExtensions = ['.xlsx', '.xls', '.xlsm', '.xlsb', '.xltx', '.xltm'];
+      const foundFiles = [];
+      let searchErrors = 0;
+
+      if (this.debugMode) {
+        console.log(`Searching for Excel files in ${searchPaths.length} locations...`);
+      }
+
+      // Search for Excel files in common locations
+      for (const searchPath of searchPaths) {
+        try {
+          if (!fs.existsSync(searchPath)) {
+            if (this.debugMode) {
+              console.log(`Path does not exist: ${searchPath}`);
+            }
+            continue;
+          }
+          
+          const entries = fs.readdirSync(searchPath, { withFileTypes: true });
+          let filesInDir = 0;
+          
+          for (const entry of entries) {
+            if (entry.isFile() && excelExtensions.some(ext => entry.name.toLowerCase().endsWith(ext))) {
+              const filePath = path.join(searchPath, entry.name);
+              try {
+                const stats = fs.statSync(filePath);
+                foundFiles.push({
+                  name: entry.name,
+                  path: filePath,
+                  directory: searchPath,
+                  app: 'Excel',
+                  icon: this.getFileIcon(entry.name),
+                  isDirectory: false,
+                  exists: true,
+                  isWorkspaceFile: false,
+                  isRecent: true,
+                  lastModified: stats.mtime,
+                  size: stats.size
+                });
+                filesInDir++;
+              } catch (statError) {
+                if (this.debugMode) {
+                  console.warn(`Could not stat file ${filePath}: ${statError.message}`);
+                }
+                searchErrors++;
+                continue;
+              }
+            }
+          }
+
+          if (this.debugMode && filesInDir > 0) {
+            console.log(`Found ${filesInDir} Excel files in ${searchPath}`);
+          }
+        } catch (dirError) {
+          if (this.debugMode) {
+            console.warn(`Could not read directory ${searchPath}: ${dirError.message}`);
+          }
+          searchErrors++;
+          continue;
+        }
+      }
+
+      // Sort by last modified (most recent first) and limit
+      foundFiles.sort((a, b) => b.lastModified - a.lastModified);
+      recentFiles.push(...foundFiles.slice(0, maxFiles));
+
+      if (this.debugMode) {
+        console.log(`Search complete: ${recentFiles.length} Excel files found (${searchErrors} errors)`);
+      }
+
+      // Log warning if too many errors
+      if (searchErrors > searchPaths.length / 2) {
+        console.warn(`Excel file search encountered ${searchErrors} errors - may have permission issues`);
+      }
+
+    } catch (error) {
+      console.error('Critical error searching for recent Excel files:', error);
+      if (this.debugMode) {
+        console.error('Stack trace:', error.stack);
+      }
+    }
+
+    return recentFiles;
+  }
+
+  /**
+   * Check if Excel detection is properly configured and accessible
+   */
+  async checkExcelDetectionCapability() {
+    const result = {
+      excelInstalled: false,
+      applescriptAvailable: false,
+      accessibilityPermissions: false,
+      canDetectOpenFiles: false,
+      canDetectRecentFiles: false,
+      errors: []
+    };
+
+    try {
+      // Check if Excel is installed
+      const excelPath = '/Applications/Microsoft Excel.app';
+      if (fs.existsSync(excelPath)) {
+        result.excelInstalled = true;
+      } else {
+        result.errors.push('Microsoft Excel not found in Applications folder');
+      }
+
+      // Check AppleScript availability
+      const runAppleScript = await this.getRunAppleScript();
+      if (runAppleScript) {
+        result.applescriptAvailable = true;
+      } else {
+        result.errors.push('AppleScript runner not available');
+      }
+
+      // Check accessibility permissions
+      result.accessibilityPermissions = await this.checkAccessibilityPermissions();
+      if (!result.accessibilityPermissions) {
+        result.errors.push('Accessibility permissions required for Excel detection');
+      }
+
+      // Test if we can detect open files
+      if (result.applescriptAvailable && result.accessibilityPermissions) {
+        try {
+          await this.getExcelOpenFiles([]);
+          result.canDetectOpenFiles = true;
+        } catch (error) {
+          result.errors.push(`Cannot detect open Excel files: ${error.message}`);
+        }
+      }
+
+      // Test if we can detect recent files
+      try {
+        const recentFiles = await this.getRecentExcelFilesFromSystem();
+        result.canDetectRecentFiles = Array.isArray(recentFiles);
+      } catch (error) {
+        result.errors.push(`Cannot detect recent Excel files: ${error.message}`);
+      }
+
+      if (this.debugMode) {
+        console.log('Excel detection capability check:', result);
+      }
+
+    } catch (error) {
+      result.errors.push(`Excel capability check failed: ${error.message}`);
+      console.error('Error checking Excel detection capability:', error);
+    }
+
+    return result;
+  }
+
+  /**
+   * Parse Excel AppleScript result and extract file information
+   */
+  parseExcelResult(result, appName, knownWorkspaces = []) {
+    if (this.debugMode) {
+      console.log(`\n=== PARSING EXCEL RESULT ===`);
+      console.log('Raw result:', JSON.stringify(result));
+    }
+
+    if (!result || result.trim() === '') {
+      if (this.debugMode) {
+        console.log('❌ Empty or null result');
+        console.log('=== END EXCEL PARSING ===\n');
+      }
+      return [];
+    }
+
+    const files = [];
+    const workbookEntries = result.split(',').map(entry => entry.trim());
+
+    if (this.debugMode) {
+      console.log(`Found ${workbookEntries.length} workbook entries:`, workbookEntries);
+    }
+
+    for (const entry of workbookEntries) {
+      if (!entry || entry === '') continue;
+
+      if (this.debugMode) {
+        console.log(`Processing entry: "${entry}"`);
+      }
+
+      let fileName, filePath;
+
+      // Check if entry contains path separator (format: "path|name")
+      if (entry.includes('|')) {
+        const parts = entry.split('|');
+        filePath = parts[0].trim();
+        fileName = parts[1].trim();
+      } else {
+        // Just the filename (for unsaved workbooks or when path unavailable)
+        fileName = entry;
+        filePath = null;
+      }
+
+      // Skip if filename is empty
+      if (!fileName) continue;
+
+      // Check if this is an Excel file extension
+      const ext = path.extname(fileName).toLowerCase();
+      const isExcelFile = ['.xlsx', '.xls', '.xlsm', '.xlsb', '.xltx', '.xltm'].includes(ext);
+
+      // For files without extensions (like "Book1"), assume it's Excel
+      const isUnsavedWorkbook = !ext && /^(Book|Workbook)\d*$/i.test(fileName);
+
+      if (!isExcelFile && !isUnsavedWorkbook) {
+        if (this.debugMode) {
+          console.log(`  ❌ Skipping non-Excel file: ${fileName}`);
+        }
+        continue;
+      }
+
+      // Check if file exists (for saved workbooks) and get metadata
+      let exists = false;
+      let lastModified = null;
+      let fileSize = null;
+
+      if (filePath) {
+        try {
+          const stats = fs.statSync(filePath);
+          exists = true;
+          lastModified = stats.mtime;
+          fileSize = stats.size;
+        } catch (error) {
+          // File doesn't exist or can't be accessed
+          exists = false;
+        }
+      }
+
+      const fileInfo = {
+        name: fileName,
+        path: filePath || fileName,
+        directory: filePath ? path.dirname(filePath) : null,
+        app: appName,
+        icon: isUnsavedWorkbook ? 'codicon-file' : this.getFileIcon(fileName),
+        isDirectory: false,
+        exists: exists,
+        isWorkspaceFile: false,
+        isUnsaved: isUnsavedWorkbook || !filePath,
+        isOpen: true, // Currently open files are marked as open
+        lastModified: lastModified,
+        size: fileSize,
+        fileType: ext || 'workbook'
+      };
+
+      files.push(fileInfo);
+
+      if (this.debugMode) {
+        console.log(`  ✅ Added Excel file:`, fileInfo);
+      }
+    }
+
+    if (this.debugMode) {
+      console.log(`Final result: ${files.length} Excel files extracted`);
+      console.log('=== END EXCEL PARSING ===\n');
+    }
+
+    return files;
+  }
+
+  /**
    * Parse AppleScript result and extract file information
    */
   parseAppleScriptResult(result, appName, knownWorkspaces = []) {
@@ -627,10 +1124,14 @@ class WindowDetector {
       // "filename.ext - Cursor"
       // "filename.ext — /full/path/to/folder"
       // "● filename.ext - /full/path/to/folder"
+      // Excel specific patterns:
+      // "filename.xlsx - Excel"
+      // "Book1 - Excel" (unsaved workbook)
+      // "filename.xlsx - Microsoft Excel"
 
       // Remove app name from title and clean up
       let cleanTitle = title
-        .replace(/\s*[-—]\s*(Visual Studio Code|Cursor)\s*$/, '')
+        .replace(/\s*[-—]\s*(Visual Studio Code|Cursor|Microsoft Excel|Excel)\s*$/, '')
         .replace(/^●\s*/, '') // Remove unsaved indicator
         .replace(/^[•◦▪▫]\s*/, '') // Remove other bullet indicators
         .trim();
@@ -825,7 +1326,13 @@ class WindowDetector {
       '.rs': 'codicon-symbol-structure',
       '.xml': 'codicon-symbol-structure',
       '.yaml': 'codicon-symbol-structure',
-      '.yml': 'codicon-symbol-structure'
+      '.yml': 'codicon-symbol-structure',
+      '.xlsx': 'codicon-table',
+      '.xls': 'codicon-table',
+      '.xlsm': 'codicon-table',
+      '.xlsb': 'codicon-table',
+      '.xltx': 'codicon-table',
+      '.xltm': 'codicon-table'
     };
 
     return iconMap[ext] || 'codicon-file';
@@ -899,17 +1406,44 @@ class WindowDetector {
             files = await this.getVSCodeOpenFiles(knownWorkspaces);
           } else if (app.applescriptName === 'Cursor') {
             files = await this.getCursorOpenFiles(knownWorkspaces);
+          } else if (app.applescriptName === 'Microsoft Excel') {
+            files = await this.getExcelOpenFiles(knownWorkspaces);
           }
 
           // Add app metadata to each file
           files.forEach(file => {
             file.appDisplayName = app.displayName;
             file.appIcon = app.icon;
+            file.isOpen = true; // Mark as currently open
           });
 
           allOpenFiles.push(...files);
         } catch (error) {
           console.error(`Error getting files from ${app.displayName}:`, error);
+        }
+      }
+
+      // Also get recent Excel files (even if Excel is not currently running)
+      try {
+        const recentExcelFiles = await this.getRecentExcelFiles();
+        if (Array.isArray(recentExcelFiles) && recentExcelFiles.length > 0) {
+          recentExcelFiles.forEach(file => {
+            file.appDisplayName = 'Excel';
+            file.appIcon = '📊';
+            file.isOpen = false; // Mark as recent, not currently open
+          });
+          allOpenFiles.push(...recentExcelFiles);
+          
+          if (this.debugMode) {
+            console.log(`Added ${recentExcelFiles.length} recent Excel files to results`);
+          }
+        } else if (this.debugMode) {
+          console.log('No recent Excel files found');
+        }
+      } catch (error) {
+        console.error('Error getting recent Excel files:', error);
+        if (this.debugMode) {
+          console.error('Recent Excel files error stack:', error.stack);
         }
       }
 
@@ -1040,10 +1574,11 @@ class WindowDetector {
       const relevantProcesses = processes.list.filter(p => {
         const name = (p.name || '').toLowerCase();
         const command = (p.command || '').toLowerCase();
-        return name.includes('code') || name.includes('cursor') ||
-               command.includes('code') || command.includes('cursor') ||
+        return name.includes('code') || name.includes('cursor') || name.includes('excel') ||
+               command.includes('code') || command.includes('cursor') || command.includes('excel') ||
                name.includes('electron') || command.includes('electron') ||
-               command.includes('todesktop');
+               command.includes('todesktop') || name.includes('microsoft excel') || 
+               command.includes('microsoft excel');
       });
 
       diagnostics.processes.relevant = relevantProcesses.map(p => ({
@@ -1274,6 +1809,8 @@ class WindowDetector {
                 files = await this.getVSCodeOpenFiles(knownWorkspaces);
               } else if (app.applescriptName === 'Cursor') {
                 files = await this.getCursorOpenFiles(knownWorkspaces);
+              } else if (app.applescriptName === 'Microsoft Excel') {
+                files = await this.getExcelOpenFiles(knownWorkspaces);
               }
               allFiles.push(...files);
             }

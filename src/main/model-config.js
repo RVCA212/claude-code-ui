@@ -5,6 +5,13 @@ const os = require('os');
 class ModelConfig {
   constructor() {
     this.currentModel = ''; // Empty string means default (Sonnet)
+    this.taskTemplate = 'Create a new folder in the cwd and accomplish the following task into it: \n\n<task>\n\n</task> ultrathink through this task to complete it effectively:';
+
+    // System prompt settings
+    this.systemPrompt = '';
+    this.systemPromptEnabled = false;
+    this.systemPromptMode = 'append'; // 'append' or 'override'
+
     this.modelConfigPath = path.join(os.homedir(), '.claude-code-chat', 'model-config.json');
   }
 
@@ -18,6 +25,12 @@ class ModelConfig {
       const config = JSON.parse(data);
 
       this.currentModel = config.model || '';
+      this.taskTemplate = config.taskTemplate || 'Create a new folder in the cwd and accomplish the following task into it: \n\n<task>\n\n</task> ultrathink through this task to complete it effectively:';
+
+      // Load system prompt settings
+      this.systemPrompt = config.systemPrompt || '';
+      this.systemPromptEnabled = typeof config.systemPromptEnabled === 'boolean' ? config.systemPromptEnabled : false;
+      this.systemPromptMode = config.systemPromptMode || 'append';
 
       // Set the environment variable
       if (this.currentModel) {
@@ -31,6 +44,13 @@ class ModelConfig {
       // File doesn't exist or is invalid, use default
       console.log('No model config found, using default (Sonnet)');
       this.currentModel = '';
+      this.taskTemplate = 'Create a new folder in the cwd and accomplish the following task into it: \n\n<task>\n\n</task> ultrathink through this task to complete it effectively:';
+
+      // Default system prompt settings
+      this.systemPrompt = '';
+      this.systemPromptEnabled = false;
+      this.systemPromptMode = 'append';
+
       delete process.env.ANTHROPIC_MODEL;
     }
   }
@@ -43,6 +63,10 @@ class ModelConfig {
 
       const config = {
         model: this.currentModel,
+        taskTemplate: this.taskTemplate,
+        systemPrompt: this.systemPrompt,
+        systemPromptEnabled: this.systemPromptEnabled,
+        systemPromptMode: this.systemPromptMode,
         updatedAt: new Date().toISOString()
       };
 
@@ -84,6 +108,52 @@ class ModelConfig {
 
     console.log('Model updated to:', this.currentModel || 'Default (Sonnet)');
     return this.currentModel;
+  }
+
+  // Get current task template
+  getTaskTemplate() {
+    return this.taskTemplate;
+  }
+
+  // Set current task template
+  async setTaskTemplate(template) {
+    if (typeof template !== 'string') {
+      throw new Error('Task template must be a string');
+    }
+
+    this.taskTemplate = template;
+
+    // Save to persistent storage
+    await this.saveModelConfig();
+
+    console.log('Task template updated');
+    return this.taskTemplate;
+  }
+
+  // --- System Prompt Methods ---
+
+  getSystemPromptConfig() {
+    return {
+      prompt: this.systemPrompt,
+      enabled: this.systemPromptEnabled,
+      mode: this.systemPromptMode,
+    };
+  }
+
+  async setSystemPromptConfig(config) {
+    if (config.prompt !== undefined && typeof config.prompt === 'string') {
+      this.systemPrompt = config.prompt;
+    }
+    if (config.enabled !== undefined && typeof config.enabled === 'boolean') {
+      this.systemPromptEnabled = config.enabled;
+    }
+    if (config.mode === 'append' || config.mode === 'override') {
+      this.systemPromptMode = config.mode;
+    }
+
+    await this.saveModelConfig();
+    console.log('System prompt config updated');
+    return this.getSystemPromptConfig();
   }
 }
 

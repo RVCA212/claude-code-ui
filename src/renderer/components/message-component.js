@@ -469,9 +469,9 @@ class MessageComponent {
     }
 
     // Transition from compact mode to full view when user sends a message
-    if (this.isCompactMode) {
-      this.expandToFullView();
-    }
+    // if (this.isCompactMode) {
+    //   this.expandToFullView();
+    // }
 
     this.messagesContainer.insertAdjacentHTML('beforeend', messageHTML);
     this.scrollToBottom();
@@ -884,6 +884,40 @@ class MessageComponent {
 
     // Trigger input change to update UI
     this.handleInputChange();
+  }
+
+  insertFilePath(filePath) {
+    if (!this.messageInput) return;
+
+    const currentText = this.messageInput.value;
+    const cursorPos = DOMUtils.getCursorPosition(this.messageInput);
+
+    // Format the file path as requested - just the path without additional formatting
+    const filePathText = filePath;
+
+    // Insert at current cursor position
+    const beforeCursor = currentText.substring(0, cursorPos);
+    const afterCursor = currentText.substring(cursorPos);
+
+    // Add space before if there's text and it doesn't end with space
+    const needsSpaceBefore = beforeCursor.length > 0 && !beforeCursor.endsWith(' ');
+    const spaceBefore = needsSpaceBefore ? ' ' : '';
+
+    // Add space after unless we're at the end
+    const needsSpaceAfter = afterCursor.length > 0 && !afterCursor.startsWith(' ');
+    const spaceAfter = needsSpaceAfter ? ' ' : '';
+
+    const newText = beforeCursor + spaceBefore + filePathText + spaceAfter + afterCursor;
+    const newCursorPos = beforeCursor.length + spaceBefore.length + filePathText.length + spaceAfter.length;
+
+    this.messageInput.value = newText;
+    DOMUtils.setCursorPosition(this.messageInput, newCursorPos);
+
+    // Trigger input change to update UI
+    this.handleInputChange();
+
+    // Focus the input to show the cursor
+    this.messageInput.focus();
   }
 
   addMentionClickHandlers() {

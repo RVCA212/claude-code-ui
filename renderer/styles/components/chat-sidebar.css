@@ -37,6 +37,32 @@
   display: none !important; /* ✅ FIX: Ensure hidden state overrides all other display rules */
 }
 
+/* Drag and Drop Styling */
+.chat-sidebar.drag-over {
+  border-left: 3px solid var(--color-primary);
+  background-color: rgba(var(--color-primary-rgb), 0.05);
+  transition: border-color var(--duration-fast) var(--ease-standard), 
+              background-color var(--duration-fast) var(--ease-standard);
+}
+
+.chat-sidebar.drag-over::before {
+  content: "📁 Drop files here to add to message";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: var(--color-primary);
+  color: var(--color-btn-primary-text);
+  padding: var(--space-12) var(--space-16);
+  border-radius: var(--radius-base);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  box-shadow: var(--shadow-lg);
+  z-index: 1000;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
 /* Add resize handle for sidebar */
 .chat-sidebar-resize-handle {
   position: absolute;

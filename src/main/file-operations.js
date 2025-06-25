@@ -1,6 +1,7 @@
 const fs = require('fs').promises;
 const path = require('path');
 const os = require('os');
+const { v4: uuidv4 } = require('uuid');
 const WindowDetector = require('./window-detector');
 
 class FileOperations {
@@ -9,6 +10,11 @@ class FileOperations {
     this.directoryHistory = []; // Navigation history for back/forward
     this.historyIndex = -1; // Current position in history
     this.windowDetector = new WindowDetector(); // Initialize window detector
+
+    // Workspace management
+    this.workspaces = new Map(); // Store loaded workspaces
+    this.activeWorkspace = null; // Currently active workspace
+    this.workspaceStoragePath = path.join(os.homedir(), '.claude-code-chat', 'workspaces.json');
   }
 
   // Helper function to get directory contents with file info
@@ -866,6 +872,326 @@ class FileOperations {
         error: error.message
       };
     }
+  }
+
+  // ============================================================================
+  // Workspace Management Methods
+  // ============================================================================
+
+  // Load workspaces from storage
+  async loadWorkspaces() {
+    try {
+      const dir = path.dirname(this.workspaceStoragePath);
+      await fs.mkdir(dir, { recursive: true });
+
+      const data = await fs.readFile(this.workspaceStoragePath, 'utf8');
+      const workspaceData = JSON.parse(data);
+
+      this.workspaces.clear();
+      workspaceData.forEach(workspace => {
+        // Ensure workspaces have all required fields
+        const normalizedWorkspace = {
+          id: workspace.id,
+          name: workspace.name || 'Untitled Workspace',
+          folders: workspace.folders || [],
+          createdAt: workspace.createdAt || new Date().toISOString(),
+          lastUsed: workspace.lastUsed || workspace.createdAt || new Date().toISOString(),
+          isActive: workspace.isActive || false
+        };
+        this.workspaces.set(workspace.id, normalizedWorkspace);
+      });
+
+      console.log(`Loaded ${this.workspaces.size} workspaces from storage`);
+      return {
+        success: true,
+        workspaces: Array.from(this.workspaces.values())
+      };
+    } catch (error) {
+      // File doesn't exist or is invalid, start with empty workspaces
+      console.log('No existing workspaces found, starting fresh');
+      return {
+        success: true,
+        workspaces: []
+      };
+    }
+  }
+
+  // Save workspaces to storage
+  async saveWorkspaces() {
+    try {
+      const dir = path.dirname(this.workspaceStoragePath);
+      await fs.mkdir(dir, { recursive: true });
+
+      const workspaceArray = Array.from(this.workspaces.values());
+      await fs.writeFile(this.workspaceStoragePath, JSON.stringify(workspaceArray, null, 2));
+
+      console.log(`Saved ${workspaceArray.length} workspaces to storage`);
+      return {
+        success: true,
+        message: `Saved ${workspaceArray.length} workspaces`
+      };
+    } catch (error) {
+      console.error('Failed to save workspaces:', error);
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+  }
+
+  // Create a new workspace
+  async createWorkspace(name, folders) {
+    try {
+      // Validate inputs
+      if (!name || typeof name !== 'string' || name.trim().length === 0) {
+        throw new Error('Workspace name is required');
+      }
+
+      if (!Array.isArray(folders) || folders.length === 0) {
+        throw new Error('At least one folder is required');
+      }
+
+      // Validate all folders exist and are directories
+      const validatedFolders = [];
+      for (const folderPath of folders) {
+        const resolvedPath = path.resolve(folderPath);
+        const isValid = await this.validateDirectory(resolvedPath);
+
+        if (!isValid) {
+          throw new Error(`Invalid folder: ${folderPath}`);
+        }
+
+        validatedFolders.push({
+          path: resolvedPath,
+          name: path.basename(resolvedPath)
+        });
+      }
+
+      // Check if workspace name already exists
+      const existingWorkspace = Array.from(this.workspaces.values()).find(ws => ws.name === name.trim());
+      if (existingWorkspace) {
+        throw new Error(`Workspace "${name.trim()}" already exists`);
+      }
+
+      // Create workspace object
+      const workspace = {
+        id: uuidv4(),
+        name: name.trim(),
+        folders: validatedFolders,
+        createdAt: new Date().toISOString(),
+        lastUsed: new Date().toISOString(),
+        isActive: false
+      };
+
+      // Add to workspaces collection
+      this.workspaces.set(workspace.id, workspace);
+
+      // Save to storage
+      await this.saveWorkspaces();
+
+      console.log(`Created workspace "${workspace.name}" with ${workspace.folders.length} folders`);
+
+      return {
+        success: true,
+        workspace: workspace,
+        message: `Workspace "${workspace.name}" created successfully`
+      };
+    } catch (error) {
+      console.error('Failed to create workspace:', error);
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+  }
+
+  // Get all workspaces
+  async getWorkspaces() {
+    try {
+      // Load workspaces if not already loaded
+      if (this.workspaces.size === 0) {
+        await this.loadWorkspaces();
+      }
+
+      const workspaces = Array.from(this.workspaces.values());
+
+      // Sort by last used (most recent first)
+      workspaces.sort((a, b) => new Date(b.lastUsed) - new Date(a.lastUsed));
+
+      return {
+        success: true,
+        workspaces: workspaces,
+        activeWorkspace: this.activeWorkspace
+      };
+    } catch (error) {
+      console.error('Failed to get workspaces:', error);
+      return {
+        success: false,
+        error: error.message,
+        workspaces: []
+      };
+    }
+  }
+
+  // Delete a workspace
+  async deleteWorkspace(workspaceId) {
+    try {
+      if (!this.workspaces.has(workspaceId)) {
+        throw new Error('Workspace not found');
+      }
+
+      const workspace = this.workspaces.get(workspaceId);
+
+      // If deleting the active workspace, clear active workspace
+      if (this.activeWorkspace && this.activeWorkspace.id === workspaceId) {
+        this.activeWorkspace = null;
+      }
+
+      // Remove from collection
+      this.workspaces.delete(workspaceId);
+
+      // Save to storage
+      await this.saveWorkspaces();
+
+      console.log(`Deleted workspace "${workspace.name}"`);
+
+      return {
+        success: true,
+        message: `Workspace "${workspace.name}" deleted successfully`
+      };
+    } catch (error) {
+      console.error('Failed to delete workspace:', error);
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+  }
+
+  // Set active workspace and update working directory
+  async setActiveWorkspace(workspaceId) {
+    try {
+      if (!this.workspaces.has(workspaceId)) {
+        throw new Error('Workspace not found');
+      }
+
+      const workspace = this.workspaces.get(workspaceId);
+
+      // Clear current active status from all workspaces
+      for (const ws of this.workspaces.values()) {
+        ws.isActive = false;
+      }
+
+      // Set new active workspace
+      workspace.isActive = true;
+      workspace.lastUsed = new Date().toISOString();
+      this.activeWorkspace = workspace;
+
+      // Update working directory to first folder in workspace
+      if (workspace.folders.length > 0) {
+        const firstFolder = workspace.folders[0].path;
+        this.currentWorkingDirectory = firstFolder;
+        this.updateDirectoryHistory(firstFolder);
+      }
+
+      // Save changes
+      await this.saveWorkspaces();
+
+      console.log(`Activated workspace "${workspace.name}"`);
+
+      return {
+        success: true,
+        workspace: workspace,
+        message: `Workspace "${workspace.name}" activated`,
+        currentDirectory: this.currentWorkingDirectory
+      };
+    } catch (error) {
+      console.error('Failed to set active workspace:', error);
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+  }
+
+  // Get active workspace
+  getActiveWorkspace() {
+    return {
+      success: true,
+      activeWorkspace: this.activeWorkspace
+    };
+  }
+
+  // Clear active workspace (return to normal single-folder mode)
+  async clearActiveWorkspace() {
+    try {
+      if (this.activeWorkspace) {
+        // Clear active status from all workspaces
+        for (const ws of this.workspaces.values()) {
+          ws.isActive = false;
+        }
+
+        this.activeWorkspace = null;
+        await this.saveWorkspaces();
+
+        console.log('Cleared active workspace');
+      }
+
+      return {
+        success: true,
+        message: 'Active workspace cleared'
+      };
+    } catch (error) {
+      console.error('Failed to clear active workspace:', error);
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+  }
+
+  // Check if current directory is within any workspace folder
+  getCurrentWorkspaceContext() {
+    if (!this.activeWorkspace) {
+      return {
+        success: true,
+        hasWorkspace: false,
+        activeWorkspace: null,
+        currentFolder: null
+      };
+    }
+
+    // Find which folder in the workspace contains the current directory
+    const currentDir = this.currentWorkingDirectory;
+    const matchingFolder = this.activeWorkspace.folders.find(folder =>
+      currentDir.startsWith(folder.path)
+    );
+
+    return {
+      success: true,
+      hasWorkspace: true,
+      activeWorkspace: this.activeWorkspace,
+      currentFolder: matchingFolder || null,
+      currentDirectory: currentDir
+    };
+  }
+
+  // Get workspace folders for navigation
+  getWorkspaceFolders() {
+    if (!this.activeWorkspace) {
+      return {
+        success: true,
+        hasWorkspace: false,
+        folders: []
+      };
+    }
+
+    return {
+      success: true,
+      hasWorkspace: true,
+      workspace: this.activeWorkspace,
+      folders: this.activeWorkspace.folders
+    };
   }
 }
 
