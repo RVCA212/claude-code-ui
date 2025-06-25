@@ -1195,3 +1195,115 @@
   color: var(--color-text-secondary);
   opacity: 0.8;
 }
+
+/* ============================================================================
+   Clickable File Path Links
+   ============================================================================ */
+
+/* Clickable file path styling - makes file paths in messages interactive */
+.file-path-link {
+  display: inline;
+  color: var(--color-primary);
+  text-decoration: none;
+  cursor: pointer;
+  font-family: var(--font-family-mono);
+  font-size: inherit;
+  background-color: rgba(var(--color-primary-rgb), 0.08);
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(var(--color-primary-rgb), 0.2);
+  transition: all var(--duration-fast) var(--ease-standard);
+  position: relative;
+  white-space: nowrap;
+  word-break: break-all;
+}
+
+.file-path-link:hover {
+  background-color: rgba(var(--color-primary-rgb), 0.15);
+  border-color: rgba(var(--color-primary-rgb), 0.4);
+  color: var(--color-primary-hover);
+  text-decoration: underline;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(var(--color-primary-rgb), 0.1);
+}
+
+.file-path-link:active {
+  transform: translateY(0);
+  box-shadow: 0 1px 2px rgba(var(--color-primary-rgb), 0.2);
+}
+
+/* Focus state for accessibility */
+.file-path-link:focus {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+/* Visual indicator for clickable file paths */
+.file-path-link::before {
+  content: "📁";
+  margin-right: var(--space-2);
+  font-size: var(--font-size-xs);
+  opacity: 0.7;
+}
+
+/* Hover tooltip enhancement */
+.file-path-link:hover::after {
+  content: attr(title);
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: var(--color-surface);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-4) var(--space-8);
+  font-size: var(--font-size-xs);
+  white-space: nowrap;
+  z-index: 1000;
+  margin-bottom: var(--space-2);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  pointer-events: none;
+}
+
+/* Special styling for different file types */
+.file-path-link[data-file-path*=".js"]::before,
+.file-path-link[data-file-path*=".jsx"]::before,
+.file-path-link[data-file-path*=".ts"]::before,
+.file-path-link[data-file-path*=".tsx"]::before {
+  content: "📄";
+}
+
+.file-path-link[data-file-path*=".css"]::before,
+.file-path-link[data-file-path*=".scss"]::before {
+  content: "🎨";
+}
+
+.file-path-link[data-file-path*=".json"]::before {
+  content: "📋";
+}
+
+.file-path-link[data-file-path*=".md"]::before {
+  content: "📝";
+}
+
+.file-path-link[data-file-path*=".py"]::before {
+  content: "🐍";
+}
+
+.file-path-link[data-file-path*=".html"]::before {
+  content: "🌐";
+}
+
+/* Dark theme adjustments */
+@media (prefers-color-scheme: dark) {
+  .file-path-link {
+    background-color: rgba(var(--color-primary-rgb), 0.12);
+    border-color: rgba(var(--color-primary-rgb), 0.3);
+  }
+  
+  .file-path-link:hover {
+    background-color: rgba(var(--color-primary-rgb), 0.2);
+    border-color: rgba(var(--color-primary-rgb), 0.5);
+  }
+}

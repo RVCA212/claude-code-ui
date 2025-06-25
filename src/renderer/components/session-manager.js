@@ -779,9 +779,9 @@ class SessionManager {
           window.fileBrowser.toggleSidebarVisibility();
         }
         
-        // Switch to file view if currently in history view
-        if (window.fileBrowser.isHistoryView) {
-          window.fileBrowser.setSidebarView(false);
+        // Switch to file view if currently in history or tasks view
+        if (window.fileBrowser.sidebarViewMode !== 'file') {
+          window.fileBrowser.setSidebarView('file');
         }
       } else {
         console.error('File browser component not available');

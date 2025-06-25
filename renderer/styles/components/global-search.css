@@ -357,6 +357,9 @@
   padding: 12px 16px;
   border-bottom: 1px solid var(--color-border);
   background: var(--color-background);
+  position: sticky;
+  top: 0;
+  z-index: 10;
 }
 
 .quick-select-title {
@@ -369,6 +372,26 @@
 /* Quick select items container */
 .quick-select-items {
   padding: 8px;
+  max-height: 350px;
+  overflow-y: auto;
+}
+
+/* Custom scrollbar for quick select items */
+.quick-select-items::-webkit-scrollbar {
+  width: 6px;
+}
+
+.quick-select-items::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.quick-select-items::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 3px;
+}
+
+.quick-select-items::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-secondary);
 }
 
 /* Enhanced quick select item styling */

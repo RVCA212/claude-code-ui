@@ -27,6 +27,7 @@ class AppComponent {
       this.components.fileViewer = new FileViewerComponent();
       this.components.chatSidebar = new ChatSidebarComponent();
       this.components.globalSearch = new GlobalSearch();
+      this.components.tasksSidebar = new TasksSidebar();
 
       // Hide folder sidebar by default
       this.hideFolderSidebarByDefault();
@@ -124,6 +125,7 @@ class AppComponent {
     window.fileViewer = this.components.fileViewer;
     window.chatSidebar = this.components.chatSidebar;
     window.globalSearch = this.components.globalSearch;
+    window.tasksSidebar = this.components.tasksSidebar;
 
     // Make app instance and debug methods globally available
     window.app = this;

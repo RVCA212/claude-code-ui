@@ -565,14 +565,15 @@ class GlobalSearch {
       return;
     }
 
-    // Render quick select header with create workspace button
+    // Render quick select header
     let quickSelectHTML = `
       <div class="quick-select-header">
         <div class="quick-select-title">Recent</div>
       </div>
+      <div class="quick-select-items">
     `;
 
-    // Render quick select items
+    // Render quick select items inside the scrollable container
     quickSelectHTML += this.quickSelectWorkspaces.map(workspace => `
       <div class="global-search-item quick-select-item directory"
            data-file-path="${this.escapeHTML(workspace.path)}">
@@ -587,6 +588,9 @@ class GlobalSearch {
         </div>
       </div>
     `).join('');
+
+    // Close the scrollable container
+    quickSelectHTML += `</div>`;
 
     this.resultsContainer.innerHTML = quickSelectHTML;
 

@@ -24,7 +24,7 @@ class SidebarResizer {
 
   initializeElements() {
     this.sidebar = document.querySelector('.sidebar');
-    this.resizer = document.querySelector('.sidebar-resizer');
+    this.resizer = this.sidebar ? this.sidebar.querySelector('.sidebar-resizer') : null;
     
     // Get reference to file browser for indentation updates
     this.fileBrowser = window.fileBrowser;
@@ -35,7 +35,7 @@ class SidebarResizer {
     }
     
     if (!this.resizer) {
-      console.warn('Sidebar resizer element not found - will be created');
+      console.warn('Sidebar resizer element not found inside sidebar');
     }
   }
 
@@ -207,6 +207,8 @@ class SidebarResizer {
     if (!this.resizer || !this.sidebar) return;
     
     const isHidden = this.sidebar.classList.contains('hidden');
+    // Since resizer is now inside sidebar, it will be hidden/shown with the sidebar automatically via CSS
+    // But we can still manually control it if needed
     this.resizer.style.display = isHidden ? 'none' : 'block';
   }
 

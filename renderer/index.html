@@ -418,10 +418,10 @@
                     <button class="history-toggle-btn" id="toggleSidebarViewBtn" title="Toggle between File View, History, and Tasks">File View</button>
                 </div>
             </div>
+            
+            <!-- Sidebar Resizer (now inside sidebar on right edge) -->
+            <div class="sidebar-resizer" title="Drag to resize sidebar"></div>
         </div>
-
-        <!-- Sidebar Resizer -->
-        <div class="sidebar-resizer" title="Drag to resize sidebar"></div>
 
         <!-- File Editor Container -->
         <div class="editor-container" id="editorContainer">
@@ -448,12 +448,12 @@
                     <h2 class="conversation-title" id="conversationTitle" contenteditable="false">
                         Select a conversation
                     </h2>
-                    </div>
                     <!-- Current Directory Button -->
                     <button class="current-directory-btn" id="currentDirectoryBtn" style="display: none;" title="Navigate to current working directory">
                         <span class="codicon codicon-folder"></span>
                         <span class="current-directory-text" id="currentDirectoryText"></span>
                     </button>
+                    </div>
                     <div class="conversation-status" id="conversationStatus" style="display: none;"></div>
                     <div class="conversation-context" id="conversationContext" style="display: none;"></div>
                 </div>
@@ -672,6 +672,7 @@
     <script src="../src/renderer/components/chat-sidebar.js"></script>
     <script src="../src/renderer/components/directory-mismatch-modal.js"></script>
     <script src="../src/renderer/components/session-manager.js"></script>
+    <script src="../src/renderer/components/tasks-sidebar.js"></script>
     <script src="../src/renderer/components/message-component.js"></script>
     <script src="../src/renderer/components/settings-component.js"></script>
     <script src="../src/renderer/components/global-search.js"></script>

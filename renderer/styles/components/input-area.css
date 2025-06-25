@@ -20,7 +20,7 @@
    Base Input Area Container
    ============================================================================ */
 .input-area {
-  padding: var(--space-16) var(--space-24);
+  padding: 0 var(--space-24) var(--space-16) var(--space-24);
   border-top: 1px solid var(--color-border);
   background-color: var(--color-surface);
   position: relative; /* Ensure dropdown positioned relative to input area */

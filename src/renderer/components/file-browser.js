@@ -34,6 +34,7 @@ class FileBrowser {
     // Tooltip state
     this.tooltip = null;
     this.tooltipTimeout = null;
+    this.tooltipHideTimeout = null;
 
     // Root element of file browser for easy child toggling
     this.root = document.querySelector('.file-browser');
@@ -148,7 +149,7 @@ class FileBrowser {
         this.showTooltip(e.currentTarget, tooltipContent, true);
       });
       this.newTaskBtn.addEventListener('mouseleave', () => {
-        this.hideTooltip();
+        this.hideTooltipWithDelay();
       });
     }
     if (this.refreshBtn) {
@@ -1722,8 +1723,22 @@ class FileBrowser {
     this.tooltip.className = 'file-tooltip';
     if (isHTML) {
       this.tooltip.innerHTML = content;
+      this.tooltip.classList.add('interactive');
     } else {
       this.tooltip.textContent = content;
+      // Non-interactive tooltips should not capture mouse events
+      this.tooltip.style.pointerEvents = 'none';
+    }
+
+    // Add event listeners to tooltip for interactive content
+    if (isHTML) {
+      this.tooltip.addEventListener('mouseenter', () => {
+        this.cancelTooltipHiding();
+      });
+      
+      this.tooltip.addEventListener('mouseleave', () => {
+        this.hideTooltipWithDelay();
+      });
     }
 
     // Add to body for proper positioning
@@ -1784,9 +1799,36 @@ class FileBrowser {
       this.tooltipTimeout = null;
     }
 
+    // Clear any pending hide timer
+    if (this.tooltipHideTimeout) {
+      clearTimeout(this.tooltipHideTimeout);
+      this.tooltipHideTimeout = null;
+    }
+
     if (this.tooltip) {
       this.tooltip.remove();
       this.tooltip = null;
+    }
+  }
+
+  // Hide tooltip with a delay to allow mouse movement to tooltip
+  hideTooltipWithDelay() {
+    // Clear any existing hide timer
+    if (this.tooltipHideTimeout) {
+      clearTimeout(this.tooltipHideTimeout);
+    }
+
+    // Set a delay before hiding to allow mouse movement to tooltip
+    this.tooltipHideTimeout = setTimeout(() => {
+      this.hideTooltip();
+    }, 200); // 200ms delay
+  }
+
+  // Cancel tooltip hiding (when mouse enters tooltip)
+  cancelTooltipHiding() {
+    if (this.tooltipHideTimeout) {
+      clearTimeout(this.tooltipHideTimeout);
+      this.tooltipHideTimeout = null;
     }
   }
 

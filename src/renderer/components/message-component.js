@@ -83,6 +83,18 @@ class MessageComponent {
       this.handleSessionChange(e.detail);
     });
 
+    // File path click handling with event delegation
+    if (this.messagesContainer) {
+      this.messagesContainer.addEventListener('click', (e) => {
+        if (e.target.classList.contains('file-path-link')) {
+          const filePath = e.target.getAttribute('data-file-path');
+          if (filePath) {
+            this.handleFilePathClick(filePath, e);
+          }
+        }
+      });
+    }
+
     // Layout state change events for compact mode
     document.addEventListener('layoutStateChanged', (e) => {
       this.handleLayoutStateChange(e.detail);
@@ -1167,6 +1179,42 @@ class MessageComponent {
           }
         }
       }, 50);
+    }
+  }
+
+  // Handle file path clicks from formatted messages
+  handleFilePathClick(filePath, event) {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+    
+    console.log('File path clicked:', filePath);
+    
+    // Use the existing MessageUtils handler which integrates with the app components
+    if (MessageUtils && typeof MessageUtils.handleFilePathClick === 'function') {
+      MessageUtils.handleFilePathClick(filePath, event);
+    } else {
+      // Fallback to direct component access
+      this.openFileInEditor(filePath);
+    }
+  }
+
+  // Fallback method to open file in editor
+  async openFileInEditor(filePath) {
+    try {
+      // Get the file editor component
+      const fileEditor = window.app?.getComponent('fileEditor');
+      if (fileEditor) {
+        // Open the file without automatically navigating the directory
+        await fileEditor.openFile(filePath, { autoNavigateToDirectory: false });
+      } else {
+        console.error('File editor component not available');
+        this.showError('File editor not available');
+      }
+    } catch (error) {
+      console.error('Failed to open file:', error);
+      this.showError(`Failed to open file: ${error.message}`);
     }
   }
 

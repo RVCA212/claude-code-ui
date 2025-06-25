@@ -28,6 +28,7 @@
   background: var(--color-surface);
   border-radius: 8px;
   overflow: hidden;
+  padding-right: 4px; /* Add space for the resizer handle */
 }
 
 /* ============================================================================
@@ -869,7 +870,7 @@
   color: var(--color-text);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   z-index: 1000;
-  pointer-events: none;
+  pointer-events: auto; /* Changed from 'none' to allow interaction */
   white-space: nowrap;
   max-width: 400px;
   word-break: break-all;
@@ -881,6 +882,14 @@
 .file-tooltip.show {
   opacity: 1;
   transform: translateY(0);
+}
+
+/* Interactive tooltip styling */
+.file-tooltip.interactive {
+  cursor: default;
+  font-family: var(--font-family-sans); /* Use regular font for interactive content */
+  white-space: normal; /* Allow text wrapping for longer interactive content */
+  max-width: 300px;
 }
 
 .file-tooltip::before {
@@ -899,6 +908,20 @@
   left: 21px;
   border: 5px solid transparent;
   border-top-color: var(--color-surface);
+}
+
+/* Tooltip link styling */
+.file-tooltip a {
+  color: var(--color-primary);
+  text-decoration: underline;
+  font-weight: 500;
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.file-tooltip a:hover {
+  color: var(--color-primary-hover);
+  text-decoration: underline;
 }
 
 /* ============================================================================

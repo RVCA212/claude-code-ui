@@ -31,18 +31,26 @@ class MessageUtils {
     return { textBlocks: [], toolCalls: [], thinking: null, orderedContent: [] };
   }
 
-  // Format text content with markdown-like formatting
+  // Format text content with markdown-like formatting and clickable file paths
   static formatTextContent(text) {
     if (!text) return '';
 
     return text
-      // Handle code blocks
+      // Handle code blocks first (to avoid detecting file paths inside code blocks)
       .replace(/```(\w+)?\n([\s\S]*?)```/g, (match, lang, code) => {
         const language = lang || '';
         return `<pre class="code-block" data-language="${language}"><code>${this.escapeHTML(code.trim())}</code></pre>`;
       })
-      // Handle inline code
+      // Handle inline code (to avoid detecting file paths inside inline code)
       .replace(/`([^`]+)`/g, '<code>$1</code>')
+      // Handle file paths - make them clickable
+      .replace(this.getFilePathRegex(), (match, filePath) => {
+        const cleanPath = this.cleanFilePath(filePath);
+        if (this.isValidFilePath(cleanPath)) {
+          return `<span class="file-path-link" data-file-path="${this.escapeHTML(cleanPath)}" title="Click to open ${this.escapeHTML(cleanPath)}">${this.escapeHTML(filePath)}</span>`;
+        }
+        return match; // Return original if not a valid file path
+      })
       // Handle bold text
       .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
       // Handle italic text
@@ -74,6 +82,112 @@ class MessageUtils {
     }
 
     return absolutePath;
+  }
+
+  // File path detection utilities
+  static getFilePathRegex() {
+    // Combined regex that matches various file path formats
+    // Captures: absolute paths, relative paths, and working directory paths
+    // Avoids matching URLs and common false positives
+    return /(?:^|\s)([^\s'"<>]*\/[^\s'"<>]*\.(?:js|jsx|ts|tsx|py|java|c|cpp|h|hpp|css|scss|html|htm|json|xml|yaml|yml|md|txt|sh|bash|sql|php|rb|go|rs|swift|kt|scala|conf|cfg|ini|log|env|gitignore|dockerfile|Dockerfile|vue|svelte|astro|toml|lock|gradle|pom\.xml|package\.json|tsconfig\.json|webpack\.config\.js|vite\.config\.js|tailwind\.config\.js|postcss\.config\.js|eslint\.config\.js|prettier\.config\.js|jest\.config\.js|cypress\.config\.js|vitest\.config\.js|png|jpg|jpeg|gif|bmp|webp|pdf|ico|svg)[^\s'"<>]*)(?=\s|$|[,.;!?])/g;
+  }
+
+  // Clean and normalize file paths
+  static cleanFilePath(filePath) {
+    if (!filePath) return '';
+    
+    // Remove leading/trailing whitespace
+    let cleaned = filePath.trim();
+    
+    // Remove trailing punctuation that might be from sentence context
+    cleaned = cleaned.replace(/[,.;!?]+$/, '');
+    
+    // Handle different path formats
+    if (cleaned.startsWith('./') || cleaned.startsWith('../')) {
+      // Relative paths - keep as is
+      return cleaned;
+    } else if (cleaned.startsWith('/')) {
+      // Absolute paths - keep as is
+      return cleaned;
+    } else if (cleaned.includes('/')) {
+      // Working directory paths - treat as relative to current directory
+      return cleaned;
+    }
+    
+    return cleaned;
+  }
+
+  // Validate if a string is likely a file path
+  static isValidFilePath(path) {
+    if (!path || typeof path !== 'string') return false;
+    
+    // Must contain a file extension
+    const hasExtension = /\.[a-zA-Z0-9]{1,6}$/.test(path);
+    if (!hasExtension) return false;
+    
+    // Must contain at least one directory separator
+    const hasDirectory = path.includes('/');
+    if (!hasDirectory) return false;
+    
+    // Exclude obvious non-file patterns
+    const excludePatterns = [
+      /^https?:\/\//, // URLs
+      /^mailto:/, // Email links
+      /^ftp:\/\//, // FTP links
+      /^\d+\.\d+\./, // Version numbers (but allow if it has a path separator)
+      /^www\./, // Web addresses
+    ];
+    
+    for (const pattern of excludePatterns) {
+      if (pattern.test(path)) return false;
+    }
+    
+    // Special case: allow version numbers if they have a clear path structure
+    if (/^\d+\.\d+\./.test(path) && path.split('/').length < 2) {
+      return false;
+    }
+    
+    // Additional validation: shouldn't be too long (probably not a file path)
+    if (path.length > 200) return false;
+    
+    // Shouldn't contain spaces (unless properly quoted, but we'll be conservative)
+    if (path.includes(' ')) return false;
+    
+    return true;
+  }
+
+  // Handle file path click events
+  static handleFilePathClick(filePath, event) {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+    
+    // Try to open the file through the existing file browser/editor system
+    if (window.app && window.app.getComponent) {
+      const fileBrowser = window.app.getComponent('fileBrowser');
+      const fileEditor = window.app.getComponent('fileEditor');
+      
+      if (filePath && (fileBrowser || fileEditor)) {
+        // Determine if this is a viewable file (image, PDF) or editable file
+        const viewableExtensions = ['png', 'jpg', 'jpeg', 'gif', 'bmp', 'webp', 'pdf'];
+        const extension = filePath.split('.').pop()?.toLowerCase();
+        const isViewable = viewableExtensions.includes(extension);
+        
+        if (isViewable) {
+          // Try to open in file viewer
+          const fileViewer = window.app.getComponent('fileViewer');
+          if (fileViewer) {
+            fileViewer.openFile(filePath, { autoNavigateToDirectory: false });
+          }
+        } else {
+          // Open in file editor
+          if (fileEditor) {
+            fileEditor.openFile(filePath, { autoNavigateToDirectory: false });
+          }
+        }
+      }
+    }
   }
 
   // Create thinking section HTML
@@ -114,7 +228,8 @@ class MessageUtils {
   // Create tool call HTML
   static createToolCallSection(toolCall, cwd) {
     const toolId = 'tool_' + Math.random().toString(36).substr(2, 9);
-    const isCollapsed = true;
+    // Always expand Edit, MultiEdit, and Write tools by default
+    const isCollapsed = !['Edit', 'MultiEdit', 'Write'].includes(toolCall.name);
     const contentStyle = isCollapsed ? 'display: none;' : '';
 
     const toolIcon = this.getToolIcon(toolCall.name);
@@ -138,7 +253,8 @@ class MessageUtils {
   // Create inline tool call HTML for use within message flow
   static createInlineToolCall(toolCall, status = 'completed', cwd) {
     const toolId = 'inline_tool_' + Math.random().toString(36).substr(2, 9);
-    const isCollapsed = true;
+    // Always expand Edit, MultiEdit, and Write tools by default
+    const isCollapsed = !['Edit', 'MultiEdit', 'Write'].includes(toolCall.name);
     const contentStyle = isCollapsed ? 'display: none;' : '';
 
     const toolIcon = this.getToolIcon(toolCall.name);
