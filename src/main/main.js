@@ -1,4 +1,4 @@
-const { app, BrowserWindow, Tray, Menu, nativeImage, ipcMain } = require('electron');
+const { app, BrowserWindow, Tray, Menu, nativeImage, ipcMain, globalShortcut } = require('electron');
 const path = require('path');
 
 // Import our modular components
@@ -31,7 +31,7 @@ function createTray() {
   let trayIcon;
 
   // First try to load a custom icon if it exists
-  const iconPath = path.join(__dirname, '../../assets/tray-icon.png');
+  const iconPath = path.join(__dirname, '../../assets/tray-icon-small.png');
   try {
     trayIcon = nativeImage.createFromPath(iconPath);
     if (!trayIcon.isEmpty()) {
@@ -472,13 +472,51 @@ function showAboutDialog() {
   });
 }
 
+async function registerGlobalShortcut() {
+  try {
+    // Get the configured shortcut from settings
+    const currentShortcut = await modelConfig.getGlobalShortcut();
+    const shortcut = currentShortcut || 'CommandOrControl+Shift+C';
+    
+    // Unregister any existing shortcuts first
+    globalShortcut.unregisterAll();
+    
+    const isRegistered = globalShortcut.register(shortcut, () => {
+      console.log('Global shortcut triggered:', shortcut);
+      toggleWindow();
+    });
+
+    if (isRegistered) {
+      console.log(`✅ Global shortcut ${shortcut} registered successfully`);
+    } else {
+      console.error(`❌ Failed to register global shortcut ${shortcut}`);
+      console.log('The shortcut may already be in use by another application');
+    }
+    
+    return { success: isRegistered, shortcut };
+  } catch (error) {
+    console.error('Error registering global shortcut:', error);
+    return { success: false, error: error.message };
+  }
+}
+
 async function createWindow() {
+  // Set dock icon for macOS
+  if (process.platform === 'darwin') {
+    const iconPath = path.join(__dirname, '../../assets/icon-large.png');
+    const image = nativeImage.createFromPath(iconPath);
+    if (!image.isEmpty()) {
+      app.dock.setIcon(image);
+    }
+  }
+
   // Create the browser window
   mainWindow = new BrowserWindow({
     width: 450,
     height: 250,
     minWidth: 450,
-    minHeight: 250,
+    minHeight: 150,
+    icon: path.join(__dirname, '../../assets/icon-large.png'),
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
@@ -492,14 +530,15 @@ async function createWindow() {
 
   // Handle window blur to hide window when not locked
   mainWindow.on('blur', () => {
-    // Do not hide if dev tools are focused
+    // Keep window visible when it loses focus.
+    // Still ignore blur events from dev-tools.
     if (mainWindow.webContents.isDevToolsFocused()) {
       return;
     }
 
-    if (!isWindowLocked && !isQuitting) {
-      hideWindow();
-    }
+    // Previous behaviour hid the window when unlocked; we now leave it visible so
+    // other apps can simply appear in front. Locked mode remains unaffected.
+    // (If in future we need an auto-hide preference, handle it here.)
   });
 
   // Update window references in managers
@@ -640,10 +679,47 @@ app.whenReady().then(async () => {
   await createWindow();
   createTray();
 
+  // Register configurable global keyboard shortcut
+  await registerGlobalShortcut();
+
   ipcMain.handle('set-window-lock', (event, locked) => {
     isWindowLocked = locked;
     if (mainWindow) {
-      mainWindow.setAlwaysOnTop(locked, 'normal');
+      if (locked) {
+        // Use a higher Always-On-Top level so the window stays above  all others
+        const level = process.platform === 'win32' ? 'screen-saver' : 'floating';
+        mainWindow.setAlwaysOnTop(true, level);
+        // Ensure the window follows the user across Spaces / virtual desktops
+        mainWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+      } else {
+        mainWindow.setAlwaysOnTop(false);
+        mainWindow.setVisibleOnAllWorkspaces(false);
+      }
+    }
+  });
+
+  // Global shortcut IPC handlers
+  ipcMain.handle('get-global-shortcut', async () => {
+    try {
+      return await modelConfig.getGlobalShortcut();
+    } catch (error) {
+      console.error('Failed to get global shortcut:', error);
+      return 'CommandOrControl+Shift+C'; // Default fallback
+    }
+  });
+
+  ipcMain.handle('set-global-shortcut', async (event, shortcut) => {
+    try {
+      // Save the shortcut setting
+      await modelConfig.setGlobalShortcut(shortcut);
+      
+      // Re-register the shortcut
+      const result = await registerGlobalShortcut();
+      
+      return result;
+    } catch (error) {
+      console.error('Failed to set global shortcut:', error);
+      return { success: false, error: error.message };
     }
   });
 });
@@ -678,6 +754,10 @@ app.on('before-quit', async (event) => {
     console.log('App closing, saving sessions and cleaning up...');
 
     try {
+      // Unregister all global shortcuts
+      globalShortcut.unregisterAll();
+      console.log('Global shortcuts unregistered');
+
       if (claudeProcessManager) {
         await claudeProcessManager.cleanup();
       }

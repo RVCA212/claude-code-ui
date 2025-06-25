@@ -1,6 +1,7 @@
 const { ipcMain } = require('electron');
 const McpServerManager = require('./mcp-server-manager');
 const path = require('path');
+const { exec } = require('child_process');
 
 class IPCHandlers {
   constructor(sessionManager, checkpointManager, fileOperations, modelConfig, claudeProcessManager, mainWindow) {
@@ -63,6 +64,37 @@ class IPCHandlers {
     ipcMain.handle('set-api-key', async (event, apiKey) => {
       this.claudeProcessManager.setApiKey(apiKey);
       return await this.claudeProcessManager.verifyApiKey(apiKey);
+    });
+
+    ipcMain.handle('install-claude-cli', async () => {
+      return new Promise((resolve) => {
+        const command = 'npm install -g @anthropic-ai/claude-code';
+        const platform = process.platform;
+
+        let execCommand;
+        if (platform === 'darwin') {
+          // Open new Terminal window and run command
+          execCommand = `osascript -e 'tell application "Terminal" to do script "${command}"' -e 'tell application "Terminal" to activate'`;
+        } else if (platform === 'win32') {
+          // Open new cmd window and run command
+          execCommand = `start cmd.exe /K "${command}"`;
+        } else { // Assuming linux
+          // This is tricky as it depends on the installed terminal. x-terminal-emulator is a good generic bet on Debian-based systems.
+          execCommand = `x-terminal-emulator -e "bash -c '${command}; exec bash'"`;
+        }
+
+        exec(execCommand, (error) => {
+          if (error) {
+            console.error(`exec error: ${error}`);
+            // This error is for launching the terminal, not the command inside.
+            resolve({ success: false, error: `Failed to open terminal: ${error.message}` });
+            return;
+          }
+          // The command to open terminal was successful.
+          // The actual npm install will run in the new terminal window.
+          resolve({ success: true });
+        });
+      });
     });
   }
 

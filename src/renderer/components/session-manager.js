@@ -24,6 +24,8 @@ class SessionManager {
     this.editTitleBtn = document.getElementById('editTitleBtn');
     this.conversationStatus = document.getElementById('conversationStatus');
     this.conversationContext = document.getElementById('conversationContext');
+    this.currentDirectoryBtn = document.getElementById('currentDirectoryBtn');
+    this.currentDirectoryText = document.getElementById('currentDirectoryText');
 
     // History dropdown elements
     this.historyBtn = document.getElementById('historyBtn');
@@ -52,6 +54,11 @@ class SessionManager {
     // Edit title button
     if (this.editTitleBtn) {
       this.editTitleBtn.addEventListener('click', () => this.startEditingTitle());
+    }
+
+    // Current directory button
+    if (this.currentDirectoryBtn) {
+      this.currentDirectoryBtn.addEventListener('click', () => this.navigateToCurrentDirectory());
     }
 
     // Title editing
@@ -363,6 +370,9 @@ class SessionManager {
       if (this.editTitleBtn) {
         this.editTitleBtn.style.display = 'none';
       }
+      if (this.currentDirectoryBtn) {
+        this.currentDirectoryBtn.style.display = 'none';
+      }
       if (this.conversationStatus) {
         this.conversationStatus.style.display = 'none';
       }
@@ -383,6 +393,9 @@ class SessionManager {
       if (this.editTitleBtn) {
         this.editTitleBtn.style.display = 'none';
       }
+      if (this.currentDirectoryBtn) {
+        this.currentDirectoryBtn.style.display = 'none';
+      }
       if (this.conversationStatus) {
         this.conversationStatus.style.display = 'flex';
         this.conversationStatus.innerHTML = '<div class="status-badge draft"><span class="status-dot"></span> Draft</div>';
@@ -396,6 +409,18 @@ class SessionManager {
       if (mainChat) mainChat.classList.remove('header-hidden');
       if (this.editTitleBtn) {
         this.editTitleBtn.style.display = 'flex';
+      }
+
+      // Update current directory button
+      if (this.currentDirectoryBtn && this.currentDirectoryText) {
+        if (session.statusInfo && session.statusInfo.hasWorkingDirectory) {
+          const directoryName = this.getDisplayPath(session.statusInfo.workingDirectory);
+          this.currentDirectoryText.textContent = directoryName;
+          this.currentDirectoryBtn.style.display = 'flex';
+          this.currentDirectoryBtn.title = `Navigate to working directory: ${session.statusInfo.workingDirectory}`;
+        } else {
+          this.currentDirectoryBtn.style.display = 'none';
+        }
       }
 
       // Update status
@@ -735,6 +760,46 @@ class SessionManager {
     const parts = path.split('/');
     const dirName = parts[parts.length - 1] || parts[parts.length - 2] || path;
     return dirName;
+  }
+
+  // Navigate to the current session's working directory
+  async navigateToCurrentDirectory() {
+    if (!this.currentSessionId) {
+      console.warn('No current session to navigate from');
+      return;
+    }
+
+    try {
+      // Get the current session context
+      const context = await window.electronAPI.getSessionContext(this.currentSessionId);
+      
+      if (!context || !context.cwdInfo || !context.cwdInfo.hasWorkingDirectory) {
+        console.warn('Current session has no working directory set');
+        return;
+      }
+
+      const directoryPath = context.cwdInfo.path;
+      console.log('Navigating to session working directory:', directoryPath);
+
+      // Navigate the file browser to the session's working directory
+      if (window.fileBrowser && typeof window.fileBrowser.navigateToDirectory === 'function') {
+        await window.fileBrowser.navigateToDirectory(directoryPath);
+        
+        // Show the file browser if it's hidden
+        if (window.fileBrowser.sidebarContainer && window.fileBrowser.sidebarContainer.classList.contains('hidden')) {
+          window.fileBrowser.toggleSidebarVisibility();
+        }
+        
+        // Switch to file view if currently in history view
+        if (window.fileBrowser.isHistoryView) {
+          window.fileBrowser.setSidebarView(false);
+        }
+      } else {
+        console.error('File browser component not available');
+      }
+    } catch (error) {
+      console.error('Failed to navigate to current directory:', error);
+    }
   }
 }
 

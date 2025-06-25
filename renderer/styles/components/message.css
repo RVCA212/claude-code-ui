@@ -32,7 +32,8 @@
 .diff-line-content::-webkit-scrollbar,
 #messagesContainer::-webkit-scrollbar,
 .message-content::-webkit-scrollbar,
-.assistant-response::-webkit-scrollbar {
+.assistant-response::-webkit-scrollbar,
+#messageInput::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
@@ -47,7 +48,8 @@
 .diff-line-content::-webkit-scrollbar-track,
 #messagesContainer::-webkit-scrollbar-track,
 .message-content::-webkit-scrollbar-track,
-.assistant-response::-webkit-scrollbar-track {
+.assistant-response::-webkit-scrollbar-track,
+#messageInput::-webkit-scrollbar-track {
   background: transparent;
   border-radius: 3px;
 }
@@ -62,7 +64,8 @@
 .diff-line-content::-webkit-scrollbar-thumb,
 #messagesContainer::-webkit-scrollbar-thumb,
 .message-content::-webkit-scrollbar-thumb,
-.assistant-response::-webkit-scrollbar-thumb {
+.assistant-response::-webkit-scrollbar-thumb,
+#messageInput::-webkit-scrollbar-thumb {
   background: var(--color-border);
   border-radius: 3px;
   opacity: 0.6;
@@ -79,7 +82,8 @@
 .diff-line-content::-webkit-scrollbar-thumb:hover,
 #messagesContainer::-webkit-scrollbar-thumb:hover,
 .message-content::-webkit-scrollbar-thumb:hover,
-.assistant-response::-webkit-scrollbar-thumb:hover {
+.assistant-response::-webkit-scrollbar-thumb:hover,
+#messageInput::-webkit-scrollbar-thumb:hover {
   background: var(--color-text-secondary);
   opacity: 0.8;
 }
@@ -104,7 +108,8 @@
 .diff-line-content,
 #messagesContainer,
 .message-content,
-.assistant-response {
+.assistant-response,
+#messageInput {
   scrollbar-width: thin;
   scrollbar-color: var(--color-border) transparent;
 }
@@ -906,7 +911,7 @@
 
 /* Compact mode for chat-only layout */
 .messages-container.compact-mode {
-  padding: var(--space-8) var(--space-12);
+  padding: var(--space-4) var(--space-12) var(--space-8) var(--space-12); /* Minimal top padding */
 }
 
 /* Empty state styling */

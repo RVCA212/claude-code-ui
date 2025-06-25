@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/png" href="../assets/icon.png">
     <link rel="stylesheet" href="styles/main.css">
     <!-- VSCode Codicons -->
     <link rel="stylesheet" href="../node_modules/@vscode/codicons/dist/codicon.css">
@@ -13,6 +14,7 @@
             flex-direction: column;
             height: 100vh;
             margin: 0;
+            padding: 0;
             overflow: hidden;
         }
     </style>
@@ -47,6 +49,14 @@
                 </svg>
             </button>
 
+            <!-- History Button (moved from chat header) -->
+            <button id="historyBtn" class="global-header-btn history-btn" title="Conversation history">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/>
+                    <polyline points="12 7 12 12 15 14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            </button>
+
             <!-- Left Sidebar Toggle Button (VSCode style) -->
             <button id="globalSidebarToggleBtn" class="global-header-btn sidebar-toggle" title="Toggle File Explorer">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -76,190 +86,198 @@
                     <button id="systemPromptTabBtn" class="settings-tab">System Prompt</button>
                     <button id="windowDetectionTabBtn" class="settings-tab">Window Detection</button>
                 </div>
-                <div id="generalSettingsSection">
-                    <h3>General Settings</h3>
-                    <div class="setup-status" id="setupStatus">
-                        <div class="status-item">
-                            <span class="status-label">Claude Code CLI:</span>
-                            <span class="status-value" id="cliStatus">Checking...</span>
-                        </div>
-                        <div class="status-item">
-                            <span class="status-label">API Key:</span>
-                            <span class="status-value" id="apiKeyStatus">Checking...</span>
-                        </div>
-                    </div>
-
-                    <div class="form-group">
-                        <label class="form-label">Anthropic API Key</label>
-                        <input type="password" class="form-control" id="apiKeyInput" placeholder="sk-ant-... (optional - can also use ANTHROPIC_API_KEY env var)">
-                        <small class="form-text">Get your API key from <a href="https://console.anthropic.com/" target="_blank">console.anthropic.com</a></small>
-                    </div>
-
-                    <div class="form-group">
-                        <label class="form-label">Session Management</label>
-                        <button type="button" class="btn btn--danger btn--sm clear-sessions-btn" id="clearAllSessionsBtn">
-                            Clear All Sessions
-                        </button>
-                        <small class="form-text">Permanently delete all conversation sessions. This action cannot be undone.</small>
-                    </div>
-                </div>
-
-                <!-- MCP Servers Section -->
-                <div id="mcpSettingsSection" style="display:none;">
-                    <h3>MCP Servers</h3>
-                    <div class="mcp-servers-section" id="mcpServersSection">
-                        <!-- Server list -->
-                        <div class="mcp-servers-list" id="mcpServersList"></div>
-
-                        <!-- Add/Edit form (hidden by default) -->
-                        <div class="mcp-server-form" id="mcpServerForm" style="display:none;">
-                            <input type="hidden" id="mcpServerId">
-                            <div class="form-group">
-                                <label class="form-label">Server Name</label>
-                                <input type="text" class="form-control" id="mcpServerName" placeholder="My API Server">
+                <div class="modal-content-container">
+                    <div id="generalSettingsSection">
+                        <h3>General Settings</h3>
+                        <div class="setup-status" id="setupStatus">
+                            <div class="status-item">
+                                <span class="status-label">Claude Code CLI:</span>
+                                <span class="status-value" id="cliStatus">Checking...</span>
                             </div>
-                            <div class="form-group">
-                                <label class="form-label">Transport Type</label>
-                                <select class="form-control" id="mcpTransportType">
-                                    <option value="sse">SSE (Server-Sent Events)</option>
-                                    <option value="http">HTTP</option>
-                                </select>
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label">Server URL</label>
-                                <input type="url" class="form-control" id="mcpServerUrl" placeholder="https://api.example.com/mcp">
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label">Headers (optional)</label>
-                                <div class="headers-container" id="mcpHeaders"></div>
-                                <button type="button" class="btn btn--secondary btn--sm" id="addHeaderBtn">Add Header</button>
-                            </div>
-                            <div class="modal-actions">
-                                <button type="button" class="btn btn--secondary btn--sm" id="cancelMcpServerBtn">Cancel</button>
-                                <button type="button" class="btn btn--primary btn--sm" id="saveMcpServerBtn">Save Server</button>
+                            <div class="status-item">
+                                <span class="status-label">API Key:</span>
+                                <span class="status-value" id="apiKeyStatus">Checking...</span>
                             </div>
                         </div>
 
-                        <!-- Add server button -->
-                        <button type="button" class="btn btn--outline btn--sm" id="addMcpServerBtn">+ Add MCP Server</button>
-                    </div>
-                </div>
-
-                <!-- Task Template Section -->
-                <div id="taskTemplateSettingsSection" style="display:none;">
-                    <h3>Task Template</h3>
-                    <div class="task-template-section">
                         <div class="form-group">
-                            <label class="form-label">Custom Task Template</label>
-                            <textarea
-                                class="form-control task-template-textarea"
-                                id="taskTemplateInput"
-                                rows="8"
-                                placeholder="Enter your custom task template..."
-                            ></textarea>
-                            <small class="form-text">
-                                This template will be inserted when you click the "New Task" button in the file browser.
-                                Use placeholders like &lt;task&gt;&lt;/task&gt; to position the cursor.
-                            </small>
+                            <label class="form-label">Anthropic API Key</label>
+                            <input type="password" class="form-control" id="apiKeyInput" placeholder="sk-ant-... (optional - can also use ANTHROPIC_API_KEY env var)">
+                            <small class="form-text">Get your API key from <a href="https://console.anthropic.com/" target="_blank">console.anthropic.com</a></small>
                         </div>
-                        <div class="task-template-actions">
-                            <button type="button" class="btn btn--secondary btn--sm" id="resetTaskTemplateBtn">
-                                Reset to Default
+
+                        <div class="form-group">
+                            <label class="form-label">Global Keyboard Shortcut</label>
+                            <div id="globalShortcutInput" class="shortcut-input" tabindex="0"></div>
+                            <small class="form-text">Click to record a new shortcut, then press the desired key combination.</small>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Session Management</label>
+                            <button type="button" class="btn btn--danger btn--sm clear-sessions-btn" id="clearAllSessionsBtn">
+                                Clear All Sessions
                             </button>
-                            <button type="button" class="btn btn--primary btn--sm" id="saveTaskTemplateBtn">
-                                Save Template
-                            </button>
+                            <small class="form-text">Permanently delete all conversation sessions. This action cannot be undone.</small>
                         </div>
                     </div>
-                </div>
 
-                <!-- System Prompt Section -->
-                <div id="systemPromptSettingsSection" style="display:none;">
-                    <h3>System Prompt</h3>
-                    <div class="system-prompt-section">
-                        <div class="form-group">
-                             <div class="toggle-switch-container">
-                                <label class="form-label" for="systemPromptEnabledToggle">Enable Custom System Prompt</label>
-                                <label class="toggle-switch">
-                                    <input type="checkbox" id="systemPromptEnabledToggle">
-                                    <span class="toggle-slider"></span>
-                                </label>
+                    <!-- MCP Servers Section -->
+                    <div id="mcpSettingsSection" style="display:none;">
+                        <h3>MCP Servers</h3>
+                        <div class="mcp-servers-section" id="mcpServersSection">
+                            <!-- Server list -->
+                            <div class="mcp-servers-list" id="mcpServersList"></div>
+
+                            <!-- Add/Edit form (hidden by default) -->
+                            <div class="mcp-server-form" id="mcpServerForm" style="display:none;">
+                                <input type="hidden" id="mcpServerId">
+                                <div class="form-group">
+                                    <label class="form-label">Server Name</label>
+                                    <input type="text" class="form-control" id="mcpServerName" placeholder="My API Server">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Transport Type</label>
+                                    <select class="form-control" id="mcpTransportType">
+                                        <option value="sse">SSE (Server-Sent Events)</option>
+                                        <option value="http">HTTP</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Server URL</label>
+                                    <input type="url" class="form-control" id="mcpServerUrl" placeholder="https://api.example.com/mcp">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Headers (optional)</label>
+                                    <div class="headers-container" id="mcpHeaders"></div>
+                                    <button type="button" class="btn btn--secondary btn--sm" id="addHeaderBtn">Add Header</button>
+                                </div>
+                                <div class="modal-actions">
+                                    <button type="button" class="btn btn--secondary btn--sm" id="cancelMcpServerBtn">Cancel</button>
+                                    <button type="button" class="btn btn--primary btn--sm" id="saveMcpServerBtn">Save Server</button>
+                                </div>
+                            </div>
+
+                            <!-- Add server button -->
+                            <button type="button" class="btn btn--outline btn--sm" id="addMcpServerBtn">+ Add MCP Server</button>
+                        </div>
+                    </div>
+
+                    <!-- Task Template Section -->
+                    <div id="taskTemplateSettingsSection" style="display:none;">
+                        <h3>Task Template</h3>
+                        <div class="task-template-section">
+                            <div class="form-group">
+                                <label class="form-label">Custom Task Template</label>
+                                <textarea
+                                    class="form-control task-template-textarea"
+                                    id="taskTemplateInput"
+                                    rows="8"
+                                    placeholder="Enter your custom task template..."
+                                ></textarea>
+                                <small class="form-text">
+                                    This template will be inserted when you click the "New Task" button in the file browser.
+                                    Use placeholders like &lt;task&gt;&lt;/task&gt; to position the cursor.
+                                </small>
+                            </div>
+                            <div class="task-template-actions">
+                                <button type="button" class="btn btn--secondary btn--sm" id="resetTaskTemplateBtn">
+                                    Reset to Default
+                                </button>
+                                <button type="button" class="btn btn--primary btn--sm" id="saveTaskTemplateBtn">
+                                    Save Template
+                                </button>
                             </div>
                         </div>
-                        <div class="form-group">
-                            <textarea
-                                class="form-control system-prompt-textarea"
-                                id="systemPromptInput"
-                                rows="8"
-                                placeholder="Enter your custom system prompt... e.g., 'You are a senior Rust engineer...'"
-                            ></textarea>
-                            <small class="form-text">
-                               This prompt will be used to instruct Claude at a high level.
-                            </small>
-                        </div>
-                        <div class="form-group">
-                            <div class="toggle-switch-container">
-                               <label class="form-label" for="systemPromptModeToggle">Append Mode (On) / Override Mode (Off)</label>
-                               <label class="toggle-switch">
-                                   <input type="checkbox" id="systemPromptModeToggle">
-                                   <span class="toggle-slider"></span>
-                               </label>
+                    </div>
+
+                    <!-- System Prompt Section -->
+                    <div id="systemPromptSettingsSection" style="display:none;">
+                        <h3>System Prompt</h3>
+                        <div class="system-prompt-section">
+                            <div class="form-group">
+                                 <div class="toggle-switch-container">
+                                    <label class="form-label" for="systemPromptEnabledToggle">Enable Custom System Prompt</label>
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" id="systemPromptEnabledToggle">
+                                        <span class="toggle-slider"></span>
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <textarea
+                                    class="form-control system-prompt-textarea"
+                                    id="systemPromptInput"
+                                    rows="8"
+                                    placeholder="Enter your custom system prompt... e.g., 'You are a senior Rust engineer...'"
+                                ></textarea>
+                                <small class="form-text">
+                                   This prompt will be used to instruct Claude at a high level.
+                                </small>
+                            </div>
+                            <div class="form-group">
+                                <div class="toggle-switch-container">
+                                   <label class="form-label" for="systemPromptModeToggle">Append Mode (On) / Override Mode (Off)</label>
+                                   <label class="toggle-switch">
+                                       <input type="checkbox" id="systemPromptModeToggle">
+                                       <span class="toggle-slider"></span>
+                                   </label>
+                               </div>
+                               <small class="form-text">
+                                   Append (On) adds to the default system prompt. Override (Off) replaces it entirely.
+                               </small>
                            </div>
-                           <small class="form-text">
-                               Append (On) adds to the default system prompt. Override (Off) replaces it entirely.
-                           </small>
-                       </div>
+                        </div>
                     </div>
-                </div>
 
-                <!-- Window Detection Section -->
-                <div id="windowDetectionSettingsSection" style="display:none;">
-                    <h3>Window Detection</h3>
-                    <div class="window-detection-section">
-                        <p class="form-text">Control which applications are monitored for open files and workspaces.</p>
+                    <!-- Window Detection Section -->
+                    <div id="windowDetectionSettingsSection" style="display:none;">
+                        <h3>Window Detection</h3>
+                        <div class="window-detection-section">
+                            <p class="form-text">Control which applications are monitored for open files and workspaces.</p>
 
-                        <div class="form-group">
-                            <div class="toggle-switch-container">
-                                <label class="form-label" for="vsCodeDetectionToggle">VS Code Detection</label>
-                                <label class="toggle-switch">
-                                    <input type="checkbox" id="vsCodeDetectionToggle" checked>
-                                    <span class="toggle-slider"></span>
-                                </label>
+                            <div class="form-group">
+                                <div class="toggle-switch-container">
+                                    <label class="form-label" for="vsCodeDetectionToggle">VS Code Detection</label>
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" id="vsCodeDetectionToggle" checked>
+                                        <span class="toggle-slider"></span>
+                                    </label>
+                                </div>
+                                <small class="form-text">Detect open files and workspaces in Visual Studio Code</small>
                             </div>
-                            <small class="form-text">Detect open files and workspaces in Visual Studio Code</small>
-                        </div>
 
-                        <div class="form-group">
-                            <div class="toggle-switch-container">
-                                <label class="form-label" for="cursorDetectionToggle">Cursor Detection</label>
-                                <label class="toggle-switch">
-                                    <input type="checkbox" id="cursorDetectionToggle" checked>
-                                    <span class="toggle-slider"></span>
-                                </label>
+                            <div class="form-group">
+                                <div class="toggle-switch-container">
+                                    <label class="form-label" for="cursorDetectionToggle">Cursor Detection</label>
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" id="cursorDetectionToggle" checked>
+                                        <span class="toggle-slider"></span>
+                                    </label>
+                                </div>
+                                <small class="form-text">Detect open files and workspaces in Cursor editor</small>
                             </div>
-                            <small class="form-text">Detect open files and workspaces in Cursor editor</small>
-                        </div>
 
-                        <div class="form-group">
-                            <div class="toggle-switch-container">
-                                <label class="form-label" for="excelDetectionToggle">Excel Detection</label>
-                                <label class="toggle-switch">
-                                    <input type="checkbox" id="excelDetectionToggle">
-                                    <span class="toggle-slider"></span>
-                                </label>
+                            <div class="form-group">
+                                <div class="toggle-switch-container">
+                                    <label class="form-label" for="excelDetectionToggle">Excel Detection</label>
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" id="excelDetectionToggle">
+                                        <span class="toggle-slider"></span>
+                                    </label>
+                                </div>
+                                <small class="form-text">Detect open workbooks and recent files in Microsoft Excel</small>
                             </div>
-                            <small class="form-text">Detect open workbooks and recent files in Microsoft Excel</small>
-                        </div>
 
-                        <div class="form-group">
-                            <div class="toggle-switch-container">
-                                <label class="form-label" for="photoshopDetectionToggle">Photoshop Detection</label>
-                                <label class="toggle-switch">
-                                    <input type="checkbox" id="photoshopDetectionToggle">
-                                    <span class="toggle-slider"></span>
-                                </label>
+                            <div class="form-group">
+                                <div class="toggle-switch-container">
+                                    <label class="form-label" for="photoshopDetectionToggle">Photoshop Detection</label>
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" id="photoshopDetectionToggle">
+                                        <span class="toggle-slider"></span>
+                                    </label>
+                                </div>
+                                <small class="form-text">Detect open images and recent files in Adobe Photoshop</small>
                             </div>
-                            <small class="form-text">Detect open images and recent files in Adobe Photoshop</small>
                         </div>
                     </div>
                 </div>
@@ -397,6 +415,9 @@
             </div>
         </div>
 
+        <!-- Sidebar Resizer -->
+        <div class="sidebar-resizer" title="Drag to resize sidebar"></div>
+
         <!-- File Editor Container -->
         <div class="editor-container" id="editorContainer">
             <!-- File editor will be rendered here -->
@@ -423,6 +444,11 @@
                         Select a conversation
                     </h2>
                     </div>
+                    <!-- Current Directory Button -->
+                    <button class="current-directory-btn" id="currentDirectoryBtn" style="display: none;" title="Navigate to current working directory">
+                        <span class="codicon codicon-folder"></span>
+                        <span class="current-directory-text" id="currentDirectoryText"></span>
+                    </button>
                     <div class="conversation-status" id="conversationStatus" style="display: none;"></div>
                     <div class="conversation-context" id="conversationContext" style="display: none;"></div>
                 </div>
@@ -432,15 +458,6 @@
                     <button class="header-action-btn" id="newConversationBtn" title="New Conversation">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                             <path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                        </svg>
-                    </button>
-
-                    <!-- History Button -->
-                    <button class="history-btn" id="historyBtn" title="Conversation history">
-                        <!-- Clock/history icon -->
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <circle cx="12" cy="12" r="9" stroke="#fff" stroke-width="2"/>
-                            <polyline points="12 7 12 12 15 14" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                         </svg>
                     </button>
                 </div>
@@ -493,9 +510,6 @@
                     </button>
                 </div>
                 <div class="input-info">
-                    <button class="lock-btn" id="lockBtn" title="Lock window (won't hide on focus loss)">
-                        <span class="codicon codicon-unlock"></span>
-                    </button>
                     <select class="model-select" id="modelSelect">
                         <option value="">Claude 4 Sonnet</option>
                         <option value="claude-3-5-haiku-20241022">Claude 3.5 Haiku</option>
@@ -504,6 +518,9 @@
                     <div class="input-metrics">
                         <span class="session-info" id="sessionInfo"></span>
                     </div>
+                    <button class="lock-btn" id="lockBtn" title="Lock window (won't hide on focus loss)">
+                        <span class="codicon codicon-unlock"></span>
+                    </button>
                 </div>
             </div>
         </div>
@@ -644,6 +661,7 @@
 
     <!-- Load component modules -->
     <script src="../src/renderer/components/file-browser.js"></script>
+    <script src="../src/renderer/components/sidebar-resizer.js"></script>
     <script src="../src/renderer/components/file-editor.js"></script>
     <script src="../src/renderer/components/file-viewer.js"></script>
     <script src="../src/renderer/components/chat-sidebar.js"></script>

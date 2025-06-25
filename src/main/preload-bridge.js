@@ -24,6 +24,10 @@ class PreloadBridge {
       getWindowDetectionSettings: () => ipcRenderer.invoke('get-window-detection-settings'),
       setWindowDetectionSettings: (settings) => ipcRenderer.invoke('set-window-detection-settings', settings),
 
+      // Global shortcut management
+      getGlobalShortcut: () => ipcRenderer.invoke('get-global-shortcut'),
+      setGlobalShortcut: (shortcut) => ipcRenderer.invoke('set-global-shortcut', shortcut),
+
       // Session management
       getSessions: () => ipcRenderer.invoke('get-sessions'),
       createSession: (title) => ipcRenderer.invoke('create-session', title),
@@ -126,7 +130,10 @@ class PreloadBridge {
       resizeWindow: ({ width, height }) => ipcRenderer.invoke('resize-window', { width, height }),
 
       // Remove listeners
-      removeAllListeners: (channel) => ipcRenderer.removeAllListeners(channel)
+      removeAllListeners: (channel) => ipcRenderer.removeAllListeners(channel),
+
+      // New CLI installer
+      installClaudeCli: () => ipcRenderer.invoke('install-claude-cli')
     };
   }
 

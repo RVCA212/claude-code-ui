@@ -44,6 +44,10 @@ class FileBrowser {
     // Sidebar toggle button located in the global header
     this.sidebarToggleBtn = document.getElementById('globalSidebarToggleBtn');
 
+    // Sidebar resizer for dynamic width adjustment
+    this.sidebarResizer = null;
+    this.currentIndentationPx = 20; // Default indentation per level
+
     // Workspace context state
     this.currentWorkspace = null;
     this.workspaceFolders = [];
@@ -54,6 +58,7 @@ class FileBrowser {
     this.applyInitialQuickAccessState();
     this.loadInitialDirectory();
     this.loadOpenApplicationWindows();
+    this.initializeSidebarResizer();
 
     // Listen for directory changes from session switching
     document.addEventListener('directoryChanged', (event) => {
@@ -850,7 +855,7 @@ class FileBrowser {
       const icon = item.isDirectory ? this.getFileIcon('folder') : this.getFileIcon(item.name);
       const isExpanded = this.isFolderExpanded(item.path);
       const hasDropdown = item.isDirectory;
-      const indentStyle = `padding-left: ${12 + (indentLevel * 20)}px`;
+      const indentStyle = `padding-left: ${12 + (indentLevel * this.currentIndentationPx)}px`;
 
       let itemHTML = `
         <div class="file-item ${item.isDirectory ? 'directory' : 'file'} ${isExpanded ? 'expanded' : ''}"
@@ -940,9 +945,8 @@ class FileBrowser {
           </div>
         `;
 
-        // Files for this app (limit to first 5 to avoid clutter)
-        const displayFiles = files.slice(0, 5);
-        const openFilesHTML = displayFiles.map(file => {
+        // Files for this app
+        const openFilesHTML = files.map(file => {
           // Check if this is a workspace item
           const isWorkspace = file.isWorkspace || false;
           const workspaceDirectory = file.workspaceDirectory || file.path;
@@ -969,15 +973,6 @@ class FileBrowser {
         }).join('');
 
         quickAccessHTML += openFilesHTML;
-
-        // Show "and X more" if there are additional files
-        if (files.length > 5) {
-          quickAccessHTML += `
-            <div class="quick-access-more">
-              <span class="more-text">... and ${files.length - 5} more files</span>
-            </div>
-          `;
-        }
       }
     } else if (this.windowDetectionEnabled) {
       // Show empty state for window detection
@@ -1603,11 +1598,25 @@ class FileBrowser {
   toggleSidebarVisibility() {
     if (!this.sidebarContainer) return;
 
-    const isHidden = this.sidebarContainer.classList.toggle('hidden');
+    const isNowHidden = this.sidebarContainer.classList.toggle('hidden');
+
+    // If sidebar is now visible, check window height and expand if needed
+    if (!isNowHidden) {
+      const minHeight = 450;
+      if (window.innerHeight < minHeight) {
+        console.log(`File browser opened, ensuring window height is at least ${minHeight}px`);
+        window.electronAPI.resizeWindow({ height: minHeight });
+      }
+    }
 
     // Update tooltip text
     if (this.sidebarToggleBtn) {
-      this.sidebarToggleBtn.title = isHidden ? 'Show File Explorer' : 'Hide File Explorer';
+      this.sidebarToggleBtn.title = isNowHidden ? 'Show File Explorer' : 'Hide File Explorer';
+    }
+
+    // Update resizer visibility
+    if (this.sidebarResizer && typeof this.sidebarResizer.updateResizerVisibility === 'function') {
+      this.sidebarResizer.updateResizerVisibility();
     }
 
     // Update global header button states
@@ -2144,6 +2153,31 @@ class FileBrowser {
         }
       }
     }
+  }
+
+  /* -------------------------- Sidebar Resizer Integration ------------------------- */
+
+  // Initialize the sidebar resizer component
+  initializeSidebarResizer() {
+    // Wait for SidebarResizer to be available
+    if (typeof SidebarResizer !== 'undefined') {
+      this.sidebarResizer = new SidebarResizer();
+      console.log('Sidebar resizer initialized');
+    } else {
+      // Retry after a short delay if SidebarResizer isn't loaded yet
+      setTimeout(() => {
+        this.initializeSidebarResizer();
+      }, 100);
+    }
+  }
+
+  // Update file indentation based on sidebar width
+  updateIndentationForWidth(width, indentationPx) {
+    this.currentIndentationPx = indentationPx;
+    console.log(`Updating indentation: width=${width}px, indentation=${indentationPx}px per level`);
+    
+    // Re-render the file list with new indentation
+    this.renderFileList();
   }
 
   /* -------------------------- Keyboard Navigation Methods ------------------------- */

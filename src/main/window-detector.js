@@ -1023,7 +1023,6 @@ class WindowDetector {
    */
   async getRecentPhotoshopFilesFromSystem() {
     const recentFiles = [];
-    const maxFiles = 10;
     
     try {
       // Common locations for image files with error handling
@@ -1106,7 +1105,7 @@ class WindowDetector {
 
       // Sort by last modified (most recent first) and limit
       foundFiles.sort((a, b) => b.lastModified - a.lastModified);
-      recentFiles.push(...foundFiles.slice(0, maxFiles));
+      recentFiles.push(...foundFiles);
 
       if (this.debugMode) {
         console.log(`Search complete: ${recentFiles.length} image files found (${searchErrors} errors)`);
@@ -1132,7 +1131,6 @@ class WindowDetector {
    */
   async getRecentExcelFilesFromSystem() {
     const recentFiles = [];
-    const maxFiles = 10;
     
     try {
       // Common locations for Excel files with error handling
@@ -1208,7 +1206,7 @@ class WindowDetector {
 
       // Sort by last modified (most recent first) and limit
       foundFiles.sort((a, b) => b.lastModified - a.lastModified);
-      recentFiles.push(...foundFiles.slice(0, maxFiles));
+      recentFiles.push(...foundFiles);
 
       if (this.debugMode) {
         console.log(`Search complete: ${recentFiles.length} Excel files found (${searchErrors} errors)`);

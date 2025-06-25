@@ -22,4 +22,69 @@
   border-right: 1px solid var(--color-border);
   /* Removed global drag region so inner controls stay interactive. */
   /* No padding-top needed - global header handles spacing now */
+  transition: width 0.15s ease-out;
+}
+
+/* ============================================================================
+   Sidebar Resizer
+   ============================================================================ */
+
+/* Resizer divider for dragging to resize sidebar */
+.sidebar-resizer {
+  width: 4px;
+  background: transparent;
+  cursor: col-resize;
+  position: relative;
+  z-index: var(--z-dropdowns);
+  order: 1.5; /* Position between sidebar (order: 1) and editor (order: 2) */
+  flex-shrink: 0;
+}
+
+/* Invisible hit area for easier grabbing */
+.sidebar-resizer::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -2px;
+  right: -2px;
+  bottom: 0;
+  background: transparent;
+}
+
+.sidebar-resizer:hover {
+  background: rgba(var(--color-primary-rgb), 0.3);
+}
+
+.sidebar-resizer:hover::before {
+  background: rgba(var(--color-primary-rgb), 0.1);
+}
+
+.sidebar-resizer.dragging {
+  background: var(--color-primary);
+}
+
+.sidebar-resizer.dragging::before {
+  background: rgba(var(--color-primary-rgb), 0.2);
+}
+
+/* Hide resizer when sidebar is hidden */
+.sidebar.hidden + .sidebar-resizer {
+  display: none;
+}
+
+/* Global styles for when resizing is active */
+body.sidebar-resizing {
+  cursor: col-resize !important;
+  user-select: none !important;
+  -webkit-user-select: none !important;
+  -moz-user-select: none !important;
+  -ms-user-select: none !important;
+}
+
+body.sidebar-resizing * {
+  cursor: col-resize !important;
+  user-select: none !important;
+  -webkit-user-select: none !important;
+  -moz-user-select: none !important;
+  -ms-user-select: none !important;
 }

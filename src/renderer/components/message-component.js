@@ -701,16 +701,7 @@ class MessageComponent {
     const isDraft = context?.isDraft || context?.id === 'draft';
 
     if (isDraft) {
-        this.sessionInfo.innerHTML = '<a href="#" class="history-link">history</a>';
-        const historyLink = this.sessionInfo.querySelector('.history-link');
-        if (historyLink) {
-          historyLink.addEventListener('click', (e) => {
-            e.preventDefault();
-            if (window.sessionManager) {
-              window.sessionManager.toggleHistoryDropdown();
-            }
-          });
-        }
+        this.sessionInfo.innerHTML = '';
     } else if (context && context.claudeSessionId) {
       this.sessionInfo.textContent = `Session: ${context.claudeSessionId.substring(0, 8)}...`;
     } else {
@@ -1191,12 +1182,12 @@ class MessageComponent {
       this.lockBtn.classList.add('locked');
       this.lockIcon.classList.remove('codicon-unlock');
       this.lockIcon.classList.add('codicon-lock');
-      this.lockBtn.title = 'Unlock window (will hide on focus loss)';
+      this.lockBtn.title = 'Unlock window (window can move behind others)';
     } else {
       this.lockBtn.classList.remove('locked');
       this.lockIcon.classList.remove('codicon-lock');
       this.lockIcon.classList.add('codicon-unlock');
-      this.lockBtn.title = 'Lock window (won\'t hide on focus loss)';
+      this.lockBtn.title = 'Lock window (stay always on top)';
     }
   }
 }

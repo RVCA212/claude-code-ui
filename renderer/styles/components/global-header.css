@@ -101,6 +101,22 @@
   background: var(--color-primary-hover);
 }
 
+/* Specific styling for history button now placed in global header */
+.global-header-btn.history-btn {
+  width: 32px;
+  height: 32px;
+  color: var(--color-text-secondary);
+}
+
+.global-header-btn.history-btn svg {
+  color: currentColor;
+}
+
+.global-header-btn.history-btn:hover {
+  background: var(--color-secondary);
+  color: var(--color-text);
+}
+
 /* ============================================================================
    App Title and Text Elements
    ============================================================================ */

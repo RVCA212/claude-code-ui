@@ -27,6 +27,8 @@
   font-family: var(--font-family-base);
   color: var(--color-text);
   background-color: var(--color-background);
+  margin: 0; /* Remove any margin */
+  padding: 0; /* Remove any padding */
 }
 
 .app-content {
@@ -36,6 +38,8 @@
   /* Flexbox layout for resizable three-panel design */
   width: 100vw; /* Constrain to viewport width */
   overflow: hidden; /* Prevent horizontal scrolling */
+  margin: 0; /* Ensure no margin */
+  padding: 0; /* Ensure no padding */
 }
 
 /* ============================================================================
@@ -66,13 +70,15 @@
   min-width: 0; /* Allow full flexibility */
   max-width: none; /* No maximum constraint */
   width: 100%; /* Take full available width */
+  margin-top: 0; /* Remove any top margin */
+  padding-top: 0; /* Remove any top padding */
 }
 
 /* Compact mode: When both file browser and editor are hidden, create compact layout */
 .app-content:not(.editor-active) .sidebar.hidden ~ .chat-sidebar:not(.hidden) {
   /* This is true compact mode - only chat sidebar visible */
   flex: 1;
-  min-height: 200px; /* Very small minimum to ensure usability */
+  min-height: 140px; /* Reduced for extreme compact view */
   height: auto; /* Allow natural height in compact mode */
 }
 
@@ -264,16 +270,6 @@
 
 /* Chat sidebar visibility is now handled by the base .chat-sidebar rules in chat-sidebar.css */
 
-.history-link {
-    color: var(--color-text-secondary);
-    text-decoration: none;
-}
-
-.history-link:hover {
-    text-decoration: underline;
-    color: var(--color-primary);
-}
-
 .history-dropdown {
     position: fixed;
     z-index: var(--z-modal);
@@ -298,3 +294,82 @@
 .lock-btn.locked {
     color: var(--color-primary);
 }
+
+/* Global Scrollbar Styles for Webkit browsers */
+::-webkit-scrollbar {
+  width: 8px; /* Vertical scrollbar width */
+  height: 8px; /* Horizontal scrollbar height */
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-background); /* Track color */
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: var(--color-border); /* Thumb color */
+  border-radius: 10px;
+  border: 2px solid var(--color-background); /* Space around thumb */
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: var(--color-primary); /* Thumb color on hover */
+}
+
+/* Specific scrollbar styles for messages container */
+.messages-container {
+  flex: 1;
+  overflow-y: auto;
+  /* Apply custom scrollbar styles here */
+  scrollbar-width: thin; /* Firefox */
+  scrollbar-color: var(--color-border) var(--color-background); /* Firefox */
+}
+
+.messages-container::-webkit-scrollbar {
+  width: 8px;
+}
+
+.messages-container::-webkit-scrollbar-track {
+  background: var(--color-background);
+}
+
+.messages-container::-webkit-scrollbar-thumb {
+  background-color: var(--color-border);
+  border: 2px solid var(--color-background);
+}
+
+.messages-container::-webkit-scrollbar-thumb:hover {
+  background-color: var(--color-primary);
+}
+
+/* Specific scrollbar styles for file list */
+.file-list {
+  flex: 1;
+  overflow-y: auto;
+  /* Apply custom scrollbar styles here */
+  scrollbar-width: thin; /* Firefox */
+  scrollbar-color: var(--color-border) var(--color-background); /* Firefox */
+}
+
+.file-list::-webkit-scrollbar {
+  width: 8px;
+}
+
+.file-list::-webkit-scrollbar-track {
+  background: var(--color-background);
+}
+
+.file-list::-webkit-scrollbar-thumb {
+  background-color: var(--color-border);
+  border: 2px solid var(--color-background);
+}
+
+.file-list::-webkit-scrollbar-thumb:hover {
+  background-color: var(--color-primary);
+}
+
+/* ============================================================================
+   Compact Mode and Empty State Styles
+   ============================================================================ */
+
+/* Compact mode for chat-only layout */

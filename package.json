@@ -54,17 +54,19 @@
     ],
     "mac": {
       "category": "public.app-category.developer-tools",
-      "icon": "assets/icon.png",
+      "icon": "assets/icon-large.png",
       "extendInfo": {
         "LSUIElement": false,
         "LSBackgroundOnly": false
       }
     },
     "win": {
-      "target": "nsis"
+      "target": "nsis",
+      "icon": "assets/icon-large.png"
     },
     "linux": {
-      "target": "AppImage"
+      "target": "AppImage",
+      "icon": "assets/icon-large.png"
     }
   }
 }

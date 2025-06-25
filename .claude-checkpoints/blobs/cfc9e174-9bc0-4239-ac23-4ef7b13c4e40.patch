@@ -1,0 +1,10 @@
+Index: main.js
+===================================================================
+--- main.js	before
++++ main.js	after
+@@ -1,2 +1,2 @@
+   // First try to load a custom icon if it exists
+-  const iconPath = path.join(__dirname, '../../assets/tray-icon.png');
+\ No newline at end of file
++  const iconPath = path.join(__dirname, '../../assets/tray-icon-small.png');
+\ No newline at end of file

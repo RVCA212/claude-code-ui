@@ -1080,22 +1080,6 @@
   opacity: 0.9;
 }
 
-/* More files indicator */
-.quick-access-more {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: var(--space-4) var(--space-8);
-  margin-bottom: var(--space-4);
-  font-size: 0.75rem;
-  color: var(--color-text-secondary);
-  font-style: italic;
-}
-
-.more-text {
-  opacity: 0.8;
-}
-
 /* Empty state for open files */
 .quick-access-empty {
   display: flex;

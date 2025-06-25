@@ -126,6 +126,12 @@
   overflow: hidden; /* Prevent overflow */
 }
 
+/* Compact mode - remove all top spacing to touch global header */
+.app-content:not(.editor-active) .sidebar.hidden ~ .chat-sidebar .main-chat {
+  padding-top: 0;
+  margin-top: 0;
+}
+
 /* ============================================================================
    Chat Header Section
    ============================================================================ */
@@ -140,6 +146,11 @@
   justify-content: space-between;
   gap: var(--space-8);
   /* Compact header for sidebar */
+}
+
+/* Compact mode - minimize chat header spacing */
+.app-content:not(.editor-active) .sidebar.hidden ~ .chat-sidebar .chat-header {
+  display: none; /* Hide header completely in compact mode */
 }
 
 .conversation-header-info {
@@ -221,6 +232,16 @@
   overflow-y: auto;
   padding: var(--space-12);
   background-color: var(--color-surface);
+}
+
+/* Compact mode - remove top padding to allow touching global header */
+.app-content:not(.editor-active) .sidebar.hidden ~ .chat-sidebar .messages-container {
+  padding-top: 0;
+}
+
+/* Ultra-compact mode - for maximum space efficiency when window is very small */
+.app-content:not(.editor-active) .sidebar.hidden ~ .chat-sidebar .messages-container.compact-mode {
+  padding-top: var(--space-2); /* Nearly touching the header */
 }
 
 /* Custom scrollbar for message container */

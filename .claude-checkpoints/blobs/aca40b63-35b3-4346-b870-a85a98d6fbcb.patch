@@ -1,0 +1,9 @@
+Index: package.json
+===================================================================
+--- package.json	before
++++ package.json	after
+@@ -1,1 +1,1 @@
+-      "icon": "assets/icon.png"
+\ No newline at end of file
++      "icon": "assets/icon-large.png"
+\ No newline at end of file

@@ -151,6 +151,12 @@
   font-family: var(--font-family-mono);
 }
 
+/* ====== Input Info Alignment Adjustments ====== */
+.input-info .lock-btn {
+  margin-left: auto; /* Push lock icon to far right */
+  margin-right: 0;  /* Remove right margin from previous layout */
+}
+
 /* ============================================================================
    File Mention Autocomplete
    ============================================================================ */

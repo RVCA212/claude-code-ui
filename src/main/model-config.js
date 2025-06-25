@@ -12,6 +12,9 @@ class ModelConfig {
     this.systemPromptEnabled = false;
     this.systemPromptMode = 'append'; // 'append' or 'override'
 
+    // Global shortcut setting
+    this.globalShortcut = 'CommandOrControl+Shift+C'; // Default shortcut
+
     // Window detection settings
     this.windowDetectionSettings = {
       vscode: true,    // default on
@@ -40,6 +43,9 @@ class ModelConfig {
       this.systemPromptEnabled = typeof config.systemPromptEnabled === 'boolean' ? config.systemPromptEnabled : false;
       this.systemPromptMode = config.systemPromptMode || 'append';
 
+      // Load global shortcut setting
+      this.globalShortcut = config.globalShortcut || 'CommandOrControl+Shift+C';
+
       // Load window detection settings
       this.windowDetectionSettings = {
         vscode: typeof config.windowDetectionSettings?.vscode === 'boolean' ? config.windowDetectionSettings.vscode : true,
@@ -67,6 +73,9 @@ class ModelConfig {
       this.systemPromptEnabled = false;
       this.systemPromptMode = 'append';
 
+      // Default global shortcut setting
+      this.globalShortcut = 'CommandOrControl+Shift+C';
+
       // Default window detection settings
       this.windowDetectionSettings = {
         vscode: true,
@@ -91,6 +100,7 @@ class ModelConfig {
         systemPrompt: this.systemPrompt,
         systemPromptEnabled: this.systemPromptEnabled,
         systemPromptMode: this.systemPromptMode,
+        globalShortcut: this.globalShortcut,
         windowDetectionSettings: this.windowDetectionSettings,
         updatedAt: new Date().toISOString()
       };
@@ -214,6 +224,25 @@ class ModelConfig {
     await this.saveModelConfig();
     console.log('Window detection settings updated:', this.windowDetectionSettings);
     return this.getWindowDetectionSettings();
+  }
+
+  // --- Global Shortcut Methods ---
+
+  // Get global shortcut setting
+  getGlobalShortcut() {
+    return this.globalShortcut;
+  }
+
+  // Set global shortcut setting
+  async setGlobalShortcut(shortcut) {
+    if (!shortcut || typeof shortcut !== 'string') {
+      throw new Error('Invalid global shortcut');
+    }
+
+    this.globalShortcut = shortcut;
+    await this.saveModelConfig();
+    console.log('Global shortcut updated to:', this.globalShortcut);
+    return this.globalShortcut;
   }
 }
 

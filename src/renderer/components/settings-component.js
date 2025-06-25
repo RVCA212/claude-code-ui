@@ -5,6 +5,8 @@ class SettingsComponent {
     this.cache = new Map();
     this.CACHE_TTL = 5 * 60 * 1000; // 5 minutes
     this._elements = {};
+    this.isRecordingShortcut = false;
+    this.newShortcut = null;
 
     this.initializeElements();
     this.setupEventListeners();
@@ -28,6 +30,7 @@ class SettingsComponent {
   get apiKeyInput() { return this._getElement('apiKeyInput'); }
   get modelSelect() { return this._getElement('modelSelect'); }
   get clearAllSessionsBtn() { return this._getElement('clearAllSessionsBtn'); }
+  get globalShortcutInput() { return this._getElement('globalShortcutInput'); }
 
   // Tab elements
   get generalTabBtn() { return this._getElement('generalTabBtn'); }
@@ -99,6 +102,13 @@ class SettingsComponent {
     // Clear sessions button
     if (this.clearAllSessionsBtn) {
       this.clearAllSessionsBtn.addEventListener('click', () => this.clearAllSessions());
+    }
+
+    // Global shortcut recorder
+    if (this.globalShortcutInput) {
+      this.globalShortcutInput.addEventListener('click', () => this.enterRecordingMode());
+      this.globalShortcutInput.addEventListener('keydown', (e) => this.handleShortcutKeyDown(e));
+      this.globalShortcutInput.addEventListener('blur', () => this.exitRecordingMode());
     }
 
     // Close modal when clicking outside
@@ -202,13 +212,17 @@ class SettingsComponent {
   async loadInitialSettings() {
     try {
       // Load data in parallel for better performance
-      const [currentModel, setupStatus] = await Promise.all([
+      const [currentModel, setupStatus, globalShortcut] = await Promise.all([
         this.getCachedData('currentModel', () => window.electronAPI.getCurrentModel()),
-        this.getCachedData('setupStatus', () => window.electronAPI.checkSetup())
+        this.getCachedData('setupStatus', () => window.electronAPI.checkSetup()),
+        this.getCachedData('globalShortcut', () => window.electronAPI.getGlobalShortcut())
       ]);
 
       this.currentModel = currentModel;
       this.updateModelSelect();
+      if (this.globalShortcutInput) {
+        this.globalShortcutInput.textContent = globalShortcut || 'CommandOrControl+Shift+C';
+      }
       this.updateCliStatus(setupStatus.cliAvailable);
       this.updateApiKeyStatus(setupStatus.apiKeySet ? 'Set' : 'Not set', setupStatus.apiKeySet ? 'success' : 'warning');
       this.updateSaveButtonState();
@@ -228,9 +242,11 @@ class SettingsComponent {
     // Show modal immediately for better perceived performance
     this.settingsModal.style.display = 'flex';
 
+    /*
     if (window.electronAPI && window.electronAPI.resizeWindow) {
       window.electronAPI.resizeWindow({ height: 600 });
     }
+    */
 
     // Default to general tab on open, or switch to specified tab
     this.switchTab(tab);
@@ -242,10 +258,14 @@ class SettingsComponent {
   closeSettings() {
     if (this.settingsModal) {
       this.settingsModal.style.display = 'none';
+      /*
       if (window.electronAPI && window.electronAPI.resizeWindow) {
         window.electronAPI.resizeWindow({ height: 250 });
       }
+      */
     }
+    // Reset any pending changes
+    this.newShortcut = null;
   }
 
   async saveSettings() {
@@ -254,6 +274,18 @@ class SettingsComponent {
       const apiKey = this.apiKeyInput?.value.trim();
       if (apiKey) {
         await this.saveApiKey(apiKey);
+      }
+
+      // Save global shortcut if changed
+      if (this.newShortcut) {
+        const result = await window.electronAPI.setGlobalShortcut(this.newShortcut);
+        if (result.success) {
+          this.invalidateCache('globalShortcut');
+          this.showSuccess(`Global shortcut updated to ${this.newShortcut}`);
+          this.newShortcut = null;
+        } else {
+          this.showError(`Failed to set shortcut: ${result.error}`);
+        }
       }
 
       // Model is saved automatically when changed
@@ -344,12 +376,34 @@ class SettingsComponent {
 
   updateCliStatus(available) {
     if (this.cliStatus) {
+      this.cliStatus.innerHTML = ''; // Clear previous content
       if (available) {
         this.cliStatus.textContent = 'Available';
         this.cliStatus.className = 'status-value success';
       } else {
-        this.cliStatus.textContent = 'Not found';
-        this.cliStatus.className = 'status-value error';
+        // Not available, show an install button
+        this.cliStatus.className = ''; // remove status-value classes
+        const installButton = document.createElement('button');
+        installButton.textContent = 'Install CLI';
+        installButton.className = 'btn btn--primary btn--sm';
+        installButton.addEventListener('click', async () => {
+          installButton.textContent = 'Starting...';
+          installButton.disabled = true;
+          try {
+            const result = await window.electronAPI.installClaudeCli();
+            if (result.success) {
+              this.showSuccess('Installation started in a new terminal. After it finishes, please reopen settings to see the updated status.');
+            } else {
+              this.showError(result.error || 'Failed to start installation.');
+            }
+          } catch (error) {
+            this.showError(error.message);
+          } finally {
+            installButton.textContent = 'Install CLI';
+            installButton.disabled = false;
+          }
+        });
+        this.cliStatus.appendChild(installButton);
       }
     }
   }
@@ -369,9 +423,9 @@ class SettingsComponent {
 
   updateSaveButtonState() {
     if (this.saveSettingsBtn) {
-      // Enable save button if there's content in API key input
       const hasApiKey = this.apiKeyInput?.value.trim().length > 0;
-      this.saveSettingsBtn.disabled = !hasApiKey;
+      const hasNewShortcut = !!this.newShortcut;
+      this.saveSettingsBtn.disabled = !hasApiKey && !hasNewShortcut;
     }
   }
 
@@ -388,6 +442,7 @@ class SettingsComponent {
   showSuccess(message) {
     console.log('Settings success:', message);
     // You could implement a toast notification here
+    alert(message);
   }
 
   // Public methods for external access
@@ -848,6 +903,91 @@ class SettingsComponent {
       console.error('Failed to save window detection settings:', error);
       this.showError('Failed to save window detection settings');
     }
+  }
+
+  /* ---------------------- Shortcut Recorder Methods --------------------- */
+
+  enterRecordingMode() {
+    if (this.isRecordingShortcut) return;
+    this.isRecordingShortcut = true;
+    this.globalShortcutInput.textContent = 'Recording... Press keys';
+    this.globalShortcutInput.classList.add('is-recording');
+  }
+
+  exitRecordingMode() {
+    if (!this.isRecordingShortcut) return;
+    this.isRecordingShortcut = false;
+    this.globalShortcutInput.classList.remove('is-recording');
+    // If nothing new was recorded, revert to original text
+    if (!this.newShortcut) {
+      this.loadInitialSettings(); // Easiest way to restore original value
+    }
+  }
+
+  handleShortcutKeyDown(e) {
+    if (!this.isRecordingShortcut) return;
+
+    e.preventDefault();
+    e.stopPropagation();
+
+    const shortcut = this.acceleratorToString(e);
+
+    if (shortcut) {
+      this.globalShortcutInput.textContent = shortcut;
+      this.newShortcut = shortcut;
+      this.exitRecordingMode();
+      this.updateSaveButtonState();
+    }
+  }
+
+  acceleratorToString(e) {
+    const modifiers = [];
+    const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+
+    // Determine modifiers based on platform
+    if (isMac) {
+      if (e.ctrlKey) modifiers.push('Control');
+      if (e.altKey) modifiers.push('Option');
+      if (e.shiftKey) modifiers.push('Shift');
+      if (e.metaKey) modifiers.push('Command');
+    } else {
+      if (e.ctrlKey) modifiers.push('Control');
+      if (e.altKey) modifiers.push('Alt');
+      if (e.shiftKey) modifiers.push('Shift');
+      // Note: No 'meta' key on Windows/Linux in this context
+    }
+
+    let key = e.key.toUpperCase();
+    
+    // Ignore presses of only modifier keys
+    if (['CONTROL', 'ALT', 'SHIFT', 'COMMAND', 'OPTION', 'META'].includes(key)) {
+      return null;
+    }
+    
+    // Normalize key names to match Electron's accelerator format
+    if (/^F\d{1,2}$/.test(e.code)) {
+      key = e.code;
+    } else {
+      const keyMap = {
+        ' ': 'Space',
+        '+': 'Plus',
+        'Enter': 'Return',
+        'Escape': 'Escape',
+        'Tab': 'Tab',
+        'ArrowUp': 'Up',
+        'ArrowDown': 'Down',
+        'ArrowLeft': 'Left',
+        'ArrowRight': 'Right',
+      };
+      key = keyMap[e.key] || key;
+    }
+    
+    // A valid shortcut should have a modifier OR be a function key.
+    if (modifiers.length === 0 && !/^F\d{1,2}$/.test(key)) {
+      return null;
+    }
+
+    return [...modifiers, key].join('+');
   }
 }
 

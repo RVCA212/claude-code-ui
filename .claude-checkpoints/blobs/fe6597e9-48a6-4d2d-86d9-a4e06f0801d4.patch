@@ -1,0 +1,9 @@
+Index: main.js
+===================================================================
+--- main.js	before
++++ main.js	after
+@@ -1,1 +1,1 @@
+-    const iconPath = path.join(__dirname, '../../assets/icon.png');
+\ No newline at end of file
++    const iconPath = path.join(__dirname, '../../assets/icon-large.png');
+\ No newline at end of file

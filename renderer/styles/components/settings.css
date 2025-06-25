@@ -17,6 +17,7 @@
   display: flex;
   border-bottom: 1px solid var(--color-border);
   margin-bottom: var(--space-16);
+  flex-shrink: 0; /* Don't shrink tabs */
   will-change: transform;
 }
 
@@ -165,6 +166,34 @@
 
 .remove-header-btn:hover {
   opacity: 0.8;
+}
+
+/* Global Shortcut Input */
+.shortcut-input {
+  background-color: var(--color-background-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-base);
+  padding: var(--space-8);
+  font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+  font-size: var(--font-size-sm);
+  color: var(--color-text);
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-standard);
+  will-change: border-color, box-shadow;
+  text-align: center;
+  min-height: 20px; /* Ensure it has height even when empty */
+}
+
+.shortcut-input:hover {
+  border-color: var(--color-border-hover);
+}
+
+.shortcut-input.is-recording,
+.shortcut-input:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px rgba(var(--color-primary-rgb), 0.2);
+  outline: none;
+  color: var(--color-primary);
 }
 
 /* Clear Sessions Button */
@@ -320,4 +349,73 @@ input:checked + .toggle-slider:before {
 @keyframes skeleton-loading {
   0% { background-position: 200% 0; }
   100% { background-position: -200% 0; }
+}
+
+.modal {
+  background-color: var(--color-surface);
+  border-radius: var(--radius-lg);
+  padding: var(--space-32);
+  width: var(--container-md);
+  max-width: 90vw;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden; /* Ensure content within is scrollable if needed */
+
+  /* Custom Scrollbar Styling */
+  &::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: var(--color-border);
+    border-radius: 10px;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background-color: rgba(var(--color-text-rgb), 0.5);
+    border-radius: 10px;
+    border: 2px solid var(--color-surface);
+  }
+
+  &::-webkit-scrollbar-thumb:hover {
+    background-color: var(--color-text);
+  }
+}
+
+/* Modal Content Container - Scrollable content area */
+.modal-content-container {
+  flex: 1;
+  overflow-y: auto;
+  margin-bottom: var(--space-16);
+  padding-right: var(--space-4);
+  
+  /* Custom Scrollbar Styling */
+  scrollbar-width: thin;
+  scrollbar-color: rgba(var(--color-text-rgb), 0.3) transparent;
+}
+
+.modal-content-container::-webkit-scrollbar {
+  width: 8px;
+}
+
+.modal-content-container::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.modal-content-container::-webkit-scrollbar-thumb {
+  background-color: rgba(var(--color-text-rgb), 0.3);
+  border-radius: 4px;
+}
+
+.modal-content-container::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(var(--color-text-rgb), 0.5);
+}
+
+/* Modal Actions - Fixed at bottom */
+.modal-actions {
+  flex-shrink: 0; /* Don't shrink action buttons */
+  margin-top: auto;
+  padding-top: var(--space-16);
+  border-top: 1px solid var(--color-border);
 }
