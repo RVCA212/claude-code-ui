@@ -78,14 +78,13 @@
 
 /* Compact mode for the main chat container when in chat-only mode */
 .app-content:not(.editor-active) .sidebar.hidden ~ .chat-sidebar .main-chat {
-  min-height: auto;
+  flex: 0 0 auto; /* shrink to content */
 }
 
 /* Compact mode adjustments for messages container in chat-only layout */
 .app-content:not(.editor-active) .sidebar.hidden ~ .chat-sidebar .messages-container {
-  /* Reduce minimum height when in true compact mode */
-  min-height: 120px;
-  flex: 1;
+  flex: 0 0 auto;
+  max-height: 60vh; /* avoid runaway growth while still allowing scrolling */
 }
 
 /* Compact mode for input area positioning */
