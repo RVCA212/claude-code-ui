@@ -97,6 +97,58 @@
   height: 8px;
 }
 
+/* ============================================================================
+   Current Directory Button
+   ============================================================================ */
+
+.current-directory-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  margin: 4px 0;
+  background: rgba(var(--color-primary-rgb), 0.08);
+  border: 1px solid rgba(var(--color-primary-rgb), 0.2);
+  border-radius: var(--radius-sm);
+  color: var(--color-primary);
+  font-size: var(--font-size-xs);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-standard);
+  text-decoration: none;
+  outline: none;
+}
+
+.current-directory-btn:hover {
+  background: rgba(var(--color-primary-rgb), 0.12);
+  border-color: rgba(var(--color-primary-rgb), 0.3);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(var(--color-primary-rgb), 0.15);
+}
+
+.current-directory-btn:active {
+  background: rgba(var(--color-primary-rgb), 0.15);
+  transform: translateY(0);
+  box-shadow: 0 1px 4px rgba(var(--color-primary-rgb), 0.2);
+}
+
+.current-directory-btn:focus {
+  box-shadow: var(--focus-ring);
+}
+
+.current-directory-btn .codicon {
+  font-size: 12px;
+  color: var(--color-primary);
+}
+
+.current-directory-text {
+  max-width: 150px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--color-primary);
+}
+
 .conversation-status-indicator {
   position: relative;
   font-size: 0; /* hide any emoji or text */
