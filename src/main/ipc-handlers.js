@@ -411,11 +411,26 @@ class IPCHandlers {
           }
         }
 
-        return {
-          success: true,
-          revertedFiles,
-          message: `Successfully reverted ${revertedFiles.length} files`
-        };
+        // Handle both simple array response and enhanced error response
+        if (Array.isArray(revertedFiles)) {
+          return {
+            success: true,
+            revertedFiles,
+            message: `Successfully reverted ${revertedFiles.length} files`
+          };
+        } else if (revertedFiles.partialSuccess) {
+          return {
+            success: true,
+            revertedFiles: revertedFiles.revertedFiles,
+            failedFiles: revertedFiles.failedFiles,
+            message: `Reverted ${revertedFiles.revertedFiles.length} files, ${revertedFiles.failedFiles.length} failed`
+          };
+        } else {
+          return {
+            success: false,
+            error: `Failed to revert files: ${revertedFiles.failedFiles.map(f => f.error).join(', ')}`
+          };
+        }
       } catch (error) {
         console.error('Failed to revert to message:', error);
         return {
@@ -444,11 +459,26 @@ class IPCHandlers {
           }
         }
 
-        return {
-          success: true,
-          restoredFiles,
-          message: `Successfully restored ${restoredFiles.length} files`
-        };
+        // Handle both simple array response and enhanced error response
+        if (Array.isArray(restoredFiles)) {
+          return {
+            success: true,
+            restoredFiles,
+            message: `Successfully restored ${restoredFiles.length} files`
+          };
+        } else if (restoredFiles.partialSuccess) {
+          return {
+            success: true,
+            restoredFiles: restoredFiles.restoredFiles,
+            failedFiles: restoredFiles.failedFiles,
+            message: `Restored ${restoredFiles.restoredFiles.length} files, ${restoredFiles.failedFiles.length} failed`
+          };
+        } else {
+          return {
+            success: false,
+            error: `Failed to restore files: ${restoredFiles.failedFiles.map(f => f.error).join(', ')}`
+          };
+        }
       } catch (error) {
         console.error('Failed to unrevert from message:', error);
         return {

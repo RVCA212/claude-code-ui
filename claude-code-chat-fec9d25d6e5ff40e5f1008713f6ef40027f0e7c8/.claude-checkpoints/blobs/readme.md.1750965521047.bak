@@ -1,0 +1,62 @@
+# Aider LangGraph Planning App
+
+A powerful AI planning assistant built with LangGraph and Aider SDK to help analyze codebases and create structured plans.
+
+## Features
+
+- **Codebase Exploration**: Easily explore and understand existing codebases
+- **Search Functionality**: Find relevant code snippets across multiple files
+- **Structured Planning**: Generate detailed, task-based markdown plans
+- **File Management**: Create, read, and analyze files within your project
+
+## Installation
+
+1. Ensure you have Python 3.9+ installed
+2. Clone this repository
+3. Install dependencies:
+   ```
+   pip install -r requirements.txt
+   ```
+4. Set up your API keys as environment variables (OPENAI_API_KEY, ANTHROPIC_API_KEY, etc.)
+
+## Usage
+
+1. Run the planning app:
+   ```
+   python planner_langgraph.py
+   ```
+
+2. Enter your planning query when prompted. For example:
+   ```
+   > I need a plan for refactoring our authentication system to support OAuth
+   ```
+
+3. The agent will analyze your codebase and generate a structured plan
+
+## Tool Capabilities
+
+The planning agent has access to the following tools:
+
+- `create_file`: Create new files with specified content
+- `read_file`: Read the content of existing files
+- `search_files`: Search for text patterns across files
+- `list_directory`: List files in a specified directory
+- `find_files`: Find files matching a glob pattern
+- `get_file_info`: Get metadata about files
+- `create_plan`: Generate structured markdown planning documents
+
+## Example Plan
+
+See `example_plan.md` for an example of the planning format.
+
+## Configuration
+
+You can modify the following settings in `planner_langgraph.py`:
+
+- `working_dir`: The directory to analyze and work with
+- `use_git`: Whether to use Git features
+- Model selection (currently using Claude 3.7 Sonnet)
+
+## License
+
+MIT

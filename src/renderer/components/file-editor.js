@@ -3,25 +3,27 @@ class FileEditorComponent {
   constructor() {
     this.monaco = null;
     this.editor = null;
-    this.currentFile = null;
-    this.isDirty = false;
+    
+    // New state for tabbed editor
+    this.openFiles = new Map(); // filePath -> { path, name, language, isDirty, model, viewState }
+    this.activeFilePath = null;
+
     this.isInitialized = false;
     this.loadingEditor = false;
 
     // Real-time file watching state
-    this.isWatchingFile = false;
-    this.fileChangeHandler = null;
-    this.ignoreNextChange = false; // Flag to ignore changes we make ourselves
+    this.fileChangeListeners = new Map(); // path -> handler
+    this.ignoreNextChange = new Set(); // Set of paths to ignore changes for
 
     this.container = document.getElementById('editorContainer');
     this.setupContainer();
     this.setupKeyboardShortcuts();
-    this.setupFileWatching(); // Set up file change event listener
+    this.setupFileWatching(); // Sets up the main channel listener
 
     // Auto-save configuration
-    this.autoSaveEnabled = true;      // Toggle to disable/enable auto-save
-    this.autoSaveDelay = 2000;        // Delay (ms) after last change before saving
-    this.autoSaveTimer = null;        // Reference to the pending auto-save timer
+    this.autoSaveEnabled = true;
+    this.autoSaveDelay = 2000;
+    this.autoSaveTimer = null;
   }
 
   setupContainer() {
@@ -30,22 +32,15 @@ class FileEditorComponent {
       return;
     }
 
-    // Create editor wrapper with header
+    // Create editor wrapper with header for tabs
     this.container.innerHTML = `
       <div class="editor-wrapper">
         <div class="editor-header" id="editorHeader" style="display: none;">
-          <div class="file-info">
-            <span class="file-icon" id="fileIcon">📄</span>
-            <span class="file-name" id="fileName">No file open</span>
-            <span class="dirty-indicator" id="dirtyIndicator" style="display: none;">●</span>
+          <div class="editor-tabs" id="editorTabs">
+            <!-- Tabs will be dynamically inserted here -->
           </div>
           <div class="editor-actions">
-            <button class="editor-btn" id="closeBtn" title="Close file">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <line x1="18" y1="6" x2="6" y2="18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                <line x1="6" y1="6" x2="18" y2="18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-              </svg>
-            </button>
+            <!-- Global actions can go here if needed -->
           </div>
         </div>
         <div class="editor-content" id="editorContent">
@@ -65,42 +60,49 @@ class FileEditorComponent {
   }
 
   setupEventListeners() {
-    const saveBtn = document.getElementById('saveBtn');
-    const closeBtn = document.getElementById('closeBtn');
+    const editorTabs = document.getElementById('editorTabs');
+    if (editorTabs) {
+      editorTabs.addEventListener('click', async (e) => {
+        const tab = e.target.closest('.editor-tab');
+        if (!tab) return;
 
-    if (saveBtn) {
-      saveBtn.addEventListener('click', () => this.saveFile());
-    }
+        e.stopPropagation();
+        const filePath = tab.dataset.filePath;
 
-    if (closeBtn) {
-      closeBtn.addEventListener('click', () => this.closeFile());
+        if (e.target.closest('.close-tab-btn')) {
+          this.closeFile(filePath);
+        } else {
+          await this.switchToFile(filePath);
+        }
+      });
     }
   }
 
   setupKeyboardShortcuts() {
     document.addEventListener('keydown', (e) => {
       // Ctrl/Cmd + S for save
-      if ((e.ctrlKey || e.metaKey) && e.key === 's' && this.currentFile) {
+      if ((e.ctrlKey || e.metaKey) && e.key === 's' && this.activeFilePath) {
         e.preventDefault();
         this.saveFile();
       }
 
       // Ctrl/Cmd + W for close
-      if ((e.ctrlKey || e.metaKey) && e.key === 'w' && this.currentFile) {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'w' && this.activeFilePath) {
         e.preventDefault();
-        this.closeFile();
+        this.closeFile(this.activeFilePath);
       }
     });
   }
 
   setupFileWatching() {
-    // Set up the file change event listener once
+    // This listener handles all file change events, dispatched to specific handlers
     if (window.electronAPI?.onFileChanged) {
-      this.fileChangeHandler = (event, data) => {
-        this.handleExternalFileChange(data);
-      };
-      window.electronAPI.onFileChanged(this.fileChangeHandler);
-      console.log('File watching event listener set up');
+      window.electronAPI.onFileChanged((event, data) => {
+        if (this.fileChangeListeners.has(data.path)) {
+          this.fileChangeListeners.get(data.path)(data);
+        }
+      });
+      console.log('Global file watching event listener set up');
     }
   }
 
@@ -189,6 +191,12 @@ class FileEditorComponent {
       return;
     }
 
+    // If file is already open, just switch to it
+    if (this.openFiles.has(filePath)) {
+      await this.switchToFile(filePath);
+      return;
+    }
+
     try {
       console.log('Opening file:', filePath);
 
@@ -207,100 +215,61 @@ class FileEditorComponent {
         }
       }
 
-      // Only show full loading screen for new editors
-      // For existing editors, provide lightweight feedback to avoid destroying Monaco DOM
-      if (!this.editor) {
-        this.showLoading('Loading file...');
-      } else {
-        console.log('Using existing editor, providing lightweight loading feedback');
+      // Provide lightweight feedback for existing editors
+      if (this.editor) {
         this.showLightweightLoading(this.getFileName(filePath));
+      } else {
+        this.showLoading('Loading file...');
       }
-
-      // Try to read the file first
-      let result = await window.electronAPI.readFile(filePath);
-
-      // If file read fails and auto-navigation is enabled, try to navigate to the file's directory
-      if (!result.success && autoNavigateToDirectory) {
-        console.log('File read failed, attempting to navigate to file directory...');
-
-        try {
-          const dirResult = await window.electronAPI.setWorkingDirectoryFromFile(filePath);
-          if (dirResult.success) {
-            console.log('Successfully navigated to file directory:', dirResult.path);
-
-            // Dispatch directory change event for file browser
-            document.dispatchEvent(new CustomEvent('directoryChanged', {
-              detail: {
-                success: true,
-                path: dirResult.path,
-                contents: [] // Will be populated by file browser
-              }
-            }));
-
-            // Try reading the file again
-            result = await window.electronAPI.readFile(filePath);
-          }
-        } catch (navError) {
-          console.warn('Failed to navigate to file directory:', navError);
-          // Continue with original error handling
-        }
-      }
+      
+      const result = await window.electronAPI.readFile(filePath);
 
       if (!result.success) {
+        // With the new validation logic, this part is less likely to be needed for path reasons,
+        // but we can keep the directory navigation as a feature for user convenience.
+        // For now, we'll just throw the error as the new validator should allow any path.
         throw new Error(result.error || 'Failed to read file');
       }
 
-      // Check if file is binary
       if (result.isBinary) {
         this.showError('Cannot edit binary files');
         return;
       }
 
-      // Set current file
-      this.currentFile = {
+      const language = this.detectLanguage(filePath);
+      const newFile = {
         path: filePath,
         name: this.getFileName(filePath),
-        content: result.content,
-        language: this.detectLanguage(filePath)
+        language: language,
+        isDirty: false,
+        model: this.monaco.editor.createModel(result.content, language),
+        viewState: null,
       };
 
-      // Create or update editor
+      this.openFiles.set(filePath, newFile);
+
+      // Create editor instance if it doesn't exist
       const monacoEditorElement = document.getElementById('monacoEditor');
       const needsNewEditor = !this.editor || !monacoEditorElement || !monacoEditorElement.isConnected;
 
       if (needsNewEditor) {
         console.log('Creating Monaco editor instance...');
 
-        // Dispose of any existing editor first
         if (this.editor) {
-          try {
-            this.editor.dispose();
-            console.log('Disposed stale Monaco editor');
-          } catch (error) {
-            console.warn('Error disposing stale editor:', error);
-          }
-          this.editor = null;
+          this.editor.dispose();
         }
 
-        // Clear the loading content and create editor
         const editorContent = document.getElementById('editorContent');
-        if (!editorContent) {
-          throw new Error('Editor content container not found');
-        }
-
-        // Create Monaco editor container
         editorContent.innerHTML = '<div id="monacoEditor" style="height: 100%; width: 100%;"></div>';
 
         this.editor = this.monaco.editor.create(document.getElementById('monacoEditor'), {
-          value: result.content,
-          language: this.currentFile.language,
+          model: null, // Model will be set by switchToFile
           theme: this.getTheme(),
           automaticLayout: true,
           fontSize: 13,
           fontFamily: 'SF Mono, Monaco, Inconsolata, "Roboto Mono", Consolas, "Courier New", monospace',
           lineNumbers: 'on',
           wordWrap: 'off',
-          // Disable the right-hand minimap for a cleaner interface
           minimap: { enabled: false },
           scrollBeyondLastLine: false,
           renderWhitespace: 'selection',
@@ -308,162 +277,228 @@ class FileEditorComponent {
           insertSpaces: true
         });
 
-        // Set up change detection
         this.editor.onDidChangeModelContent(() => {
-          this.markDirty(true);
+          if (this.activeFilePath) {
+            const activeFile = this.openFiles.get(this.activeFilePath);
+            if (activeFile && !activeFile.isDirty) {
+              this.markDirty(this.activeFilePath, true);
+            }
+          }
           this.handleAutoSave();
         });
-
+        
         console.log('Monaco editor created successfully');
-      } else {
-        console.log('Updating existing editor with new content');
-        this.monaco.editor.setModelLanguage(this.editor.getModel(), this.currentFile.language);
-        this.editor.setValue(result.content);
-        // Ensure minimap stays disabled when switching files
-        this.editor.updateOptions({
-          minimap: { enabled: false },
-          fontSize: 12,
-          wordWrap: 'off'
-        });
       }
+      
+      // Switch to the new file, which handles setting the model and updating UI
+      await this.switchToFile(filePath);
 
-      // Update UI
-      console.log('Updating file info and UI...');
-      this.updateFileInfo();
-      this.clearLightweightLoading(); // Clear any lightweight loading state
-      this.markDirty(false);
+      this.clearLightweightLoading();
       this.showEditor();
 
-      // Start watching the file for external changes
-      await this.startWatchingFile(this.currentFile.path);
-
-      // Dispatch event for global header with delay to ensure DOM is stable
-      setTimeout(() => {
-        document.dispatchEvent(new CustomEvent('fileOpened', {
-          detail: {
-            name: this.currentFile.name,
-            path: this.currentFile.path,
-            icon: this.getFileIcon(this.currentFile.name)
-          }
-        }));
-      }, 50); // Small delay to ensure layout changes are complete
+      await this.startWatchingFile(filePath);
 
       console.log('File opened successfully:', filePath);
 
     } catch (error) {
       console.error('Failed to open file:', error);
-      this.clearLightweightLoading(); // Clear any lightweight loading state on error
+      this.clearLightweightLoading();
       this.showError(`Failed to open file: ${error.message}`);
     }
   }
 
-  async saveFile() {
-    if (!this.currentFile || !this.editor) {
+  async switchToFile(filePath) {
+    if (!this.openFiles.has(filePath)) {
+      console.error(`Attempted to switch to a file that is not open: ${filePath}`);
       return;
     }
+    
+    if (this.activeFilePath === filePath) {
+      return; // Already active
+    }
+
+    const fileToSwitch = this.openFiles.get(filePath);
+
+    // Reload file content from disk before switching to check for external changes
+    try {
+        const result = await window.electronAPI.readFile(filePath);
+        if (result.success) {
+            const newContent = result.content;
+            const currentContent = fileToSwitch.model.getValue();
+
+            if (newContent !== currentContent) {
+                if (fileToSwitch.isDirty) {
+                    // We have local unsaved changes, and the file on disk is different.
+                    this.handleFileConflict(fileToSwitch, newContent);
+                } else {
+                    // File is not dirty, so we can safely update it.
+                    this.reloadFileContent(fileToSwitch, newContent);
+                    this.showNotification(`${fileToSwitch.name} reloaded to latest version.`, 'info');
+                }
+            }
+        } else {
+            console.warn(`Could not reload file ${filePath} on tab switch: ${result.error}`);
+        }
+    } catch (error) {
+        console.error('Error reloading file on switch:', error);
+    }
+    
+    // Save view state of the previously active file
+    if (this.activeFilePath) {
+      const previousFile = this.openFiles.get(this.activeFilePath);
+      if (previousFile && this.editor) {
+        previousFile.viewState = this.editor.saveViewState();
+      }
+    }
+    
+    this.activeFilePath = filePath;
+    const newActiveFile = this.openFiles.get(filePath);
+
+    if (this.editor) {
+      this.editor.setModel(newActiveFile.model);
+      if (newActiveFile.viewState) {
+        this.editor.restoreViewState(newActiveFile.viewState);
+      }
+      this.editor.focus();
+    }
+    
+    this.renderTabs();
+    
+    // Dispatch event for global header
+    setTimeout(() => {
+        document.dispatchEvent(new CustomEvent('fileOpened', {
+            detail: {
+                name: newActiveFile.name,
+                path: newActiveFile.path,
+                icon: this.getFileIcon(newActiveFile.name)
+            }
+        }));
+    }, 50);
+  }
+
+  async saveFile() {
+    if (!this.activeFilePath || !this.editor) {
+      return;
+    }
+    const fileToSave = this.openFiles.get(this.activeFilePath);
+    if (!fileToSave) return;
 
     try {
       const content = this.editor.getValue();
 
-      // Set flag to ignore the next file change event (caused by our own save)
-      this.ignoreNextChange = true;
+      this.ignoreNextChange.add(fileToSave.path);
 
-      const result = await window.electronAPI.writeFile(this.currentFile.path, content);
+      const result = await window.electronAPI.writeFile(fileToSave.path, content);
 
       if (!result.success) {
-        // Reset flag if save failed
-        this.ignoreNextChange = false;
+        this.ignoreNextChange.delete(fileToSave.path);
         throw new Error(result.error || 'Failed to save file');
       }
 
-      this.markDirty(false);
-      console.log('File saved successfully:', this.currentFile.path);
+      this.markDirty(fileToSave.path, false);
+      console.log('File saved successfully:', fileToSave.path);
 
-      // Show brief success indication
       this.showNotification('File saved', 'success');
 
-      // Clear any pending auto-save since we just saved
       if (this.autoSaveTimer) {
         clearTimeout(this.autoSaveTimer);
         this.autoSaveTimer = null;
       }
-
     } catch (error) {
       console.error('Failed to save file:', error);
       this.showError(`Failed to save file: ${error.message}`);
     }
   }
 
-  async closeFile() {
-    if (this.isDirty) {
-      const confirmed = confirm('You have unsaved changes. Are you sure you want to close this file?');
+  async closeFile(filePath) {
+    const fileToClose = this.openFiles.get(filePath);
+    if (!fileToClose) return;
+
+    if (fileToClose.isDirty) {
+      const confirmed = confirm(`You have unsaved changes in ${fileToClose.name}. Are you sure you want to close?`);
       if (!confirmed) {
         return;
       }
     }
 
-    // Stop watching the file for changes
-    await this.stopWatchingFile();
+    await this.stopWatchingFile(filePath);
 
-    this.currentFile = null;
-    this.isDirty = false;
+    const openFilePaths = Array.from(this.openFiles.keys());
+    const closingIndex = openFilePaths.indexOf(filePath);
 
-    // Properly dispose of Monaco editor instance
-    if (this.editor) {
-      try {
-        this.editor.dispose();
-        console.log('Monaco editor disposed');
-      } catch (error) {
-        console.warn('Error disposing Monaco editor:', error);
+    fileToClose.model.dispose();
+    this.openFiles.delete(filePath);
+    
+    if (this.activeFilePath === filePath) {
+      this.activeFilePath = null;
+      if (this.openFiles.size > 0) {
+        let nextActiveIndex = closingIndex >= this.openFiles.size ? this.openFiles.size - 1 : closingIndex;
+        if (nextActiveIndex < 0) nextActiveIndex = 0;
+        const newActiveFilePath = Array.from(this.openFiles.keys())[nextActiveIndex];
+        await this.switchToFile(newActiveFilePath);
       }
-      this.editor = null;
     }
 
-    this.hideEditor();
-
-    // Dispatch event for global header with delay to ensure DOM is stable
-    setTimeout(() => {
+    if (this.openFiles.size === 0) {
+      this.hideEditor();
       document.dispatchEvent(new CustomEvent('fileClosed'));
-    }, 50); // Small delay to ensure layout changes are complete
-
-    console.log('File closed');
-
-    // Cancel any pending auto-save when the file is closed
-    if (this.autoSaveTimer) {
+    } else {
+      this.renderTabs();
+    }
+    
+    if (this.autoSaveTimer && this.activeFilePath !== filePath) {
       clearTimeout(this.autoSaveTimer);
       this.autoSaveTimer = null;
     }
   }
 
-  markDirty(dirty) {
-    this.isDirty = dirty;
-
-    const dirtyIndicator = document.getElementById('dirtyIndicator');
-    const saveBtn = document.getElementById('saveBtn');
-
-    if (dirtyIndicator) {
-      dirtyIndicator.style.display = dirty ? 'inline' : 'none';
-    }
-
-    if (saveBtn) {
-      saveBtn.disabled = !dirty;
+  markDirty(filePath, dirty) {
+    const file = this.openFiles.get(filePath);
+    if (file) {
+      if (file.isDirty === dirty) return;
+      file.isDirty = dirty;
+      this.renderTabs();
     }
   }
 
+  renderTabs() {
+    const tabsContainer = document.getElementById('editorTabs');
+    if (!tabsContainer) return;
+
+    // Preserve scroll position
+    const scrollLeft = tabsContainer.scrollLeft;
+    
+    tabsContainer.innerHTML = '';
+    
+    this.openFiles.forEach(file => {
+      const tab = document.createElement('div');
+      tab.className = 'editor-tab';
+      tab.dataset.filePath = file.path;
+      tab.title = file.path;
+      if (file.path === this.activeFilePath) {
+        tab.classList.add('active');
+      }
+
+      tab.innerHTML = `
+        <span class="file-icon">${this.getFileIcon(file.name)}</span>
+        <span class="file-name">${file.name}</span>
+        <span class="dirty-indicator" style="display: ${file.isDirty ? 'inline' : 'none'};">●</span>
+        <button class="close-tab-btn" title="Close file">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <line x1="18" y1="6" x2="6" y2="18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <line x1="6" y1="6" x2="18" y2="18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+      `;
+      tabsContainer.appendChild(tab);
+    });
+
+    // Restore scroll position
+    tabsContainer.scrollLeft = scrollLeft;
+  }
+
   updateFileInfo() {
-    if (!this.currentFile) return;
-
-    const fileIcon = document.getElementById('fileIcon');
-    const fileName = document.getElementById('fileName');
-
-    if (fileIcon) {
-      fileIcon.textContent = this.getFileIcon(this.currentFile.name);
-    }
-
-    if (fileName) {
-      fileName.textContent = this.currentFile.name;
-      fileName.title = this.currentFile.path;
-    }
+    // This is now handled by renderTabs()
   }
 
   getFileName(filePath) {
@@ -686,8 +721,8 @@ class FileEditorComponent {
     this.editor = null;
 
     // If we have a current file path, try to open it again
-    if (this.currentFile?.path) {
-      this.openFile(this.currentFile.path);
+    if (this.activeFilePath) {
+      this.openFile(this.activeFilePath);
     } else {
       this.initializeMonaco();
     }
@@ -700,11 +735,11 @@ class FileEditorComponent {
 
   // Public API methods
   getCurrentFile() {
-    return this.currentFile;
+    return this.activeFilePath ? this.openFiles.get(this.activeFilePath) : null;
   }
 
   isEditorDirty() {
-    return this.isDirty;
+    return this.activeFilePath ? this.openFiles.get(this.activeFilePath).isDirty : false;
   }
 
   getEditorContent() {
@@ -725,49 +760,41 @@ class FileEditorComponent {
 
     this.autoSaveTimer = setTimeout(() => {
       // Only save if there are unsaved changes
-      if (this.isDirty) {
+      if (this.activeFilePath && this.isEditorDirty()) {
         this.saveFile();
       }
     }, this.autoSaveDelay);
   }
 
   async handleExternalFileChange(data) {
-    // Only handle changes for the currently open file
-    if (!this.currentFile || data.path !== this.currentFile.path) {
-      return;
-    }
+    const file = this.openFiles.get(data.path);
+    if (!file) return;
 
     // Don't react to changes we made ourselves
-    if (this.ignoreNextChange) {
-      this.ignoreNextChange = false;
+    if (this.ignoreNextChange.has(data.path)) {
+      this.ignoreNextChange.delete(data.path);
       console.log('Ignoring file change - caused by our own save');
       return;
     }
 
-    console.log('External file change detected for current file:', data.path);
+    console.log('External file change detected for open file:', data.path);
 
     try {
-      // Read the updated file content
-      const result = await window.electronAPI.readFile(this.currentFile.path);
+      const result = await window.electronAPI.readFile(data.path);
 
       if (!result.success) {
         this.showError(`File may have been deleted or moved: ${result.error}`);
         return;
       }
 
-      // Check if we have unsaved changes
-      if (this.isDirty) {
-        const currentContent = this.editor ? this.editor.getValue() : '';
-        const newContent = result.content;
-
-        // If content is different from what we have
-        if (currentContent !== newContent) {
-          this.handleFileConflict(newContent);
+      if (file.isDirty) {
+        const currentContent = file.model.getValue();
+        if (currentContent !== result.content) {
+          this.handleFileConflict(file, result.content);
         }
       } else {
-        // No local changes, safe to reload
-        this.reloadFileContent(result.content);
-        this.showNotification('File updated externally', 'info');
+        this.reloadFileContent(file, result.content);
+        this.showNotification(`${file.name} updated externally`, 'info');
       }
     } catch (error) {
       console.error('Error handling external file change:', error);
@@ -775,55 +802,53 @@ class FileEditorComponent {
     }
   }
 
-  handleFileConflict(newContent) {
+  handleFileConflict(file, newContent) {
     // Show a conflict resolution dialog
     const userChoice = confirm(
-      'The file has been modified externally and you have unsaved changes.\n\n' +
+      `'${file.name}' has been modified externally and you have unsaved changes.\n\n` +
       'Click "OK" to reload the external changes (your changes will be lost)\n' +
       'Click "Cancel" to keep your changes (external changes will be ignored)'
     );
 
     if (userChoice) {
-      // User chose to reload external changes
-      this.reloadFileContent(newContent);
+      this.reloadFileContent(file, newContent);
       this.showNotification('File reloaded with external changes', 'warning');
     } else {
-      // User chose to keep local changes
       this.showNotification('Keeping your changes - file may be out of sync', 'warning');
     }
   }
 
-  reloadFileContent(newContent) {
-    if (this.editor && this.currentFile) {
-      // Save current cursor position
-      const position = this.editor.getPosition();
+  reloadFileContent(file, newContent) {
+    if (file && file.model) {
+      let position = null;
+      if (this.activeFilePath === file.path && this.editor) {
+        position = this.editor.getPosition();
+      }
 
-      // Update content
-      this.editor.setValue(newContent);
-      this.currentFile.content = newContent;
-
-      // Restore cursor position if still valid
-      if (position) {
+      file.model.setValue(newContent);
+      
+      if (this.activeFilePath === file.path && this.editor && position) {
         try {
           this.editor.setPosition(position);
         } catch (error) {
-          // Position might be invalid if file shrunk, ignore
+          // Position might be invalid if file shrunk
         }
       }
-
-      this.markDirty(false);
+      
+      this.markDirty(file.path, false);
     }
   }
 
   async startWatchingFile(filePath) {
-    if (this.isWatchingFile) {
-      await this.stopWatchingFile();
+    if (this.fileChangeListeners.has(filePath)) {
+      return; // Already watching
     }
 
     try {
       const result = await window.electronAPI.watchFile(filePath);
       if (result.success) {
-        this.isWatchingFile = true;
+        const handler = (data) => this.handleExternalFileChange(data);
+        this.fileChangeListeners.set(filePath, handler);
         console.log('Started watching file:', filePath);
       } else {
         console.warn('Failed to start watching file:', result.error);
@@ -833,16 +858,16 @@ class FileEditorComponent {
     }
   }
 
-  async stopWatchingFile() {
-    if (!this.isWatchingFile || !this.currentFile) {
+  async stopWatchingFile(filePath) {
+    if (!this.fileChangeListeners.has(filePath)) {
       return;
     }
 
     try {
-      const result = await window.electronAPI.unwatchFile(this.currentFile.path);
+      const result = await window.electronAPI.unwatchFile(filePath);
       if (result.success) {
-        this.isWatchingFile = false;
-        console.log('Stopped watching file:', this.currentFile.path);
+        this.fileChangeListeners.delete(filePath);
+        console.log('Stopped watching file:', filePath);
       } else {
         console.warn('Failed to stop watching file:', result.error);
       }
@@ -856,8 +881,11 @@ class FileEditorComponent {
    * -------------------------------------------------- */
 
   async cleanup() {
-    // Stop watching files
-    await this.stopWatchingFile();
+    // Stop watching all files
+    for (const filePath of this.fileChangeListeners.keys()) {
+      await this.stopWatchingFile(filePath);
+    }
+    this.fileChangeListeners.clear();
 
     // Clear auto-save timer
     if (this.autoSaveTimer) {
@@ -865,15 +893,15 @@ class FileEditorComponent {
       this.autoSaveTimer = null;
     }
 
-    // Remove file change event listener
-    if (this.fileChangeHandler && window.electronAPI?.removeAllListeners) {
-      try {
-        window.electronAPI.removeAllListeners('file-changed');
-        console.log('File change event listener removed');
-      } catch (error) {
-        console.warn('Error removing file change listener:', error);
+    // No need to remove global listener, it's managed by main process
+    
+    // Dispose all models
+    this.openFiles.forEach(file => {
+      if(file.model) {
+        file.model.dispose();
       }
-    }
+    });
+    this.openFiles.clear();
 
     // Dispose Monaco editor
     if (this.editor) {

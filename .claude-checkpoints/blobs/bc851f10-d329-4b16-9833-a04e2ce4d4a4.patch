@@ -1,0 +1,36 @@
+Index: readme.md
+===================================================================
+--- readme.md	before
++++ readme.md	after
+@@ -1,30 +1,1 @@
+-## Project Structure
+-
+-```
+-.
+-├── =0.1.4
+-├── __pycache__
+-│   ├── e2b_react.cpython-311.pyc
+-│   └── react.cpython-311.pyc
+-├── aider_langgraph_app.py
+-├── aider_sdk_testing.egg-info
+-│   ├── PKG-INFO
+-│   ├── SOURCES.txt
+-│   ├── dependency_links.txt
+-│   ├── requires.txt
+-│   └── top_level.txt
+-├── e2b_react.py
+-├── example.py
+-├── langgraph.json
+-├── planner_langgraph.py
+-├── pyproject.toml
+-├── react.py
+-├── readme.md
+-├── requirements.txt
+-├── run_lgraph.py
+-├── src
+-│   └── calculator.py
+-└── supervisor.py
+-```
+-
+ ## Configuration
+\ No newline at end of file

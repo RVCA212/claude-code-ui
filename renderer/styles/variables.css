@@ -37,6 +37,12 @@
   --color-warning-rgb: 168, 75, 47;
   --color-info-rgb: 98, 108, 113;
 
+  /* Diff colors for a cleaner look */
+  --color-diff-add: #28a745;
+  --color-diff-add-rgb: 40, 167, 69;
+  --color-diff-remove: #d73a49;
+  --color-diff-remove-rgb: 215, 58, 73;
+
   /* File mention dropdown specific colors */
   --color-file-mention-hover: rgba(33, 128, 141, 0.08);
   --color-file-mention-selected: rgba(33, 128, 141, 1);

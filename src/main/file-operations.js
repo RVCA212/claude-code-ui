@@ -360,13 +360,9 @@ class FileOperations {
   // Security helper to validate file path is within workspace
   validateFilePath(filePath) {
     const resolvedPath = path.resolve(filePath);
-    const workspaceRoot = path.resolve(this.currentWorkingDirectory);
-
-    // Check if the file is within the current workspace
-    if (!resolvedPath.startsWith(workspaceRoot)) {
-      throw new Error('File access denied: Path is outside workspace');
-    }
-
+    // The check for being within the CWD has been removed to allow opening
+    // any file from anywhere on the filesystem, as is typical for an editor.
+    // The primary security measure is that the user is explicitly selecting a file.
     return resolvedPath;
   }
 
@@ -526,7 +522,11 @@ class FileOperations {
       }
 
       const watcher = fs.watch(validatedPath, (eventType, filename) => {
-        if (eventType === 'change') {
+        // Many editors (VS Code, JetBrains, etc.) perform an *atomic save* that writes to a
+        // temporary file and then renames it over the original. That triggers a `rename`
+        // event instead of `change`, causing us to miss updates. We therefore treat both
+        // `change` *and* `rename` as indications that the file *may* have new contents.
+        if (eventType === 'change' || eventType === 'rename') {
           // Debounce rapid file changes (common during saves)
           const existingTimer = this.fileWatcherTimers.get(validatedPath);
           if (existingTimer) {
@@ -543,6 +543,35 @@ class FileOperations {
           }, 100); // 100ms debounce
 
           this.fileWatcherTimers.set(validatedPath, timer);
+
+          // If we received a `rename`, the original watcher can stop firing further
+          // events because the inode it watched was replaced. In that case we recreate
+          // the watcher after the debounce window to continue monitoring the file.
+          if (eventType === 'rename') {
+            // Delay re-establishing the watcher until after we have handled the change.
+            setTimeout(() => {
+              try {
+                if (this.fileWatchers.has(validatedPath)) {
+                  const staleWatcher = this.fileWatchers.get(validatedPath);
+                  staleWatcher.close();
+                  this.fileWatchers.delete(validatedPath);
+                }
+                // Recreate the watcher with the same callback so future changes are captured.
+                // This can also fail if the file was, for example, deleted.
+                const rewatchResult = this.watchFile(filePath, callback);
+                if (!rewatchResult.success) {
+                  console.warn(`Failed to re-establish watcher for ${filePath}:`, rewatchResult.error);
+                }
+              } catch (rewatchErr) {
+                console.error('Error while re-establishing file watcher:', rewatchErr);
+                // If closing the stale watcher or re-watching failed, it's probably invalid.
+                // Remove it to prevent errors on subsequent unwatch calls.
+                if (this.fileWatchers.has(validatedPath)) {
+                  this.fileWatchers.delete(validatedPath);
+                }
+              }
+            }, 150); // slightly longer than debounce to avoid immediate recursion
+          }
         }
       });
 

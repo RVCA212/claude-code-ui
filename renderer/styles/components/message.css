@@ -884,6 +884,21 @@
   color: var(--color-success);
 }
 
+.inline-tool-call.failed .inline-tool-header {
+  background-color: rgba(var(--color-error-rgb), 0.1);
+}
+
+.inline-tool-call.failed .tool-status {
+    color: var(--color-error);
+}
+
+.tool-output.error .tool-output-content {
+    color: var(--color-error);
+    background-color: rgba(var(--color-error-rgb), 0.05);
+    padding: var(--space-8);
+    border-radius: var(--radius-sm);
+}
+
 .inline-tool-call .tool-details {
   padding: var(--space-12);
   background: var(--color-background);
@@ -1123,13 +1138,13 @@
 }
 
 .diff-side-header.removed {
-  background-color: rgba(var(--color-error-rgb), 0.1);
-  color: var(--color-error);
+  background-color: rgba(var(--color-diff-remove-rgb), 0.15);
+  color: var(--color-diff-remove);
 }
 
 .diff-side-header.added {
-  background-color: rgba(var(--color-success-rgb), 0.1);
-  color: var(--color-success);
+  background-color: rgba(var(--color-diff-add-rgb), 0.15);
+  color: var(--color-diff-add);
 }
 
 .diff-lines {
@@ -1167,10 +1182,10 @@
 }
 
 .diff-line-added {
-  background-color: rgba(var(--color-success-rgb), 0.08);
+  background-color: rgba(var(--color-diff-add-rgb), 0.1);
 }
 .diff-line-removed {
-  background-color: rgba(var(--color-error-rgb), 0.08);
+  background-color: rgba(var(--color-diff-remove-rgb), 0.1);
 }
 .diff-line-empty .diff-line-content {
   background-color: rgba(var(--color-text-secondary), 0.05);
@@ -1196,13 +1211,13 @@
 }
 
 .diff-unified .diff-line-added .diff-line-prefix {
-  background-color: rgba(var(--color-success-rgb), 0.15);
-  color: var(--color-success);
+  background-color: rgba(var(--color-diff-add-rgb), 0.2);
+  color: var(--color-diff-add);
 }
 
 .diff-unified .diff-line-removed .diff-line-prefix {
-  background-color: rgba(var(--color-error-rgb), 0.15);
-  color: var(--color-error);
+  background-color: rgba(var(--color-diff-remove-rgb), 0.2);
+  color: var(--color-diff-remove);
 }
 
 .input-area.welcoming #messageInput {
@@ -1323,4 +1338,16 @@
     background-color: rgba(var(--color-primary-rgb), 0.2);
     border-color: rgba(var(--color-primary-rgb), 0.5);
   }
+}
+
+/* Raw MultiEdit fallback */
+.multi-edit-raw {
+  background: var(--color-secondary);
+  padding: var(--space-12);
+  border-radius: var(--radius-base);
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-sm);
+  white-space: pre-wrap;
+  overflow-x: auto;
+  color: var(--color-text);
 }

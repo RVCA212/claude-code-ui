@@ -41,6 +41,9 @@ class AppComponent {
       // Set up cross-component communication after DOM is stable
       setTimeout(() => {
         this.setupComponentCommunication();
+        
+        // Expose messageComponent globally for button onclick handlers
+        window.messageComponent = this.components.messageComponent;
       }, 100);
 
       // Initialize global header button states after everything is ready

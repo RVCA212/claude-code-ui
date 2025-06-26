@@ -265,7 +265,8 @@ class SessionManager {
 
   // Get session by ID
   getSession(sessionId) {
-    return this.sessions.get(sessionId);
+    if (!sessionId) return null;
+    return this.sessions.get(sessionId) || null;
   }
 
   // Helper function to determine if a session can be resumed

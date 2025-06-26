@@ -1,0 +1,3 @@
+--- before/readme.md
++++ after/readme.md
+...edit applied...

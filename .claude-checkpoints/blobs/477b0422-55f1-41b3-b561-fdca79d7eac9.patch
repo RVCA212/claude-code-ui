@@ -1,0 +1,42 @@
+Index: readme.md
+===================================================================
+--- readme.md	before
++++ readme.md	after
+@@ -1,8 +1,37 @@
+ # Aider LangGraph Planning App
+ 
+ A powerful AI planning assistant built with LangGraph and Aider SDK to help analyze codebases and create structured plans.
+ 
++## Project Structure
++
++```
++.
++├── =0.1.4
++├── __pycache__
++│   ├── e2b_react.cpython-311.pyc
++│   └── react.cpython-311.pyc
++├── aider_langgraph_app.py
++├── aider_sdk_testing.egg-info
++│   ├── PKG-INFO
++│   ├── SOURCES.txt
++│   ├── dependency_links.txt
++│   ├── requires.txt
++│   └── top_level.txt
++├── e2b_react.py
++├── example.py
++├── langgraph.json
++├── planner_langgraph.py
++├── pyproject.toml
++├── react.py
++├── readme.md
++├── requirements.txt
++├── run_lgraph.py
++├── src
++│   └── calculator.py
++└── supervisor.py
++```
++
+ ## Features
+ 
+ - **Codebase Exploration**: Easily explore and understand existing codebases
+ - **Search Functionality**: Find relevant code snippets across multiple files

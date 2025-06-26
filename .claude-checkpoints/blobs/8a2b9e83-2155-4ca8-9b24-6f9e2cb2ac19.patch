@@ -1,0 +1,31 @@
+Index: readme.md
+===================================================================
+--- readme.md	before
++++ readme.md	after
+@@ -0,0 +1,25 @@
++# Aider SDK Testing
++
++This repository contains testing and experimental code for the Aider SDK.
++
++## Overview
++
++Includes various Python scripts for exploring and testing SDK capabilities, including LangGraph applications and utility modules.
++
++## Getting Started
++
++1. Install dependencies:
++   ```
++   pip install -r requirements.txt
++   ```
++
++2. Run example scripts:
++   ```
++   python example.py
++   ```
++
++## Key Components
++
++- LangGraph configuration and application scripts
++- Utility modules for different testing scenarios
++- Example Python implementations
+\ No newline at end of file

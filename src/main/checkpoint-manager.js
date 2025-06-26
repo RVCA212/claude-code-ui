@@ -34,7 +34,10 @@ class CheckpointManager {
           full_snapshot INTEGER DEFAULT 0,
           old_content TEXT,
           new_content TEXT,
-          tool_type TEXT
+          tool_type TEXT,
+          pre_edit_content TEXT,
+          post_edit_content TEXT,
+          edit_summary TEXT
         )
       `);
 
@@ -56,104 +59,54 @@ class CheckpointManager {
     }
 
     try {
-      // Handle different tool types
-      if (toolUse.name === 'MultiEdit') {
-        // MultiEdit has multiple edits in an array
-        const { file_path, edits } = toolUse.input;
-        const checkpointPromises = [];
-
-        for (const edit of edits || []) {
-          const singleEditToolUse = {
-            name: 'Edit',
-            input: {
-              file_path,
-              old_string: edit.old_string,
-              new_string: edit.new_string,
-              replace_all: edit.replace_all
-            }
-          };
-          checkpointPromises.push(this.createSingleCheckpoint(singleEditToolUse, sessionId, messageId));
-        }
-
-        return Promise.all(checkpointPromises);
-      } else if (toolUse.name === 'Write') {
-        // Write tool creates or overwrites files
-        const { file_path, content } = toolUse.input;
-
-        // Read existing file content if it exists
-        let existingContent = '';
-        try {
-          existingContent = await fs.readFile(file_path, 'utf8');
-        } catch (err) {
-          // File doesn't exist, that's fine
-        }
-
-        const writeToolUse = {
-          name: 'Write',
-          input: {
-            file_path,
-            old_string: existingContent,
-            new_string: content || ''
-          }
-        };
-        return this.createSingleCheckpoint(writeToolUse, sessionId, messageId);
-      } else {
-        // Single edit
-        return this.createSingleCheckpoint(toolUse, sessionId, messageId);
-      }
-    } catch (error) {
-      console.error('Failed to create checkpoint:', error);
-      return null;
-    }
-  }
-
-  async createSingleCheckpoint(toolUse, sessionId, messageId) {
-    try {
-      const { file_path, old_string, new_string } = toolUse.input;
-      const checkpointId = uuidv4();
-
-      // Read current file content for backup
-      let currentContent = '';
+      const { file_path } = toolUse.input;
+      let fullContentBeforeEdit = '';
       try {
-        currentContent = await fs.readFile(file_path, 'utf8');
+        fullContentBeforeEdit = await fs.readFile(file_path, 'utf8');
       } catch (err) {
-        console.log('File does not exist yet, treating as new file creation');
+        // File doesn't exist, which is fine for a Write operation.
       }
 
-      // Create unified diff
-      const patch = diff.createPatch(
-        path.basename(file_path),
-        old_string || '',
-        new_string || '',
-        'before',
-        'after'
-      );
-
-      // Write patch to blob storage
+      // For any file modification, we create a single checkpoint with the full content.
+      const checkpointId = uuidv4();
       const patchPath = path.join(this.checkpointBlobsDir, `${checkpointId}.patch`);
-      const tempPatchPath = patchPath + '.tmp';
+      let newContentForCheckpoint;
+      let patch;
 
+      if (toolUse.name === 'Write') {
+        newContentForCheckpoint = toolUse.input.content || '';
+        patch = diff.createPatch(path.basename(file_path), fullContentBeforeEdit, newContentForCheckpoint, 'before', 'after');
+      } else if (toolUse.name === 'Edit' || toolUse.name === 'MultiEdit') {
+        // For edits, we need to capture the actual content after the edit is applied
+        // This is a placeholder that will be updated by updateCheckpointWithPostEditContent
+        newContentForCheckpoint = '...PENDING_POST_EDIT_CONTENT...';
+        patch = `--- before/${path.basename(file_path)}\n+++ after/${path.basename(file_path)}\n...edit applied...`;
+      } else {
+        // Not a tool we're checkpointing
+        return null;
+      }
+
+      const tempPatchPath = patchPath + '.tmp';
       await fs.writeFile(tempPatchPath, patch);
       await fs.rename(tempPatchPath, patchPath);
 
-      // Store checkpoint in database
       const stmt = this.checkpointDb.prepare(`
         INSERT INTO checkpoints
         (id, session_id, message_id, file_path, patch_path, full_snapshot, old_content, new_content, tool_type)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
       `);
 
-      stmt.run([
+      stmt.run(
         checkpointId,
         sessionId,
         messageId,
         file_path,
         path.relative(this.checkpointDir, patchPath),
-        old_string === '' ? 1 : 0, // Full snapshot for new files
-        old_string || '',
-        new_string || '',
+        1, // All checkpoints are now full snapshots for simplicity
+        fullContentBeforeEdit,
+        newContentForCheckpoint,
         toolUse.name
-      ]);
+      );
 
       console.log('Checkpoint created:', checkpointId, 'for', file_path);
       return checkpointId;
@@ -163,8 +116,66 @@ class CheckpointManager {
     }
   }
 
-  // Get checkpoints for a session up to a specific message
-  async getCheckpointsToRevert(sessionId, messageId) {
+  // Update checkpoint with actual post-edit content after edit operation completes
+  async updateCheckpointWithPostEditContent(checkpointId, filePath) {
+    if (!this.checkpointDb || !checkpointId) {
+      console.warn('Checkpoint database not initialized or no checkpoint ID provided');
+      return false;
+    }
+
+    try {
+      // Read the actual file content after the edit
+      let postEditContent = '';
+      try {
+        postEditContent = await fs.readFile(filePath, 'utf8');
+      } catch (err) {
+        console.error('Failed to read post-edit content for checkpoint update:', err);
+        return false;
+      }
+
+      // Update the checkpoint with the actual new content
+      const updateStmt = this.checkpointDb.prepare(`
+        UPDATE checkpoints 
+        SET new_content = ?, patch_path = ?
+        WHERE id = ?
+      `);
+
+      // Create a proper patch with the actual content
+      const checkpoint = this.checkpointDb.prepare('SELECT * FROM checkpoints WHERE id = ?').get(checkpointId);
+      if (!checkpoint) {
+        console.error('Checkpoint not found for update:', checkpointId);
+        return false;
+      }
+
+      const patch = diff.createPatch(
+        path.basename(filePath), 
+        checkpoint.old_content, 
+        postEditContent, 
+        'before', 
+        'after'
+      );
+      
+      const patchPath = path.join(this.checkpointBlobsDir, `${checkpointId}.patch`);
+      const tempPatchPath = patchPath + '.tmp';
+      await fs.writeFile(tempPatchPath, patch);
+      await fs.rename(tempPatchPath, patchPath);
+
+      updateStmt.run(
+        postEditContent,
+        path.relative(this.checkpointDir, patchPath),
+        checkpointId
+      );
+
+      console.log('Checkpoint updated with post-edit content:', checkpointId, 'for', filePath);
+      return true;
+    } catch (error) {
+      console.error('Failed to update checkpoint with post-edit content:', error);
+      return false;
+    }
+  }
+
+  // Get pending checkpoints that need post-edit content updates
+  async getPendingCheckpoints(sessionId, messageId) {
     if (!this.checkpointDb) {
       return [];
     }
@@ -172,11 +183,52 @@ class CheckpointManager {
     try {
       const stmt = this.checkpointDb.prepare(`
         SELECT * FROM checkpoints
-        WHERE session_id = ? AND message_id >= ?
+        WHERE session_id = ? AND message_id = ? AND new_content = '...PENDING_POST_EDIT_CONTENT...'
         ORDER BY ts DESC
       `);
 
-      return stmt.all([sessionId, messageId]);
+      return stmt.all(sessionId, messageId);
+    } catch (error) {
+      console.error('Failed to get pending checkpoints:', error);
+      return [];
+    }
+  }
+
+  async createSingleCheckpoint(toolUse, sessionId, messageId) {
+    // This method is no longer the main entry point.
+    // The logic has been consolidated into createCheckpoint.
+    // We can deprecate or remove this later.
+    return this.createCheckpoint(toolUse, sessionId, messageId);
+  }
+
+  // Get checkpoints for a session up to a specific message
+  async getCheckpointsToRevert(sessionId, messageId) {
+    if (!this.checkpointDb) {
+      return [];
+    }
+
+    try {
+      // First, get the timestamp of the target message
+      const messageStmt = this.checkpointDb.prepare(`
+        SELECT MIN(ts) as target_ts FROM checkpoints 
+        WHERE message_id = ? AND session_id = ?
+      `);
+      const messageResult = messageStmt.get(messageId, sessionId);
+      
+      if (!messageResult || !messageResult.target_ts) {
+        // No checkpoints found for this message
+        console.log(`No checkpoints found for message ${messageId} in session ${sessionId}`);
+        return [];
+      }
+
+      // Get all checkpoints from this message's timestamp onwards
+      const stmt = this.checkpointDb.prepare(`
+        SELECT * FROM checkpoints
+        WHERE session_id = ? AND ts >= ?
+        ORDER BY ts DESC
+      `);
+
+      return stmt.all(sessionId, messageResult.target_ts);
     } catch (error) {
       console.error('Failed to get checkpoints:', error);
       return [];
@@ -185,9 +237,20 @@ class CheckpointManager {
 
   // Revert files to a checkpoint
   async revertToCheckpoint(sessionId, messageId) {
+    if (!this.checkpointDb) {
+      throw new Error('Checkpoint database not initialized');
+    }
+
     try {
       const checkpoints = await this.getCheckpointsToRevert(sessionId, messageId);
       const revertedFiles = [];
+      const failedFiles = [];
+
+      // Check if any checkpoints were found
+      if (checkpoints.length === 0) {
+        console.log(`No file changes to revert for message ${messageId} in session ${sessionId}`);
+        return [];
+      }
 
       // Group checkpoints by file and revert in reverse chronological order
       const fileGroups = {};
@@ -230,7 +293,18 @@ class CheckpointManager {
           revertedFiles.push(filePath);
         } catch (error) {
           console.error('Failed to revert file:', filePath, error);
+          failedFiles.push({ filePath, error: error.message });
         }
+      }
+
+      if (failedFiles.length > 0) {
+        console.warn(`Some files failed to revert:`, failedFiles);
+        // Still return successful files, but include failure information
+        return { 
+          revertedFiles, 
+          failedFiles, 
+          partialSuccess: revertedFiles.length > 0 
+        };
       }
 
       return revertedFiles;
@@ -242,9 +316,20 @@ class CheckpointManager {
 
   // Revert files back to their state before a checkpoint
   async unrevertFromCheckpoint(sessionId, messageId) {
+    if (!this.checkpointDb) {
+      throw new Error('Checkpoint database not initialized');
+    }
+
     try {
       const checkpoints = await this.getCheckpointsToRevert(sessionId, messageId);
       const restoredFiles = [];
+      const failedFiles = [];
+
+      // Check if any checkpoints were found
+      if (checkpoints.length === 0) {
+        console.log(`No file changes to unrevert for message ${messageId} in session ${sessionId}`);
+        return [];
+      }
 
       // Group checkpoints by file and restore to their "new content" state
       const fileGroups = {};
@@ -269,7 +354,18 @@ class CheckpointManager {
           }
 
           // Restore to the new content (post-edit state)
-          if (latestCheckpoint.full_snapshot && latestCheckpoint.new_content !== '') {
+          if (latestCheckpoint.new_content === '...PENDING_POST_EDIT_CONTENT...') {
+            // This checkpoint was created for an Edit/MultiEdit but never updated with actual content
+            // We need to read the current file content as the "new" content
+            try {
+              const currentContent = await fs.readFile(filePath, 'utf8');
+              console.log('Using current file content as post-edit state for unrevert:', filePath);
+              // The file is already in the correct state, no action needed
+            } catch (err) {
+              console.error('Cannot read current file content for unrevert:', filePath, err);
+              throw new Error(`Cannot unrevert ${filePath}: file not readable`);
+            }
+          } else if (latestCheckpoint.full_snapshot && latestCheckpoint.new_content !== '') {
             // For new files, restore to the full new content
             await fs.writeFile(filePath, latestCheckpoint.new_content);
             console.log('Restored file from new content snapshot:', filePath);
@@ -286,7 +382,18 @@ class CheckpointManager {
           restoredFiles.push(filePath);
         } catch (error) {
           console.error('Failed to unrevert file:', filePath, error);
+          failedFiles.push({ filePath, error: error.message });
         }
+      }
+
+      if (failedFiles.length > 0) {
+        console.warn(`Some files failed to unrevert:`, failedFiles);
+        // Still return successful files, but include failure information
+        return { 
+          restoredFiles, 
+          failedFiles, 
+          partialSuccess: restoredFiles.length > 0 
+        };
       }
 
       return restoredFiles;
@@ -308,11 +415,23 @@ class CheckpointManager {
 
   // Check if there are file changes for a message
   async hasFileChanges(sessionId, messageId) {
+    if (!sessionId || !messageId) {
+      console.warn('hasFileChanges called with invalid parameters:', { sessionId, messageId });
+      return false;
+    }
+
+    if (!this.checkpointDb) {
+      console.warn('Checkpoint database not initialized, returning false for hasFileChanges');
+      return false;
+    }
+
     try {
       const checkpoints = await this.getCheckpointsToRevert(sessionId, messageId);
-      return checkpoints.length > 0;
+      const hasChanges = checkpoints.length > 0;
+      console.log(`Session ${sessionId}, Message ${messageId}: ${hasChanges ? 'has' : 'no'} file changes (${checkpoints.length} checkpoints)`);
+      return hasChanges;
     } catch (error) {
-      console.error('Failed to check file changes:', error);
+      console.error('Failed to check file changes for session', sessionId, 'message', messageId, ':', error);
       return false;
     }
   }

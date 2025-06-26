@@ -782,6 +782,10 @@ class SessionManager {
     return this.sessions.find(s => s.id === this.currentSessionId);
   }
 
+  getSession(sessionId) {
+    return this.sessions.find(s => s.id === sessionId);
+  }
+
   // Enter draft mode - UI is ready for conversation but no session created yet
   // Note: New conversations automatically navigate to the home directory first
   async enterDraftMode(title, navigateToHome = false) {

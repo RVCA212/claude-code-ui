@@ -1,0 +1,37 @@
+Index: readme.md
+===================================================================
+--- readme.md	before
++++ readme.md	after
+@@ -1,31 +0,0 @@
+-## Project Structure
+-
+-```
+-.                            # Project Root
+-├── =0.1.4
+-├── __pycache__               # Python compiled bytecode
+-│   ├── e2b_react.cpython-311.pyc
+-│   └── react.cpython-311.pyc
+-├── aider_langgraph_app.py    # Main LangGraph application script
+-├── aider_sdk_testing.egg-info # Python package metadata
+-│   ├── PKG-INFO
+-│   ├── SOURCES.txt
+-│   ├── dependency_links.txt
+-│   ├── requires.txt
+-│   └── top_level.txt
+-├── e2b_react.py
+-├── example.py
+-├── langgraph.json            # LangGraph configuration
+-├── planner_langgraph.py      # Planning agent script
+-├── pyproject.toml            # Project configuration
+-├── react.py
+-├── readme.md                 # Project documentation
+-├── requirements.txt          # Python dependencies
+-├── run_lgraph.py
+-├── src                       # Source code directory
+-│   └── calculator.py         # Utility calculator module
+-└── supervisor.py
+-```
+-
+-The project structure is organized with the main Python scripts at the root level, including core application files like `planner_langgraph.py`, `aider_langgraph_app.py`, and utility scripts. The `src` directory contains a `calculator.py` module, and there are configuration files like `pyproject.toml` and `requirements.txt` for project management.
+-
+\ No newline at end of file

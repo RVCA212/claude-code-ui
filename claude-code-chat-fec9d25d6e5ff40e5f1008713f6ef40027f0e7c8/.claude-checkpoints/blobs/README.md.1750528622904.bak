@@ -1,0 +1,55 @@
+# Claude Code Chat
+
+## Overview
+
+Claude Code Chat is an Electron-based desktop application for interacting with Claude Code, providing a user-friendly interface for AI-powered code assistance and development workflows.
+
+## Features
+
+- Interactive chat interface with Claude Code
+- Native desktop application for macOS, Windows, and Linux
+- Integrated session management
+- Checkpoint system for conversation recovery
+- Multi-process architecture with secure IPC
+
+## Prerequisites
+
+- Node.js v16+
+- npm
+- Anthropic API Key
+
+## Installation
+
+```bash
+# Clone the repository
+git clone https://github.com/your-org/claude-code-chat.git
+
+# Install dependencies
+npm install
+
+# Install Claude Code CLI
+npm run install-claude
+```
+
+## Development
+
+```bash
+# Start in development mode
+npm run dev
+
+# Build for production
+npm run build
+
+# Rebuild native dependencies
+npm run rebuild
+```
+
+## Supported Platforms
+
+- macOS
+- Windows
+- Linux (AppImage)
+
+## License
+
+MIT License

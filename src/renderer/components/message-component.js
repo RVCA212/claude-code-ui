@@ -214,7 +214,6 @@ class MessageComponent {
       // If no session exists (draft mode), create one first
       if (!sessionId) {
         if (this.sessionManager.isDraftModeActive()) {
-          console.log('Creating session from draft mode before sending message');
           const session = await this.sessionManager.createSessionFromDraft();
           sessionId = session.id;
         } else {
@@ -252,7 +251,6 @@ class MessageComponent {
               originalDirectory: validationResult.sessionCwd,
               onCancel: () => {
                 // Do nothing - keep draft message in input
-                console.log('User cancelled directory mismatch modal');
               },
               onCreateNewChat: (draftMessage) => {
                 this.handleCreateNewChatWithDraft(draftMessage);
@@ -318,7 +316,6 @@ class MessageComponent {
           this.handleInputChange(); // Update UI state
           this.messageInput.focus();
         }
-        console.log('Created new chat with draft message ready to send');
       }
     } catch (error) {
       console.error('Failed to create new chat with draft:', error);
@@ -435,6 +432,9 @@ class MessageComponent {
     }
 
     this.scrollToBottom();
+
+    // Check and show revert buttons for assistant messages with file changes
+    this.checkAndShowRevertButtons(context);
   }
 
   showEmptyState() {
@@ -516,21 +516,16 @@ class MessageComponent {
           </button>
         </div>
       `;
-    } else {
-      // Show restore checkpoint button for normal messages
+    } else if (message.type === 'user') {
+      // Show restore checkpoint button for user messages that have subsequent assistant responses with file changes
       return `
-        <div class="message-actions">
-          <button class="revert-btn"
-                  onclick="revertToMessage('${sessionId}', '${message.id}')"
-                  title="Restore checkpoint - revert files to this point">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M3 7v6h6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-              <path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-            Restore checkpoint
-          </button>
+        <div class="message-actions" data-message-id="${message.id}" data-session-id="${sessionId}" data-message-type="user">
+          <!-- Restore button will be conditionally added by checkAndShowRevertButton -->
         </div>
       `;
+    } else {
+      // No actions for assistant messages or other message types
+      return '<div class="message-actions"></div>';
     }
   }
 
@@ -545,8 +540,8 @@ class MessageComponent {
       <div class="conversation-turn user" id="message-${messageId}">
         <div class="conversation-content">
           <div class="message-content">${DOMUtils.escapeHTML(content)}</div>
-          <div class="conversation-timestamp">${timestamp}</div>
           ${this.createMessageActions({ id: messageId }, sessionId)}
+          <div class="conversation-timestamp">${timestamp}</div>
         </div>
       </div>
     `;
@@ -638,13 +633,19 @@ class MessageComponent {
 
     this.messagesContainer.insertAdjacentHTML('beforeend', finalMessageHTML);
     this.scrollToBottom();
+
+    // Check and show revert buttons for user messages with subsequent file changes
+    // Get the current session context to check all messages
+    const currentSession = this.sessionManager.getSession(sessionId);
+    if (currentSession && currentSession.messages) {
+      this.checkAndShowRevertButtons({ id: sessionId, messages: currentSession.messages });
+    }
   }
 
   async revertToMessage(sessionId, messageId) {
     try {
       const result = await window.electronAPI.revertToMessage(sessionId, messageId);
       if (result.success) {
-        console.log('Reverted successfully:', result.message);
         this.currentRevertMessageId = messageId;
         this.markMessagesAsInvalidated(messageId);
         this.makeMessageEditable(messageId);
@@ -658,11 +659,38 @@ class MessageComponent {
     }
   }
 
+  // Revert to the most recent file changes in the conversation
+  async revertToLatestChanges(sessionId) {
+    try {
+      // Get the current session to find all messages
+      const currentSession = this.sessionManager.getSession(sessionId);
+      if (!currentSession || !currentSession.messages) {
+        this.showError('No conversation found to revert');
+        return;
+      }
+
+      // Find the most recent assistant message with file changes
+      const latestAssistantMessageWithChanges = await this.findLatestAssistantMessageWithChanges(currentSession.messages, sessionId);
+      
+      if (latestAssistantMessageWithChanges) {
+        // Revert to before this assistant message's changes
+        await this.revertToMessage(sessionId, latestAssistantMessageWithChanges.id);
+      } else {
+        // No file changes found to revert - show informative message instead of error
+        console.log('No file changes found to revert in session', sessionId);
+        // Could show a toast/notification instead of an error
+        this.showError('No file changes found in this conversation to restore from');
+      }
+    } catch (error) {
+      console.error('Failed to revert to latest changes:', error);
+      this.showError('Failed to revert file changes');
+    }
+  }
+
   async unrevertFromMessage(sessionId, messageId) {
     try {
       const result = await window.electronAPI.unrevertFromMessage(sessionId, messageId);
       if (result.success) {
-        console.log('Unreverted successfully:', result.message);
         this.currentRevertMessageId = null;
         this.unmarkMessagesAsInvalidated(messageId);
         this.makeMessageNonEditable(messageId);
@@ -839,8 +867,6 @@ class MessageComponent {
     // Update references
     this.fileMentionDropdown = dropdown;
     this.fileMentionList = list;
-
-    console.log('File mention elements created successfully');
   }
 
   // File mention methods
@@ -1051,7 +1077,6 @@ class MessageComponent {
     if (!query) return DOMUtils.escapeHTML(filename);
 
     const escapedFilename = DOMUtils.escapeHTML(filename);
-    const escapedQuery = DOMUtils.escapeHTML(query);
     const queryLength = query.length;
 
     if (filename.toLowerCase().startsWith(query.toLowerCase())) {
@@ -1162,7 +1187,6 @@ class MessageComponent {
       const clickedMessage = event.target.closest('.conversation-turn');
       if (!clickedMessage) return;
 
-      const clickedMessageId = clickedMessage.id.replace('message-', '');
       const revertedElement = document.getElementById(`message-${this.currentRevertMessageId}`);
 
       if (revertedElement && this.isElementAfter(revertedElement, clickedMessage)) {
@@ -1188,6 +1212,102 @@ class MessageComponent {
   isElementAfter(elementA, elementB) {
     const position = elementA.compareDocumentPosition(elementB);
     return (position & Node.DOCUMENT_POSITION_FOLLOWING) !== 0;
+  }
+
+  // Show revert buttons on all user messages
+  async checkAndShowRevertButtons(context) {
+    if (!context || !context.messages) {
+      return;
+    }
+    
+    // Process all user messages and show revert buttons
+    for (const message of context.messages) {
+      if (message.type === 'user') {
+        await this.checkAndShowRevertButton(message.id, context.id);
+      }
+    }
+  }
+
+  // Always show restore checkpoint button on user messages
+  async checkAndShowRevertButton(userMessageId, sessionId) {
+    if (!userMessageId || !sessionId) {
+      return;
+    }
+
+    try {
+      const messageActionsContainer = document.querySelector(`[data-message-id="${userMessageId}"][data-session-id="${sessionId}"][data-message-type="user"]`);
+      if (!messageActionsContainer) return;
+
+      // Always add the revert button - it will handle finding the appropriate checkpoint when clicked
+      messageActionsContainer.innerHTML = `
+        <button class="revert-btn"
+                onclick="window.messageComponent.revertToLatestChanges('${sessionId}')"
+                title="Restore checkpoint - revert recent file changes">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M3 7v6h6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          Restore checkpoint
+        </button>
+      `;
+    } catch (error) {
+      console.error('Error adding restore button:', error);
+    }
+  }
+
+  // Find the latest (most recent) assistant message that made file changes
+  async findLatestAssistantMessageWithChanges(allMessages, sessionId) {
+    if (!allMessages || !Array.isArray(allMessages)) {
+      console.log('No messages array provided to findLatestAssistantMessageWithChanges');
+      return null;
+    }
+
+    console.log(`Searching ${allMessages.length} messages for file changes in session ${sessionId}`);
+
+    // Look through messages in reverse order to find the most recent one with changes
+    for (let i = allMessages.length - 1; i >= 0; i--) {
+      const message = allMessages[i];
+      if (message && message.type === 'assistant' && message.id) {
+        // Check if this assistant message made file changes
+        try {
+          const hasChanges = await window.electronAPI.hasFileChanges(sessionId, message.id);
+          console.log(`Message ${message.id} has file changes: ${hasChanges}`);
+          if (hasChanges) {
+            return message;
+          }
+        } catch (error) {
+          console.error('Error checking file changes for assistant message:', message.id, error);
+          // Continue checking other messages instead of failing completely
+          continue;
+        }
+      }
+    }
+    console.log('No assistant messages with file changes found');
+    return null;
+  }
+
+  // Find the next assistant message after a user message that made file changes
+  async findNextAssistantMessageWithChanges(allMessages, userMessageIndex, sessionId) {
+    if (!allMessages || !Array.isArray(allMessages) || userMessageIndex < 0) {
+      return null;
+    }
+
+    // Look for assistant messages after the user message
+    for (let i = userMessageIndex + 1; i < allMessages.length; i++) {
+      const message = allMessages[i];
+      if (message && message.type === 'assistant' && message.id) {
+        // Check if this assistant message made file changes
+        try {
+          const hasChanges = await window.electronAPI.hasFileChanges(sessionId, message.id);
+          if (hasChanges) {
+            return message;
+          }
+        } catch (error) {
+          console.error('Error checking file changes for assistant message:', message.id, error);
+        }
+      }
+    }
+    return null;
   }
 
   // Expand from compact mode to full view when user sends a message
@@ -1223,8 +1343,6 @@ class MessageComponent {
       event.preventDefault();
       event.stopPropagation();
     }
-
-    console.log('File path clicked:', filePath);
 
     // Use the existing MessageUtils handler which integrates with the app components
     if (MessageUtils && typeof MessageUtils.handleFilePathClick === 'function') {

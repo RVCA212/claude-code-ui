@@ -270,20 +270,25 @@ class MessageUtils {
   // Create inline tool call HTML for use within message flow
   static createInlineToolCall(toolCall, status = 'completed', cwd) {
     const toolId = 'inline_tool_' + Math.random().toString(36).substring(2, 11);
-    // Always expand Edit, MultiEdit, and Write tools by default
-    const isCollapsed = !['Edit', 'MultiEdit', 'Write'].includes(toolCall.name);
+    // Expand Edit, MultiEdit, Write tools by default, or any tool that has failed.
+    const isCollapsed = !(['Edit', 'MultiEdit', 'Write'].includes(toolCall.name) || toolCall.status === 'failed');
     const contentStyle = isCollapsed ? 'display: none;' : '';
 
     const toolIcon = this.getToolIcon(toolCall.name);
     const toolSummary = this.getToolSummary(toolCall, cwd);
+    const finalStatus = toolCall.status || (toolCall.output ? 'completed' : status);
+    
+    let statusIndicator = '';
+    if (finalStatus === 'in_progress') statusIndicator = '⏳';
+    else if (finalStatus === 'failed') statusIndicator = '❌';
 
     return `
-      <div class="inline-tool-call ${status}">
+      <div class="inline-tool-call ${finalStatus}">
         <div class="inline-tool-header" onclick="MessageUtils.toggleTool('${toolId}')" data-collapsed="${isCollapsed}">
           <span class="tool-icon codicon ${toolIcon}"></span>
           <span class="tool-name">${toolCall.name}</span>
           <span class="tool-summary">${toolSummary}</span>
-          <span class="tool-status ${status}">${status === 'in_progress' ? '⏳' : ''}</span>
+          <span class="tool-status ${finalStatus}">${statusIndicator}</span>
         </div>
         <div class="tool-details" id="${toolId}" style="${contentStyle}">
           ${this.createToolDetails(toolCall, cwd)}
@@ -380,26 +385,27 @@ class MessageUtils {
 
   // Create detailed tool information with diff view for Edit/MultiEdit tools
   static createToolDetails(toolCall, cwd) {
-    // For Edit and MultiEdit tools, show a professional diff view
-    if (toolCall.name === 'Edit' || toolCall.name === 'MultiEdit') {
-      return this.createDiffView(toolCall, cwd);
-    }
+    let details = '';
+    // For Edit, MultiEdit and Write tools, show a professional diff view
+    if (toolCall.name === 'Edit' || toolCall.name === 'MultiEdit' || toolCall.name === 'Write') {
+        details += this.createDiffView(toolCall, cwd);
+    } else {
+        // For other tools, show the traditional input/output view
+        let inputDisplay = this.escapeHTML(JSON.stringify(toolCall.input, null, 2));
+        
+        // Make file paths clickable in input JSON
+        if (toolCall.input && toolCall.input.file_path) {
+          const relativePath = this.getRelativePath(toolCall.input.file_path, cwd);
+          const escapedFilePath = this.escapeHTML(toolCall.input.file_path);
+          const clickableFilePath = `<span class="file-path-link" data-file-path="${escapedFilePath}" title="Click to open ${this.escapeHTML(relativePath)}">${escapedFilePath}</span>`;
+          inputDisplay = inputDisplay.replace(
+            new RegExp(escapedFilePath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'),
+            clickableFilePath
+          );
+        }
 
-    // For other tools, show the traditional input/output view
-    let inputDisplay = this.escapeHTML(JSON.stringify(toolCall.input, null, 2));
-    
-    // Make file paths clickable in input JSON
-    if (toolCall.input && toolCall.input.file_path) {
-      const relativePath = this.getRelativePath(toolCall.input.file_path, cwd);
-      const escapedFilePath = this.escapeHTML(toolCall.input.file_path);
-      const clickableFilePath = `<span class="file-path-link" data-file-path="${escapedFilePath}" title="Click to open ${this.escapeHTML(relativePath)}">${escapedFilePath}</span>`;
-      inputDisplay = inputDisplay.replace(
-        new RegExp(escapedFilePath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'),
-        clickableFilePath
-      );
+        details += '<div class="tool-input"><strong>Input:</strong><pre>' + inputDisplay + '</pre></div>';
     }
-
-    let details = '<div class="tool-input"><strong>Input:</strong><pre>' + inputDisplay + '</pre></div>';
 
     if (toolCall.output) {
       let outputContent = this.escapeHTML(toolCall.output);
@@ -407,7 +413,7 @@ class MessageUtils {
       // Apply file path formatting to output content
       outputContent = this.formatTextContent(outputContent, cwd);
       
-      details += '<div class="tool-output"><strong>Output:</strong><div class="tool-output-content">' +
+      details += `<div class="tool-output ${toolCall.status === 'failed' ? 'error' : ''}"><strong>Output:</strong><div class="tool-output-content">` +
                   outputContent +
                   '</div></div>';
     }
@@ -424,15 +430,37 @@ class MessageUtils {
     let diffContent = '';
 
     if (toolCall.name === 'Edit') {
-      // Single edit
-      const { old_string, new_string } = toolCall.input;
+      // Single edit – guard against undefined strings
+      const { old_string = '', new_string = '' } = toolCall.input || {};
       diffContent = this.createSingleDiff(old_string, new_string, diffViewId + '_0');
     } else if (toolCall.name === 'MultiEdit') {
-      // Multiple edits
-      const edits = toolCall.input.edits || [];
-      diffContent = edits.map((edit, index) => {
-        return this.createSingleDiff(edit.old_string, edit.new_string, `${diffViewId}_${index}`, index + 1, edits.length);
-      }).join('');
+      // Multiple edits –   edits can sometimes arrive as a JSON string, so attempt to parse
+      let edits = toolCall.input?.edits;
+      if (typeof edits === 'string') {
+        try {
+          edits = JSON.parse(edits);
+        } catch (err) {
+          console.warn('Failed to JSON.parse edits string – falling back to raw display', err);
+        }
+      }
+
+      if (Array.isArray(edits)) {
+        diffContent = edits.map((edit, index) => {
+          const oldStr = edit?.old_string || '';
+          const newStr = edit?.new_string || '';
+          return this.createSingleDiff(oldStr, newStr, `${diffViewId}_${index}`, index + 1, edits.length);
+        }).join('');
+      } else {
+        // Unknown / malformed edits – display raw for debugging instead of crashing
+        const rawContent = typeof edits === 'string' ? edits : JSON.stringify(edits, null, 2);
+        diffContent = `
+          <div class="multi-edit-raw">${this.escapeHTML(rawContent || 'Unable to display diff – unsupported edits format')}</div>
+        `;
+      }
+    } else if (toolCall.name === 'Write') {
+      const old_string = toolCall.input.old_content_for_diff || '';
+      const new_string = toolCall.input.content || '';
+      diffContent = this.createSingleDiff(old_string, new_string, diffViewId + '_0');
     }
 
     return `
@@ -492,10 +520,6 @@ class MessageUtils {
           </div>
         </div>
         <div class="diff-unified">
-          <div class="diff-unified-header">
-            <span class="codicon codicon-diff"></span>
-            <span>Unified Diff</span>
-          </div>
           <div class="diff-lines">
             ${this.renderUnifiedDiff(diffLines)}
           </div>

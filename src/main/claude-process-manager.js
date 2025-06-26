@@ -308,13 +308,26 @@ class ClaudeProcessManager {
                 // Check for tool_use blocks and create checkpoints
                 if (assistantPayload.content && Array.isArray(assistantPayload.content)) {
                   for (const block of assistantPayload.content) {
-                    if (block.type === 'tool_use' && (block.name === 'Edit' || block.name === 'MultiEdit' || block.name === 'Write')) {
-                      console.log('Detected file modification tool, creating checkpoint:', block.name);
-                      try {
-                        await this.checkpointManager.createCheckpoint(block, sessionId, assistantMessage.id);
-                      } catch (error) {
-                        console.error('Failed to create checkpoint for tool use:', error);
-                      }
+                    if (block.type === 'tool_use') {
+                        if (block.name === 'Write') {
+                            try {
+                                // Read the file content before writing to show a diff.
+                                const oldContent = await this.fileOperations.readFile(block.input.file_path);
+                                block.input.old_content_for_diff = oldContent || '';
+                            } catch (e) {
+                                // If the file doesn't exist, old content is an empty string.
+                                block.input.old_content_for_diff = '';
+                            }
+                        }
+
+                        if (block.name === 'Edit' || block.name === 'MultiEdit' || block.name === 'Write') {
+                          console.log('Detected file modification tool, creating checkpoint:', block.name);
+                          try {
+                            await this.checkpointManager.createCheckpoint(block, sessionId, assistantMessage.id);
+                          } catch (error) {
+                            console.error('Failed to create checkpoint for tool use:', error);
+                          }
+                        }
                     }
                   }
                 }
@@ -336,10 +349,39 @@ class ClaudeProcessManager {
                   cwd: cwd
                 });
               }
+            } else if (parsed.type === 'user' && parsed.message?.content?.[0]?.type === 'tool_result') {
+                const toolResult = parsed.message.content[0];
+                const { tool_use_id, content, is_error } = toolResult;
+
+                if (tool_use_id && assistantMessage.content) {
+                    const toolCall = assistantMessage.content.find(
+                        (block) => block.type === 'tool_use' && block.id === tool_use_id
+                    );
+
+                    if (toolCall) {
+                        toolCall.output = content;
+                        if (is_error) {
+                            toolCall.status = 'failed';
+                        }
+                        console.log(`Updated tool_use ${tool_use_id} with result.`);
+                        
+                        this.mainWindow.webContents.send('message-stream', {
+                            sessionId,
+                            message: assistantMessage,
+                            isComplete: false,
+                            cwd: cwd
+                        });
+                    }
+                }
             } else if (parsed.type === 'message' && parsed.role === 'user') {
               console.log('Received user message echo:', parsed);
             } else if (parsed.type === 'result') {
               console.log('Received result message:', parsed);
+              
+              // Handle tool execution results and update checkpoints with post-edit content
+              if (parsed.tool_call_id) {
+                await this.handleToolResult(parsed, sessionId, assistantMessage.id);
+              }
             } else {
               console.log('Unhandled message type:', parsed.type, 'with role:', parsed.role);
             }
@@ -615,6 +657,53 @@ class ClaudeProcessManager {
       proc.on('close', () => resolve());
       proc.on('error', () => resolve());
     });
+  }
+
+  // Handle tool execution results and update checkpoints with post-edit content
+  async handleToolResult(resultMessage, sessionId, messageId) {
+    try {
+      console.log('Processing tool result for checkpoint update:', resultMessage.tool_call_id);
+      
+      // Look for file modification tool results that need checkpoint updates
+      if (resultMessage.content && Array.isArray(resultMessage.content)) {
+        for (const block of resultMessage.content) {
+          if (block.type === 'text' && block.text) {
+            // Parse the result text to see if it indicates successful file operations
+            await this.updateCheckpointsFromToolResult(block.text, sessionId, messageId);
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Failed to handle tool result for checkpoint update:', error);
+    }
+  }
+
+  // Update checkpoints based on tool result information
+  async updateCheckpointsFromToolResult(resultText, sessionId, messageId) {
+    try {
+      // Get all pending checkpoints for this session and message that need post-edit content
+      const pendingCheckpoints = await this.checkpointManager.getPendingCheckpoints(sessionId, messageId);
+      
+      for (const checkpoint of pendingCheckpoints) {
+        if (checkpoint.new_content === '...PENDING_POST_EDIT_CONTENT...') {
+          console.log('Updating checkpoint with post-edit content:', checkpoint.id, 'for file:', checkpoint.file_path);
+          
+          // Update the checkpoint with actual post-edit content
+          const updateSuccess = await this.checkpointManager.updateCheckpointWithPostEditContent(
+            checkpoint.id, 
+            checkpoint.file_path
+          );
+          
+          if (updateSuccess) {
+            console.log('Successfully updated checkpoint:', checkpoint.id);
+          } else {
+            console.warn('Failed to update checkpoint:', checkpoint.id);
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Failed to update checkpoints from tool result:', error);
+    }
   }
 }
 

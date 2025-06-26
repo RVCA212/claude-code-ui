@@ -57,6 +57,74 @@
    File Header and Tab Management
    ============================================================================ */
 
+.editor-tabs {
+  display: flex;
+  align-items: stretch;
+  background: var(--color-background);
+  flex-grow: 1;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-app-region: no-drag;
+}
+
+.editor-tab {
+  display: flex;
+  align-items: center;
+  padding: var(--space-8) var(--space-12);
+  border-right: 1px solid var(--color-border);
+  cursor: pointer;
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+  position: relative;
+  transition: all var(--duration-fast) var(--ease-standard);
+}
+
+.editor-tab:hover {
+  background: var(--color-secondary-hover);
+  color: var(--color-text);
+}
+
+.editor-tab.active {
+  background: var(--color-secondary);
+  color: var(--color-text);
+  border-bottom: 2px solid var(--color-primary);
+  padding-bottom: 6px; /* Adjust padding to account for border */
+}
+
+.editor-tab .file-icon {
+  margin-right: var(--space-8);
+}
+
+.editor-tab .dirty-indicator {
+  margin-left: var(--space-4);
+  color: var(--color-primary);
+  font-size: 1.2em;
+  line-height: 1;
+}
+
+.close-tab-btn {
+  background: none;
+  border: none;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  padding: var(--space-4);
+  margin-left: var(--space-8);
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.close-tab-btn:hover {
+  background: var(--color-secondary);
+  color: var(--color-text);
+}
+
+.editor-tab.active .close-tab-btn {
+  color: var(--color-text);
+}
+
 /* Header showing current file name and controls */
 .file-editor-header {
   display: flex;
@@ -108,10 +176,11 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: var(--space-12) var(--space-16);
+  padding: 0; /* Remove padding for tab layout */
   background-color: var(--color-surface);
   border-bottom: 1px solid var(--color-border);
   -webkit-app-region: drag;
+  height: 40px; /* Set a fixed height for the header/tabs */
 }
 
 .file-info {
