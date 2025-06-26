@@ -260,13 +260,13 @@ function createTray() {
 
         const baseTemplate = [
           {
-            label: 'Show Claude Code Chat',
+            label: 'Show Cloud Code',
             click: () => {
               showWindow();
             }
           },
           {
-            label: 'Hide Claude Code Chat',
+            label: 'Hide Cloud Code',
             click: () => {
               hideWindow();
             }
@@ -346,12 +346,12 @@ function createTray() {
     // Also refresh menu every 60 seconds to keep workspace list up to date
     setInterval(buildContextMenu, 60000);
 
-    tray.setToolTip('Claude Code Chat - Click to show/hide window');
+    tray.setToolTip('Cloud Code - Click to show/hide window');
 
     // Add some debugging info
     console.log('Tray properties:');
     console.log('  - Title:', tray.getTitle ? tray.getTitle() : 'N/A');
-    console.log('  - ToolTip:', 'Claude Code Chat - Click to show/hide window');
+    console.log('  - ToolTip:', 'Cloud Code - Click to show/hide window');
     console.log('  - Destroyed:', tray.isDestroyed());
 
     // Handle tray click (double-click on macOS)
@@ -465,8 +465,8 @@ function showAboutDialog() {
   const { dialog } = require('electron');
   dialog.showMessageBox(mainWindow, {
     type: 'info',
-    title: 'About Claude Code Chat',
-    message: 'Claude Code Chat',
+    title: 'About Cloud Code',
+    message: 'Cloud Code',
     detail: 'An Electron app for chatting with Claude Code SDK\n\nVersion: 1.0.0',
     buttons: ['OK']
   });
@@ -512,8 +512,8 @@ async function createWindow() {
 
   // Create the browser window
   mainWindow = new BrowserWindow({
-    width: 450,
-    height: 250,
+    width: 650,
+    height: 450,
     minWidth: 450,
     minHeight: 150,
     icon: path.join(__dirname, '../../assets/icon-large.png'),
@@ -602,7 +602,7 @@ async function createWindow() {
         const { Notification } = require('electron');
         if (Notification.isSupported()) {
           new Notification({
-            title: 'Claude Code Chat',
+            title: 'Cloud Code',
             body: 'App was moved to system tray. Click the tray icon to show it again.',
             silent: true
           }).show();

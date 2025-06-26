@@ -71,6 +71,10 @@ class PreloadBridge {
       watchFile: (filePath) => ipcRenderer.invoke('watch-file', filePath),
       unwatchFile: (filePath) => ipcRenderer.invoke('unwatch-file', filePath),
 
+      // Directory watching operations
+      watchDirectory: (dirPath) => ipcRenderer.invoke('watch-directory', dirPath),
+      unwatchDirectory: (dirPath) => ipcRenderer.invoke('unwatch-directory', dirPath),
+
       // File search operations
       searchFilesByPrefix: (query, maxResults) => ipcRenderer.invoke('search-files-by-prefix', query, maxResults),
       getDirectoryContentsOnly: (dirPath) => ipcRenderer.invoke('get-directory-contents-only', dirPath),
@@ -113,6 +117,7 @@ class PreloadBridge {
       onSessionCreated: (callback) => ipcRenderer.on('session-created', callback),
       onAllSessionsCleared: (callback) => ipcRenderer.on('all-sessions-cleared', callback),
       onFileChanged: (callback) => ipcRenderer.on('file-changed', callback),
+      onDirectoryChanged: (callback) => ipcRenderer.on('directory-changed', callback),
 
       // Tray events
       onTrayOpenWorkspace: (callback) => ipcRenderer.on('tray-open-workspace', callback),
@@ -165,7 +170,7 @@ class PreloadBridge {
       'handleTrayOpenExcelFile', 'handleTrayOpenPhotoshopFile', 'removeAllListeners', 'resizeWindow'
     ];
 
-    const updatedRequiredMethods = [...requiredMethods, 'onTraySelectSession', 'setWindowLock'];
+    const updatedRequiredMethods = [...requiredMethods, 'onTraySelectSession', 'setWindowLock', 'watchDirectory', 'unwatchDirectory', 'onDirectoryChanged'];
 
     const exposedMethods = Object.keys(this.exposedAPI);
     const missingMethods = updatedRequiredMethods.filter(method => !exposedMethods.includes(method));

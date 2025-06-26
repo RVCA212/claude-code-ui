@@ -363,7 +363,7 @@ class IPCHandlers {
         for (const sessionId of runningSessionIds) {
           const session = this.sessionManager.getSession(sessionId);
           const sessionContext = this.sessionManager.getSessionContext(sessionId);
-          
+
           if (session) {
             tasks.push({
               sessionId: sessionId,
@@ -544,6 +544,21 @@ class IPCHandlers {
 
     ipcMain.handle('unwatch-file', async (event, filePath) => {
       return await this.fileOperations.unwatchFile(filePath);
+    });
+
+    // Directory watching operations
+    ipcMain.handle('watch-directory', async (event, dirPath) => {
+      const callback = (data) => {
+        // Send directory change notification to renderer
+        if (this.mainWindow && !this.mainWindow.isDestroyed()) {
+          this.mainWindow.webContents.send('directory-changed', data);
+        }
+      };
+      return this.fileOperations.watchDirectory(dirPath, callback);
+    });
+
+    ipcMain.handle('unwatch-directory', async (event, dirPath) => {
+      return await this.fileOperations.unwatchDirectory(dirPath);
     });
 
     // Search files by prefix recursively

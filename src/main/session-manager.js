@@ -518,7 +518,7 @@ class SessionManager {
   async updateWorkspaceName(workspaceId, newWorkspaceName) {
     try {
       let updatedCount = 0;
-      
+
       for (const session of this.sessions.values()) {
         if (session.workspaceId === workspaceId) {
           session.workspaceName = newWorkspaceName;
@@ -550,7 +550,7 @@ class SessionManager {
   async removeWorkspaceFromSessions(workspaceId) {
     try {
       let clearedCount = 0;
-      
+
       for (const session of this.sessions.values()) {
         if (session.workspaceId === workspaceId) {
           session.workspaceId = null;
@@ -583,15 +583,15 @@ class SessionManager {
   async clearAllSessions() {
     try {
       const sessionCount = this.sessions.size;
-      
+
       // Clear all sessions from memory
       this.sessions.clear();
-      
+
       // Save empty sessions to storage
       await this.saveSessions();
-      
+
       console.log(`Cleared all ${sessionCount} sessions`);
-      
+
       return {
         success: true,
         clearedCount: sessionCount

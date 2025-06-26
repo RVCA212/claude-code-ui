@@ -264,6 +264,11 @@ class AppComponent {
       this.layoutObserver.disconnect();
       this.layoutObserver = null;
     }
+
+    // Clean up session manager periodic updates
+    if (this.components.sessionManager && this.components.sessionManager.cleanup) {
+      this.components.sessionManager.cleanup();
+    }
   }
 
   handleFileChanged(data) {

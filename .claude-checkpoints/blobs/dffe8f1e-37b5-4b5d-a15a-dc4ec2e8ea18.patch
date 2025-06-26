@@ -1,0 +1,35 @@
+Index: README.md
+===================================================================
+--- README.md	before
++++ README.md	after
+@@ -137,30 +137,8 @@
+ # Start production server
+ npm start
+ ```
+ 
+-## 📝 Project Structure
+-```
+-airport-gaming/
+-│
+-├── app/
+-│   ├── page.tsx          # Main page component
+-│   └── layout.tsx        # Application layout
+-│
+-├── public/
+-│   └── images/           # Static images
+-│       ├── airgaming256.png
+-│       ├── gaming-ex.png
+-│       └── gaming-ex2.png
+-│
+-├── styles/
+-│   └── globals.css       # Global styling
+-│
+-├── tailwind.config.js    # Tailwind CSS configuration
+-├── next.config.js        # Next.js configuration
+-└── package.json          # Project dependencies and scripts
+-```
+-
+ ## 🔍 Future Roadmap
+ - Expand game library
+ - Develop airport partnership program
+ - Implement additional gaming platforms

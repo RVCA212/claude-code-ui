@@ -57,6 +57,195 @@
 }
 
 /* ============================================================================
+   Session Tabs Container (Below Header)
+   ============================================================================ */
+
+/* Container for session tabs positioned below global header */
+.session-tabs-container {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+  padding: 0 var(--space-12);
+  overflow: hidden;
+  -webkit-app-region: no-drag; /* Allow tab interactions */
+  position: relative;
+  z-index: calc(var(--z-overlays) - 1); /* Just below header */
+}
+
+.session-tabs {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  overflow-x: auto;
+  padding: var(--space-4) 0;
+  /* Hide scrollbar but allow scrolling */
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  width: 100%;
+}
+
+.session-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+/* Individual session tab styling with downward-facing rounded corners */
+.session-tab {
+  display: flex;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-top: none; /* No top border to connect with header */
+  border-radius: 0 0 var(--radius-base) var(--radius-base); /* Only bottom corners rounded */
+  padding: var(--space-6) var(--space-12);
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-standard);
+  white-space: nowrap;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  min-width: 0;
+  max-width: 140px;
+  position: relative;
+  -webkit-app-region: no-drag; /* Allow tab clicks */
+  margin-top: -1px; /* Overlap with header border for seamless connection */
+}
+
+.session-tab:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.2);
+  color: var(--color-text);
+  transform: translateY(-1px); /* Slight lift on hover */
+}
+
+.session-tab.active {
+  background: rgba(var(--color-primary-rgb), 0.15);
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+  transform: translateY(-2px); /* More pronounced lift for active tab */
+  box-shadow: 0 2px 8px rgba(var(--color-primary-rgb), 0.2);
+}
+
+.session-tab.active:hover {
+  background: rgba(var(--color-primary-rgb), 0.2);
+  transform: translateY(-2px);
+}
+
+/* Streaming session tab styling */
+.session-tab.streaming {
+  background: rgba(255, 193, 7, 0.15);
+  border-color: rgba(255, 193, 7, 0.4);
+  color: #ffc107;
+}
+
+.session-tab.streaming:hover {
+  background: rgba(255, 193, 7, 0.2);
+  border-color: rgba(255, 193, 7, 0.5);
+}
+
+/* Active streaming tab - combines both active and streaming states */
+.session-tab.active.streaming {
+  background: rgba(255, 193, 7, 0.25);
+  border-color: rgba(255, 193, 7, 0.6);
+  color: #ffc107;
+  box-shadow: 0 2px 8px rgba(255, 193, 7, 0.3);
+}
+
+.session-tab.active.streaming:hover {
+  background: rgba(255, 193, 7, 0.3);
+  border-color: rgba(255, 193, 7, 0.7);
+}
+
+.session-tab.streaming .session-status-dot.active {
+  background: #ffc107;
+  box-shadow: 0 0 4px rgba(255, 193, 7, 0.5);
+  animation: pulse-streaming 2s ease-in-out infinite;
+}
+
+@keyframes pulse-streaming {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+.session-tab-content {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  flex: 1;
+  min-width: 0;
+}
+
+.session-tab-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: var(--font-weight-medium);
+}
+
+.session-status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: transparent;
+  flex-shrink: 0;
+}
+
+.session-status-dot.active {
+  background: #43b883;
+  box-shadow: 0 0 4px rgba(67, 184, 131, 0.5);
+}
+
+.session-tab-close {
+  background: none;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  padding: var(--space-2);
+  border-radius: var(--radius-sm);
+  opacity: 0;
+  transition: all var(--duration-fast) var(--ease-standard);
+  margin-left: var(--space-4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  -webkit-app-region: no-drag; /* Allow close button clicks */
+}
+
+.session-tab:hover .session-tab-close {
+  opacity: 0.7;
+}
+
+.session-tab-close:hover {
+  opacity: 1;
+  background: rgba(255, 255, 255, 0.1);
+  color: #ff6b6b;
+}
+
+/* New session tab (+ button) with downward-facing rounded corners */
+.session-tab.new-session-tab {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px dashed rgba(255, 255, 255, 0.2);
+  border-top: none;
+  border-radius: 0 0 var(--radius-base) var(--radius-base);
+  color: var(--color-text-secondary);
+  min-width: auto;
+  max-width: none;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  justify-content: center;
+  margin-left: var(--space-6);
+  margin-top: -1px;
+}
+
+.session-tab.new-session-tab:hover {
+  background: rgba(var(--color-primary-rgb), 0.1);
+  border-color: rgba(var(--color-primary-rgb), 0.3);
+  color: var(--color-primary);
+  transform: translateY(-1px);
+}
+
+/* ============================================================================
    Interactive Header Buttons
    ============================================================================ */
 

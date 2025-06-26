@@ -1,0 +1,34 @@
+Index: README.md
+===================================================================
+--- README.md	before
++++ README.md	after
+@@ -153,7 +153,28 @@
+ - Lighthouse Performance Score: ~90
+ - Mobile Responsiveness: Fully Responsive
+ - Accessibility: High
+ 
++## 📂 Project Structure
++```
++.
++├── README.md
++├── airport-gaming
++│   ├── README.md
++│   ├── app
++│   ├── nextconfig.js
++│   ├── package.json
++│   ├── postcss.config.js
++│   ├── public
++│   ├── styles
++│   ├── tailwind.config.js
++│   └── tsconfig.json
++├── app
++│   └── page.tsx
++├── nextconfig.js
++├── package.json
++└── tsconfig.json
++```
++
+ ---
+ 
+ **Turning Airport Waiting into Playtime!** 🎮✈️
+\ No newline at end of file

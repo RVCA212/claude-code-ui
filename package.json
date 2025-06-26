@@ -1,7 +1,7 @@
 {
-  "name": "claude-code-chat",
+  "name": "cloud-code",
   "version": "1.0.0",
-  "description": "Electron chat app for Claude Code SDK",
+  "description": "Desktop app for Cloud Code",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
@@ -18,7 +18,7 @@
     "anthropic",
     "ai"
   ],
-  "author": "Claude Code Chat",
+  "author": "Cloud Code",
   "license": "MIT",
   "devDependencies": {
     "@electron/rebuild": "^3.7.2",
@@ -39,8 +39,8 @@
     "uuid": "^9.0.1"
   },
   "build": {
-    "appId": "com.claudecode.chat",
-    "productName": "Claude Code Chat",
+    "appId": "com.cloudcode.app",
+    "productName": "Cloud Code",
     "directories": {
       "output": "dist"
     },
@@ -55,6 +55,10 @@
     "mac": {
       "category": "public.app-category.developer-tools",
       "icon": "assets/icon-large.png",
+      "hardenedRuntime": true,
+      "entitlements": "build/entitlements.mac.plist",
+      "entitlementsInherit": "build/entitlements.mac.plist",
+      "identity": null,
       "extendInfo": {
         "LSUIElement": false,
         "LSBackgroundOnly": false

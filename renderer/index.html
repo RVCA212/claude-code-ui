@@ -22,7 +22,6 @@
 <body>
     <!-- Global Header Bar -->
     <div class="global-header">
-
         <div class="global-header-center">
             <!-- Directory Breadcrumb Navigation -->
             <div class="global-breadcrumb-container">
@@ -70,6 +69,13 @@
                     <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                 </svg>
             </button>
+        </div>
+    </div>
+
+    <!-- Session Tabs Bar (below header) -->
+    <div class="session-tabs-container" id="sessionTabsContainer">
+        <div class="session-tabs" id="sessionTabs">
+            <!-- Session tabs will be populated by SessionManager -->
         </div>
     </div>
 
@@ -459,8 +465,8 @@
                 </div>
 
                 <div class="conversation-actions">
-                    <!-- New Conversation Button -->
-                    <button class="header-action-btn" id="newConversationBtn" title="New Conversation">
+                    <!-- New Conversation Button (hidden - now handled by session tabs) -->
+                    <button class="header-action-btn" id="newConversationBtn" title="New Conversation" style="display: none;">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                             <path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                         </svg>

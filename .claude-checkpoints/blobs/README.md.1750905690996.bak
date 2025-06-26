@@ -1,0 +1,36 @@
+Deploy it to the cloud with [Vercel](https://vercel.com/templates) ([Documentation](https://nextjs.org/docs/app/building-your-application/deploying)).
+
+## Project Structure
+
+### Key Directories
+
+- `app/`: Main Next.js application directory
+  - `blog/`: Blog-related pages and posts
+    - `[slug]/`: Dynamic blog post page
+    - `posts/`: Markdown (.mdx) blog post files
+    - `blog-images/`: Blog post images
+  - `components/`: Reusable React components
+  - `og/`: Open Graph image generation route
+  - `quotes/`: Quotes page
+
+### Configuration Files
+- `package.json`: Project dependencies and scripts
+- `tsconfig.json`: TypeScript configuration
+- `postcss.config.js`: PostCSS configuration for Tailwind
+
+### Key Features
+- Next.js App Router
+- MDX Blog Posts
+- Tailwind CSS v4
+- Vercel Speed Insights
+- Dynamic SEO Optimization
+
+### Routing
+- Static routes: `page.tsx` files define page components
+- Dynamic routes: `[slug]` for blog posts
+- API routes: Files in `app/` with `route.ts/tsx` (e.g., RSS, sitemap)
+
+### Styling
+- Global styles: `app/global.css`
+- Tailwind CSS for utility-first styling
+- Geist font integration

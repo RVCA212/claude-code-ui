@@ -8,9 +8,15 @@ class FileEditorComponent {
     this.isInitialized = false;
     this.loadingEditor = false;
 
+    // Real-time file watching state
+    this.isWatchingFile = false;
+    this.fileChangeHandler = null;
+    this.ignoreNextChange = false; // Flag to ignore changes we make ourselves
+
     this.container = document.getElementById('editorContainer');
     this.setupContainer();
     this.setupKeyboardShortcuts();
+    this.setupFileWatching(); // Set up file change event listener
 
     // Auto-save configuration
     this.autoSaveEnabled = true;      // Toggle to disable/enable auto-save
@@ -85,6 +91,17 @@ class FileEditorComponent {
         this.closeFile();
       }
     });
+  }
+
+  setupFileWatching() {
+    // Set up the file change event listener once
+    if (window.electronAPI?.onFileChanged) {
+      this.fileChangeHandler = (event, data) => {
+        this.handleExternalFileChange(data);
+      };
+      window.electronAPI.onFileChanged(this.fileChangeHandler);
+      console.log('File watching event listener set up');
+    }
   }
 
   async initializeMonaco() {
@@ -317,6 +334,9 @@ class FileEditorComponent {
       this.markDirty(false);
       this.showEditor();
 
+      // Start watching the file for external changes
+      await this.startWatchingFile(this.currentFile.path);
+
       // Dispatch event for global header with delay to ensure DOM is stable
       setTimeout(() => {
         document.dispatchEvent(new CustomEvent('fileOpened', {
@@ -345,9 +365,14 @@ class FileEditorComponent {
     try {
       const content = this.editor.getValue();
 
+      // Set flag to ignore the next file change event (caused by our own save)
+      this.ignoreNextChange = true;
+
       const result = await window.electronAPI.writeFile(this.currentFile.path, content);
 
       if (!result.success) {
+        // Reset flag if save failed
+        this.ignoreNextChange = false;
         throw new Error(result.error || 'Failed to save file');
       }
 
@@ -369,13 +394,16 @@ class FileEditorComponent {
     }
   }
 
-  closeFile() {
+  async closeFile() {
     if (this.isDirty) {
       const confirmed = confirm('You have unsaved changes. Are you sure you want to close this file?');
       if (!confirmed) {
         return;
       }
     }
+
+    // Stop watching the file for changes
+    await this.stopWatchingFile();
 
     this.currentFile = null;
     this.isDirty = false;
@@ -701,6 +729,164 @@ class FileEditorComponent {
         this.saveFile();
       }
     }, this.autoSaveDelay);
+  }
+
+  async handleExternalFileChange(data) {
+    // Only handle changes for the currently open file
+    if (!this.currentFile || data.path !== this.currentFile.path) {
+      return;
+    }
+
+    // Don't react to changes we made ourselves
+    if (this.ignoreNextChange) {
+      this.ignoreNextChange = false;
+      console.log('Ignoring file change - caused by our own save');
+      return;
+    }
+
+    console.log('External file change detected for current file:', data.path);
+
+    try {
+      // Read the updated file content
+      const result = await window.electronAPI.readFile(this.currentFile.path);
+
+      if (!result.success) {
+        this.showError(`File may have been deleted or moved: ${result.error}`);
+        return;
+      }
+
+      // Check if we have unsaved changes
+      if (this.isDirty) {
+        const currentContent = this.editor ? this.editor.getValue() : '';
+        const newContent = result.content;
+
+        // If content is different from what we have
+        if (currentContent !== newContent) {
+          this.handleFileConflict(newContent);
+        }
+      } else {
+        // No local changes, safe to reload
+        this.reloadFileContent(result.content);
+        this.showNotification('File updated externally', 'info');
+      }
+    } catch (error) {
+      console.error('Error handling external file change:', error);
+      this.showError(`Error reloading file: ${error.message}`);
+    }
+  }
+
+  handleFileConflict(newContent) {
+    // Show a conflict resolution dialog
+    const userChoice = confirm(
+      'The file has been modified externally and you have unsaved changes.\n\n' +
+      'Click "OK" to reload the external changes (your changes will be lost)\n' +
+      'Click "Cancel" to keep your changes (external changes will be ignored)'
+    );
+
+    if (userChoice) {
+      // User chose to reload external changes
+      this.reloadFileContent(newContent);
+      this.showNotification('File reloaded with external changes', 'warning');
+    } else {
+      // User chose to keep local changes
+      this.showNotification('Keeping your changes - file may be out of sync', 'warning');
+    }
+  }
+
+  reloadFileContent(newContent) {
+    if (this.editor && this.currentFile) {
+      // Save current cursor position
+      const position = this.editor.getPosition();
+
+      // Update content
+      this.editor.setValue(newContent);
+      this.currentFile.content = newContent;
+
+      // Restore cursor position if still valid
+      if (position) {
+        try {
+          this.editor.setPosition(position);
+        } catch (error) {
+          // Position might be invalid if file shrunk, ignore
+        }
+      }
+
+      this.markDirty(false);
+    }
+  }
+
+  async startWatchingFile(filePath) {
+    if (this.isWatchingFile) {
+      await this.stopWatchingFile();
+    }
+
+    try {
+      const result = await window.electronAPI.watchFile(filePath);
+      if (result.success) {
+        this.isWatchingFile = true;
+        console.log('Started watching file:', filePath);
+      } else {
+        console.warn('Failed to start watching file:', result.error);
+      }
+    } catch (error) {
+      console.error('Error starting file watch:', error);
+    }
+  }
+
+  async stopWatchingFile() {
+    if (!this.isWatchingFile || !this.currentFile) {
+      return;
+    }
+
+    try {
+      const result = await window.electronAPI.unwatchFile(this.currentFile.path);
+      if (result.success) {
+        this.isWatchingFile = false;
+        console.log('Stopped watching file:', this.currentFile.path);
+      } else {
+        console.warn('Failed to stop watching file:', result.error);
+      }
+    } catch (error) {
+      console.error('Error stopping file watch:', error);
+    }
+  }
+
+  /* --------------------------------------------------
+   * Cleanup methods
+   * -------------------------------------------------- */
+
+  async cleanup() {
+    // Stop watching files
+    await this.stopWatchingFile();
+
+    // Clear auto-save timer
+    if (this.autoSaveTimer) {
+      clearTimeout(this.autoSaveTimer);
+      this.autoSaveTimer = null;
+    }
+
+    // Remove file change event listener
+    if (this.fileChangeHandler && window.electronAPI?.removeAllListeners) {
+      try {
+        window.electronAPI.removeAllListeners('file-changed');
+        console.log('File change event listener removed');
+      } catch (error) {
+        console.warn('Error removing file change listener:', error);
+      }
+    }
+
+    // Dispose Monaco editor
+    if (this.editor) {
+      try {
+        this.editor.dispose();
+        this.editor = null;
+        console.log('Monaco editor disposed during cleanup');
+      } catch (error) {
+        console.warn('Error disposing Monaco editor during cleanup:', error);
+      }
+    }
+
+    console.log('File editor cleanup completed');
   }
 }
 

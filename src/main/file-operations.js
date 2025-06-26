@@ -512,6 +512,10 @@ class FileOperations {
         this.fileWatchers = new Map();
       }
 
+      if (!this.fileWatcherTimers) {
+        this.fileWatcherTimers = new Map();
+      }
+
       // Don't create duplicate watchers
       if (this.fileWatchers.has(validatedPath)) {
         return {
@@ -523,11 +527,22 @@ class FileOperations {
 
       const watcher = fs.watch(validatedPath, (eventType, filename) => {
         if (eventType === 'change') {
-          callback({
-            type: 'file-changed',
-            path: filePath,
-            timestamp: Date.now()
-          });
+          // Debounce rapid file changes (common during saves)
+          const existingTimer = this.fileWatcherTimers.get(validatedPath);
+          if (existingTimer) {
+            clearTimeout(existingTimer);
+          }
+
+          const timer = setTimeout(() => {
+            callback({
+              type: 'file-changed',
+              path: filePath,
+              timestamp: Date.now()
+            });
+            this.fileWatcherTimers.delete(validatedPath);
+          }, 100); // 100ms debounce
+
+          this.fileWatcherTimers.set(validatedPath, timer);
         }
       });
 
@@ -568,6 +583,12 @@ class FileOperations {
       watcher.close();
       this.fileWatchers.delete(validatedPath);
 
+      // Clean up any pending timer for this file
+      if (this.fileWatcherTimers && this.fileWatcherTimers.has(validatedPath)) {
+        clearTimeout(this.fileWatcherTimers.get(validatedPath));
+        this.fileWatcherTimers.delete(validatedPath);
+      }
+
       console.log('Stopped watching file:', filePath);
 
       return {
@@ -593,6 +614,135 @@ class FileOperations {
         watcher.close();
       }
       this.fileWatchers.clear();
+    }
+
+    // Clean up all pending timers
+    if (this.fileWatcherTimers) {
+      for (const timer of this.fileWatcherTimers.values()) {
+        clearTimeout(timer);
+      }
+      this.fileWatcherTimers.clear();
+    }
+
+    // Clean up directory watchers
+    if (this.directoryWatchers) {
+      for (const watcher of this.directoryWatchers.values()) {
+        watcher.close();
+      }
+      this.directoryWatchers.clear();
+    }
+
+    // Clean up directory watcher timers
+    if (this.directoryWatcherTimers) {
+      for (const timer of this.directoryWatcherTimers.values()) {
+        clearTimeout(timer);
+      }
+      this.directoryWatcherTimers.clear();
+    }
+  }
+
+  // Directory watching functionality
+  watchDirectory(dirPath, callback) {
+    try {
+      const resolvedPath = path.resolve(dirPath);
+
+      if (!this.directoryWatchers) {
+        this.directoryWatchers = new Map();
+      }
+
+      if (!this.directoryWatcherTimers) {
+        this.directoryWatcherTimers = new Map();
+      }
+
+      // Don't create duplicate watchers
+      if (this.directoryWatchers.has(resolvedPath)) {
+        return {
+          success: true,
+          message: 'Directory already being watched',
+          path: dirPath
+        };
+      }
+
+      const watcher = fs.watch(resolvedPath, (eventType, filename) => {
+        if (eventType === 'rename') { // rename events cover file/folder creation and deletion
+          // Debounce rapid directory changes
+          const existingTimer = this.directoryWatcherTimers.get(resolvedPath);
+          if (existingTimer) {
+            clearTimeout(existingTimer);
+          }
+
+          const timer = setTimeout(() => {
+            callback({
+              type: 'directory-changed',
+              path: dirPath,
+              filename: filename,
+              timestamp: Date.now()
+            });
+            this.directoryWatcherTimers.delete(resolvedPath);
+          }, 200); // 200ms debounce (slightly longer than file changes)
+
+          this.directoryWatcherTimers.set(resolvedPath, timer);
+        }
+      });
+
+      this.directoryWatchers.set(resolvedPath, watcher);
+
+      console.log('Started watching directory:', dirPath);
+
+      return {
+        success: true,
+        message: 'Directory watching started',
+        path: dirPath
+      };
+
+    } catch (error) {
+      console.error('Failed to watch directory:', error);
+      return {
+        success: false,
+        error: error.message,
+        path: dirPath
+      };
+    }
+  }
+
+  // Stop watching directory
+  unwatchDirectory(dirPath) {
+    try {
+      const resolvedPath = path.resolve(dirPath);
+
+      if (!this.directoryWatchers || !this.directoryWatchers.has(resolvedPath)) {
+        return {
+          success: false,
+          error: 'Directory not being watched',
+          path: dirPath
+        };
+      }
+
+      const watcher = this.directoryWatchers.get(resolvedPath);
+      watcher.close();
+      this.directoryWatchers.delete(resolvedPath);
+
+      // Clean up any pending timer for this directory
+      if (this.directoryWatcherTimers && this.directoryWatcherTimers.has(resolvedPath)) {
+        clearTimeout(this.directoryWatcherTimers.get(resolvedPath));
+        this.directoryWatcherTimers.delete(resolvedPath);
+      }
+
+      console.log('Stopped watching directory:', dirPath);
+
+      return {
+        success: true,
+        message: 'Directory watching stopped',
+        path: dirPath
+      };
+
+    } catch (error) {
+      console.error('Failed to unwatch directory:', error);
+      return {
+        success: false,
+        error: error.message,
+        path: dirPath
+      };
     }
   }
 

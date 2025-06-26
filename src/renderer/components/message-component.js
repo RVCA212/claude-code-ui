@@ -205,7 +205,8 @@ class MessageComponent {
     const message = this.messageInput?.value.trim();
     let sessionId = this.sessionManager.getCurrentSessionId();
 
-    if (!message || this.isStreaming) {
+    // Check if current session is streaming (not any session)
+    if (!message || this.sessionManager.isCurrentSessionStreaming()) {
       return;
     }
 
@@ -361,6 +362,23 @@ class MessageComponent {
 
     this.loadSessionMessages(context);
     this.updateInputArea(context);
+
+    // Update UI state based on new session's streaming state
+    const isNewSessionStreaming = sessionId ? this.sessionManager.isSessionStreaming(sessionId) : false;
+
+    // Update button visibility based on new session
+    if (this.sendBtn && this.stopBtn) {
+      if (isNewSessionStreaming) {
+        this.sendBtn.style.display = 'none';
+        this.stopBtn.style.display = 'flex';
+      } else {
+        this.sendBtn.style.display = 'flex';
+        this.stopBtn.style.display = 'none';
+      }
+    }
+
+    // Update send button state for new session
+    this.updateSendButtonState();
   }
 
   handleLayoutStateChange(detail) {
@@ -728,14 +746,25 @@ class MessageComponent {
     const sessionId = this.sessionManager.getCurrentSessionId();
     const isDraftMode = this.sessionManager.isDraftModeActive();
 
-    // Can send if we have content, not streaming, and either have a session or are in draft mode
-    const canSend = hasContent && !this.isStreaming && (sessionId || isDraftMode);
+    // Check if current session is streaming (not any session)
+    const isCurrentSessionStreaming = this.sessionManager.isCurrentSessionStreaming();
+
+    // Can send if we have content, current session not streaming, and either have a session or are in draft mode
+    const canSend = hasContent && !isCurrentSessionStreaming && (sessionId || isDraftMode);
 
     this.sendBtn.disabled = !canSend;
   }
 
   setStreaming(streaming) {
-    this.isStreaming = streaming;
+    this.isStreaming = streaming; // Keep for legacy compatibility
+
+    // Update per-session streaming state
+    const sessionId = this.sessionManager.getCurrentSessionId();
+    if (sessionId) {
+      this.sessionManager.setSessionStreaming(sessionId, streaming);
+    }
+
+    // Also update global state for legacy compatibility
     this.sessionManager.setStreaming(streaming);
 
     // Hide mention dropdown when streaming starts
@@ -1188,9 +1217,9 @@ class MessageComponent {
       event.preventDefault();
       event.stopPropagation();
     }
-    
+
     console.log('File path clicked:', filePath);
-    
+
     // Use the existing MessageUtils handler which integrates with the app components
     if (MessageUtils && typeof MessageUtils.handleFilePathClick === 'function') {
       MessageUtils.handleFilePathClick(filePath, event);

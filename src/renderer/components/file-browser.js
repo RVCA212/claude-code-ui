@@ -54,8 +54,13 @@ class FileBrowser {
     this.workspaceFolders = [];
     this.isWorkspaceActive = false;
 
+    // Directory watching state
+    this.isWatchingDirectory = false;
+    this.directoryChangeHandler = null;
+
     this.initializeElements();
     this.setupEventListeners();
+    this.setupDirectoryWatching(); // Set up directory change event listener
     this.applyInitialQuickAccessState();
     this.loadInitialDirectory();
     this.loadOpenApplicationWindows();
@@ -94,6 +99,93 @@ class FileBrowser {
           }
         }
       });
+    }
+  }
+
+  setupDirectoryWatching() {
+    // Set up the directory change event listener once
+    if (window.electronAPI?.onDirectoryChanged) {
+      this.directoryChangeHandler = (event, data) => {
+        this.handleRealTimeDirectoryChange(data);
+      };
+      window.electronAPI.onDirectoryChanged(this.directoryChangeHandler);
+      console.log('Directory watching event listener set up');
+    }
+  }
+
+    async handleRealTimeDirectoryChange(data) {
+    // Only handle changes for the currently watched directory
+    if (!this.currentDirectory || data.path !== this.currentDirectory) {
+      return;
+    }
+
+    console.log('Real-time directory change detected:', data.path, 'filename:', data.filename);
+
+    try {
+      // Refresh the directory contents
+      await this.refreshDirectoryContents();
+
+      // Show a subtle notification
+      if (data.filename) {
+        this.setStatus(`Directory updated: ${data.filename}`);
+      } else {
+        this.setStatus('Directory contents updated');
+      }
+    } catch (error) {
+      console.error('Error handling real-time directory change:', error);
+    }
+  }
+
+  async startWatchingDirectory(dirPath) {
+    if (this.isWatchingDirectory) {
+      await this.stopWatchingDirectory();
+    }
+
+    try {
+      const result = await window.electronAPI.watchDirectory(dirPath);
+      if (result.success) {
+        this.isWatchingDirectory = true;
+        console.log('Started watching directory:', dirPath);
+      } else {
+        console.warn('Failed to start watching directory:', result.error);
+      }
+    } catch (error) {
+      console.error('Error starting directory watch:', error);
+    }
+  }
+
+  async stopWatchingDirectory() {
+    if (!this.isWatchingDirectory || !this.currentDirectory) {
+      return;
+    }
+
+    try {
+      const result = await window.electronAPI.unwatchDirectory(this.currentDirectory);
+      if (result.success) {
+        this.isWatchingDirectory = false;
+        console.log('Stopped watching directory:', this.currentDirectory);
+      } else {
+        console.warn('Failed to stop watching directory:', result.error);
+      }
+    } catch (error) {
+      console.error('Error stopping directory watch:', error);
+    }
+  }
+
+  async refreshDirectoryContents() {
+    if (!this.currentDirectory) {
+      return;
+    }
+
+    try {
+      const result = await window.electronAPI.getDirectoryContents(this.currentDirectory);
+      if (result.success) {
+        this.directoryContents = result.contents || [];
+        this.filterContents();
+        this.updateFileCount();
+      }
+    } catch (error) {
+      console.error('Error refreshing directory contents:', error);
     }
   }
 
@@ -495,7 +587,7 @@ class FileBrowser {
       this.setStatus('Navigating...');
       const result = await window.electronAPI.navigateToDirectory(path);
       if (result.success) {
-        this.updateDirectory(result);
+        await this.updateDirectory(result);
         this.setStatus('Ready');
       } else {
         this.showError(result.error || 'Failed to navigate to directory');
@@ -516,7 +608,7 @@ class FileBrowser {
       this.showLoading(true);
       const result = await window.electronAPI.navigateBack();
       if (result.success) {
-        this.updateDirectory(result);
+        await this.updateDirectory(result);
       } else {
         this.showError(result.error || 'Cannot go back');
       }
@@ -536,7 +628,7 @@ class FileBrowser {
       this.showLoading(true);
       const result = await window.electronAPI.navigateForward();
       if (result.success) {
-        this.updateDirectory(result);
+        await this.updateDirectory(result);
       } else {
         this.showError(result.error || 'Cannot go forward');
       }
@@ -556,7 +648,7 @@ class FileBrowser {
       this.showLoading(true);
       const result = await window.electronAPI.navigateUp();
       if (result.success) {
-        this.updateDirectory(result);
+        await this.updateDirectory(result);
       } else {
         this.showError(result.error || 'Cannot go up');
       }
@@ -626,7 +718,7 @@ class FileBrowser {
     }
   }
 
-  updateDirectory(result) {
+  async updateDirectory(result) {
     this.currentDirectory = result.path;
     this.directoryContents = result.contents || [];
     this.canGoBack = result.canGoBack || false;
@@ -636,6 +728,9 @@ class FileBrowser {
     this.updateBreadcrumb();
     this.updateCurrentWorkingDirectory();
     this.filterContents();
+
+    // Start watching the new directory for real-time updates
+    await this.startWatchingDirectory(this.currentDirectory);
 
     // Update workspace UI if workspace is active
     if (this.isWorkspaceActive) {
@@ -1664,12 +1759,12 @@ class FileBrowser {
   }
 
   // Handle directory change from session switching
-  handleDirectoryChange(directoryResult) {
+  async handleDirectoryChange(directoryResult) {
     if (directoryResult && directoryResult.success) {
       console.log('File browser updating to new directory:', directoryResult.path);
 
       // Update the file browser with the new directory
-      this.updateDirectory(directoryResult);
+      await this.updateDirectory(directoryResult);
 
       // Clear any existing search
       this.clearSearchInput();

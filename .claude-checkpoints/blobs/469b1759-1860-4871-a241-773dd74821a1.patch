@@ -1,0 +1,145 @@
+Index: README.md
+===================================================================
+--- README.md	before
++++ README.md	after
+@@ -1,42 +1,104 @@
+-# Airport Gaming Website
++# Airport Gaming 🎮✈️
+ 
+-## Project Overview
+-Airport Gaming is a single-page website showcasing the vision of bringing gaming stations to airports across America. The project aims to transform airport wait times into enjoyable gaming experiences.
++## Project Vision
++Transform tedious airport layovers into exciting gaming experiences by bringing high-quality gaming stations to airports across America.
+ 
+-## Key Features
+-- Responsive single-page design
+-- Interactive FAQ section
+-- Animated background with floating elements
+-- Smooth scrolling navigation
+-- Showcase of gaming station concepts
++## Overview
++Airport Gaming is an innovative single-page web application designed to revolutionize how travelers spend their waiting time at airports. Our mission is to turn idle waiting into interactive entertainment.
+ 
+-## Technology Stack
+-- Next.js 13.4.4
+-- React 18.2.0
+-- Tailwind CSS
+-- TypeScript
++## 🚀 Key Features
+ 
+-## Main Sections
+-- Hero Section: "Making Airports Fun"
+-- Vision Statement
+-- Gaming Station Images
+-- Frequently Asked Questions (FAQ)
+-- Contact Information
++### User Experience
++- Interactive, responsive single-page design
++- Smooth, animated navigation
++- Immersive background with dynamic floating elements
++- Intuitive FAQ section with expandable questions
+ 
+-## Getting Started
+-1. Clone the repository
+-2. Install dependencies: `npm install`
+-3. Run development server: `npm run dev`
+-4. Build for production: `npm run build`
++### Technical Highlights
+\ No newline at end of file
++- Client-side rendered with Next.js
++- Fully responsive and mobile-friendly
++- Tailwind CSS for sleek, modern styling
++- TypeScript for robust type checking
+ 
+-## Pricing
+-- Gaming stations cost $2.50 per 20 minutes of play
+-
+-## Planned Game Offerings
+-- CFB 25
+-- NBA2K
++## 🎲 Gaming Offerings
++### Current Planned Games
++- College Football 25 (CFB 25)
++- NBA 2K
+ - FIFA
+-- And more to be added
++- Additional titles to be announced
+ 
+-## Contact
+-Email: sean.sullivan3@yahoo.com
++### Pricing Model
++- **Rate:** $2.50 per 20 minutes of play
++- Flexible, affordable gaming sessions
++- Multiple payment methods accepted
++  - Apple Pay
++  - Credit Cards
++  - Cash
++
++## 🛠 Technology Stack
++- **Frontend:** React 18.2.0
++- **Framework:** Next.js 13.4.4
++- **Styling:** Tailwind CSS
++- **Language:** TypeScript
++- **Deployment:** Vercel (recommended)
++
++## 📦 Prerequisites
++- Node.js 16+ 
++- npm 8+
++
++## 🚀 Quick Start
++
++### Development
++```bash
++# Clone the repository
++git clone https://github.com/yourusername/airport-gaming.git
++
++# Navigate to project directory
++cd airport-gaming
++
++# Install dependencies
++npm install
++
++# Start development server
++npm run dev
++```
++
++### Production Build
++```bash
++# Build for production
++npm run build
++
++# Start production server
++npm start
++```
++
++## 🧪 Testing
++```bash
++# Run linter
++npm run lint
++```
++
++## 📝 Roadmap
++- [ ] Expand game library
++- [ ] Add multiplayer capabilities
++- [ ] Implement user accounts
++- [ ] Develop airport partnership program
++
++## 🤝 Contributing
++Interested in contributing? 
++1. Fork the repository
++2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
++3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
++4. Push to the branch (`git push origin feature/AmazingFeature`)
++5. Open a Pull Request
++
++## 📞 Contact
++- **Email:** sean.sullivan3@yahoo.com
++- **Project Link:** [GitHub Repository](https://github.com/yourusername/airport-gaming)
++
++## 📄 License
++Distributed under the MIT License. See `LICENSE` for more information.
++
++---
++
++**Made with ❤️ to make airport waiting times fun!**
+\ No newline at end of file

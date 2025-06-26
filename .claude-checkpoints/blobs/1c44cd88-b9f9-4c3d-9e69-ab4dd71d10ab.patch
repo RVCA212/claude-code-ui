@@ -1,0 +1,55 @@
+Index: README.md
+===================================================================
+--- README.md	before
++++ README.md	after
+@@ -42,50 +42,8 @@
+ ```
+ 
+ Your site should now be running at [http://localhost:3000](http://localhost:3000)!
+ 
+-## 📁 Project Structure
+-
+-```
+-/
+-├── app/               # Next.js app directory
+-│   ├── blog/          # Blog-related pages and functionality
+-│   │   ├── posts/     # MDX files for individual blog posts
+-│   │   ├── page.tsx   # Blog index/listing page
+-│   │   └── layout.tsx # Layout for blog pages
+-│   ├── components/    # Shared React components
+-│   │   ├── ui/        # Low-level UI components
+-│   │   ├── layout/    # Page layout components
+-│   │   └── animations/# Reusable animation components
+-│   ├── dark/          # Dark mode exploration page
+-│   │   └── page.tsx   # Page demonstrating dark mode animations
+-│   ├── projects/      # Projects showcase
+-│   │   └── page.tsx   # Projects listing and details
+-│   ├── layout.tsx     # Root layout for the entire application
+-│   └── page.tsx       # Home/landing page
+-├── public/            # Static assets
+-│   ├── blog-images/   # Images for blog post content
+-│   └── fonts/         # Custom web fonts
+-├── scripts/           # Utility scripts
+-├── styles/            # Global CSS and Tailwind configuration
+-├── types/             # TypeScript type definitions
+-└── next.config.js     # Next.js configuration
+-```
+-
+-### Directory Breakdown
+-
+-- `app/`: Core Next.js application directory using App Router
+-  - Contains page components, layouts, and route-specific logic
+-- `public/`: Static assets accessible directly via web paths
+-- `scripts/`: Utility and build-related scripts
+-- `styles/`: Global styling and Tailwind configuration
+-- `types/`: TypeScript type definitions for the project
+-
+-#### Key Configuration Files
+-- `next.config.js`: Next.js project configuration
+-- `tailwind.config.js`: Tailwind CSS customization
+-- `tsconfig.json`: TypeScript compiler settings
+-
+ ## 📝 Adding Content
+ 
+ ### Blog Posts
+ 

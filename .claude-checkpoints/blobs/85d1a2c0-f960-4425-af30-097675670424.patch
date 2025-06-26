@@ -1,0 +1,50 @@
+Index: README.md
+===================================================================
+--- README.md	before
++++ README.md	after
+@@ -1,4 +1,42 @@
+-// README.md
+ # Airport Gaming Website
+ 
+-This is a single-page website for Airport Gaming, showcasing our vision of bringing gaming stations to every airport in America.
++## Project Overview
++Airport Gaming is a single-page website showcasing the vision of bringing gaming stations to airports across America. The project aims to transform airport wait times into enjoyable gaming experiences.
++
++## Key Features
++- Responsive single-page design
++- Interactive FAQ section
++- Animated background with floating elements
++- Smooth scrolling navigation
++- Showcase of gaming station concepts
++
++## Technology Stack
++- Next.js 13.4.4
++- React 18.2.0
++- Tailwind CSS
++- TypeScript
++
++## Main Sections
++- Hero Section: "Making Airports Fun"
++- Vision Statement
++- Gaming Station Images
++- Frequently Asked Questions (FAQ)
++- Contact Information
++
++## Getting Started
++1. Clone the repository
++2. Install dependencies: `npm install`
++3. Run development server: `npm run dev`
++4. Build for production: `npm run build`
++
++## Pricing
++- Gaming stations cost $2.50 per 20 minutes of play
++
++## Planned Game Offerings
++- CFB 25
++- NBA2K
++- FIFA
++- And more to be added
++
++## Contact
++Email: sean.sullivan3@yahoo.com
+\ No newline at end of file
