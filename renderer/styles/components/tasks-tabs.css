@@ -1,0 +1,283 @@
+/**
+ * Tasks Tabs Component Styles
+ *
+ * Used by: Running task tabs that appear below the global header
+ * Related files:
+ *   - src/renderer/components/tasks-tabs.js (main tasks tabs logic)
+ *   - src/renderer/components/tasks-sidebar.js (data source)
+ *   - renderer/index.html (tasks-tabs container)
+ *
+ * Features:
+ *   - Thin highlighted tabs showing active tasks
+ *   - Positioned below global header/session manager
+ *   - Hidden when no tasks running or in current task session
+ *   - Clickable to switch to task sessions
+ *   - Smooth show/hide animations
+ */
+
+/* ============================================================================
+   Tasks Tabs Container
+   ============================================================================ */
+.tasks-tabs-container {
+  position: relative;
+  width: 100%;
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+  z-index: calc(var(--z-overlays) - 1); /* Below global header */
+  box-shadow: var(--shadow-xs);
+  display: none; /* Hidden by default */
+  overflow-x: auto;
+  overflow-y: hidden;
+  /* Hide scrollbar but allow scrolling */
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.tasks-tabs-container::-webkit-scrollbar {
+  display: none;
+}
+
+.tasks-tabs-container.visible {
+  display: block;
+  animation: slideDown 0.2s var(--ease-standard);
+}
+
+.tasks-tabs-container.hidden {
+  animation: slideUp 0.2s var(--ease-standard);
+}
+
+/* ============================================================================
+   Tasks Tabs List
+   ============================================================================ */
+.tasks-tabs-list {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  padding: var(--space-8) var(--space-16);
+  min-height: 36px;
+  white-space: nowrap;
+}
+
+/* ============================================================================
+   Individual Task Tab
+   ============================================================================ */
+.task-tab {
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+  padding: var(--space-4) var(--space-12);
+  background: rgba(var(--color-primary-rgb), 0.08);
+  border: 1px solid rgba(var(--color-primary-rgb), 0.2);
+  border-radius: var(--radius-base);
+  color: var(--color-primary);
+  font-size: var(--font-size-xs);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-standard);
+  text-decoration: none;
+  outline: none;
+  user-select: none;
+  position: relative;
+  overflow: hidden;
+  min-width: 120px;
+  max-width: 200px;
+}
+
+.task-tab:hover {
+  background: rgba(var(--color-primary-rgb), 0.12);
+  border-color: rgba(var(--color-primary-rgb), 0.3);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(var(--color-primary-rgb), 0.15);
+}
+
+.task-tab:active {
+  background: rgba(var(--color-primary-rgb), 0.15);
+  transform: translateY(0);
+  box-shadow: 0 1px 4px rgba(var(--color-primary-rgb), 0.2);
+}
+
+.task-tab:focus-visible {
+  box-shadow: var(--focus-ring);
+}
+
+/* ============================================================================
+   Task Tab Content
+   ============================================================================ */
+.task-tab-content {
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+  flex: 1;
+  min-width: 0;
+}
+
+.task-tab-status {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--color-success);
+  flex-shrink: 0;
+  animation: pulse 2s infinite;
+}
+
+.task-tab-status.streaming {
+  background: var(--color-primary);
+  animation: pulse 1.5s infinite;
+}
+
+.task-tab-status.processing {
+  background: var(--color-warning);
+  animation: pulse 1s infinite;
+}
+
+.task-tab-status.thinking {
+  background: var(--color-info);
+  animation: pulse 2s infinite;
+}
+
+.task-tab-title {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--color-primary);
+  font-weight: 500;
+}
+
+.task-tab-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  color: rgba(var(--color-primary-rgb), 0.7);
+  font-size: calc(var(--font-size-xs) - 1px);
+  flex-shrink: 0;
+}
+
+.task-tab-duration {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ============================================================================
+   Task Tab Status Variations
+   ============================================================================ */
+.task-tab.streaming {
+  background: rgba(var(--color-primary-rgb), 0.1);
+  border-color: rgba(var(--color-primary-rgb), 0.3);
+  animation: streamingGlow 2s ease-in-out infinite alternate;
+}
+
+.task-tab.processing {
+  background: rgba(255, 193, 7, 0.08);
+  border-color: rgba(255, 193, 7, 0.2);
+  color: #ffc107;
+}
+
+.task-tab.processing .task-tab-title {
+  color: #ffc107;
+}
+
+.task-tab.thinking {
+  background: rgba(var(--color-info-rgb), 0.08);
+  border-color: rgba(var(--color-info-rgb), 0.2);
+  color: var(--color-info);
+}
+
+.task-tab.thinking .task-tab-title {
+  color: var(--color-info);
+}
+
+/* ============================================================================
+   Animations
+   ============================================================================ */
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-100%);
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.7;
+    transform: scale(0.9);
+  }
+}
+
+@keyframes streamingGlow {
+  0% {
+    box-shadow: 0 0 0 rgba(var(--color-primary-rgb), 0.4);
+  }
+  100% {
+    box-shadow: 0 0 12px rgba(var(--color-primary-rgb), 0.6);
+  }
+}
+
+/* ============================================================================
+   Empty State
+   ============================================================================ */
+.tasks-tabs-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-8) var(--space-16);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+  font-style: italic;
+}
+
+/* ============================================================================
+   Responsive Design
+   ============================================================================ */
+@media (max-width: 768px) {
+  .tasks-tabs-list {
+    padding: var(--space-6) var(--space-12);
+    gap: var(--space-6);
+  }
+  
+  .task-tab {
+    padding: var(--space-3) var(--space-8);
+    min-width: 100px;
+    max-width: 150px;
+  }
+  
+  .task-tab-meta {
+    display: none; /* Hide duration on mobile */
+  }
+}
+
+/* ============================================================================
+   Integration with App Layout
+   ============================================================================ */
+/* Ensure tasks tabs don't interfere with global header interactions */
+.tasks-tabs-container {
+  -webkit-app-region: no-drag;
+}
+
+.task-tab {
+  -webkit-app-region: no-drag;
+}
+
+/* Adjust app content when tasks tabs are visible */
+.app-content.tasks-tabs-visible {
+  padding-top: 36px; /* Height of tasks tabs */
+}

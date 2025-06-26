@@ -22,6 +22,7 @@ class SessionManager {
     // Session tabs elements
     this.sessionTabsContainer = document.getElementById('sessionTabsContainer');
     this.sessionTabs = document.getElementById('sessionTabs');
+    this.newSessionTabContainer = document.getElementById('newSessionTabContainer');
 
     // Legacy session-related elements (keep for compatibility)
     this.conversationsList = document.getElementById('conversationsList');
@@ -298,7 +299,7 @@ class SessionManager {
   async renderSessionTabs() {
     if (!this.sessionTabs) return;
 
-    // Create tabs HTML
+    // Create tabs HTML for actual sessions
     const tabsHTML = [];
 
     // Get running session IDs for status dots
@@ -332,20 +333,23 @@ class SessionManager {
       `);
     });
 
-    // Add new session tab
-    tabsHTML.push(`
-      <div class="session-tab new-session-tab"
-           onclick="sessionManager.createNewSession()"
-           title="New session">
-        <div class="session-tab-content">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-        </div>
-      </div>
-    `);
-
+    // Render session tabs inside the scrollable container
     this.sessionTabs.innerHTML = tabsHTML.join('');
+
+    // Render the new session tab separately in its own container to keep it sticky
+    if (this.newSessionTabContainer) {
+      this.newSessionTabContainer.innerHTML = `
+        <div class="session-tab new-session-tab"
+             onclick="sessionManager.createNewSession()"
+             title="New session">
+          <div class="session-tab-content">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+        </div>
+      `;
+    }
   }
 
   renderLegacySidebar() {

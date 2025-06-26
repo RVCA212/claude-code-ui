@@ -32,10 +32,20 @@ class MessageUtils {
   }
 
   // Format text content with markdown-like formatting and clickable file paths
-  static formatTextContent(text) {
+  static formatTextContent(text, cwd) {
     if (!text) return '';
 
     return text
+      // Handle file paths - make them clickable
+      .replace(this.getFilePathRegex(), (match, filePath) => {
+        const cleanPath = this.cleanFilePath(filePath);
+        if (this.isValidFilePath(cleanPath)) {
+          console.log('Creating clickable link for:', cleanPath); // Debug logging
+          return `<span class="file-path-link" data-file-path="${this.escapeHTML(cleanPath)}" title="Click to open ${this.escapeHTML(cleanPath)}">${this.escapeHTML(match.trim())}</span>`;
+        }
+        console.log('Rejected file path:', cleanPath); // Debug logging
+        return match; // Return original if not a valid file path
+      })
       // Handle code blocks first (to avoid detecting file paths inside code blocks)
       .replace(/```(\w+)?\n([\s\S]*?)```/g, (match, lang, code) => {
         const language = lang || '';
@@ -43,14 +53,6 @@ class MessageUtils {
       })
       // Handle inline code (to avoid detecting file paths inside inline code)
       .replace(/`([^`]+)`/g, '<code>$1</code>')
-      // Handle file paths - make them clickable
-      .replace(this.getFilePathRegex(), (match, filePath) => {
-        const cleanPath = this.cleanFilePath(filePath);
-        if (this.isValidFilePath(cleanPath)) {
-          return `<span class="file-path-link" data-file-path="${this.escapeHTML(cleanPath)}" title="Click to open ${this.escapeHTML(cleanPath)}">${this.escapeHTML(filePath)}</span>`;
-        }
-        return match; // Return original if not a valid file path
-      })
       // Handle bold text
       .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
       // Handle italic text
@@ -86,10 +88,10 @@ class MessageUtils {
 
   // File path detection utilities
   static getFilePathRegex() {
-    // Combined regex that matches various file path formats
-    // Captures: absolute paths, relative paths, and working directory paths
-    // Avoids matching URLs and common false positives
-    return /(?:^|\s)([^\s'"<>]*\/[^\s'"<>]*\.(?:js|jsx|ts|tsx|py|java|c|cpp|h|hpp|css|scss|html|htm|json|xml|yaml|yml|md|txt|sh|bash|sql|php|rb|go|rs|swift|kt|scala|conf|cfg|ini|log|env|gitignore|dockerfile|Dockerfile|vue|svelte|astro|toml|lock|gradle|pom\.xml|package\.json|tsconfig\.json|webpack\.config\.js|vite\.config\.js|tailwind\.config\.js|postcss\.config\.js|eslint\.config\.js|prettier\.config\.js|jest\.config\.js|cypress\.config\.js|vitest\.config\.js|png|jpg|jpeg|gif|bmp|webp|pdf|ico|svg)[^\s'"<>]*)(?=\s|$|[,.;!?])/g;
+    // Improved regex that matches various file path formats Claude Code commonly outputs
+    // Handles: absolute paths, relative paths, paths with line numbers, quoted paths
+    // More flexible matching while avoiding URLs and obvious false positives
+    return /(?:^|\s|["'`>\\(|\\[:])([.~]?[/\\]?[^\s"'`<>()\[\]]+[/\\][^\s"'`<>()\[\]]*(?:\.[a-zA-Z0-9]{1,8})(?::[0-9]+)?|[^\s"'`<>()\[\]/\\]+\.[a-zA-Z0-9]{1,8}(?::[0-9]+)?)(?=\s|$|[,.;!?"'`)]|\])/g;
   }
 
   // Clean and normalize file paths
@@ -99,6 +101,9 @@ class MessageUtils {
     // Remove leading/trailing whitespace
     let cleaned = filePath.trim();
     
+    // Remove leading quotes, backticks, or brackets that might be from markdown context
+    cleaned = cleaned.replace(/^["'`()\[\]]+/, '').replace(/["'`()\[\]]+$/, '');
+    
     // Remove trailing punctuation that might be from sentence context
     cleaned = cleaned.replace(/[,.;!?]+$/, '');
     
@@ -106,11 +111,14 @@ class MessageUtils {
     if (cleaned.startsWith('./') || cleaned.startsWith('../')) {
       // Relative paths - keep as is
       return cleaned;
-    } else if (cleaned.startsWith('/')) {
-      // Absolute paths - keep as is
+    } else if (cleaned.startsWith('/') || cleaned.startsWith('~')) {
+      // Absolute paths or home directory paths - keep as is
       return cleaned;
-    } else if (cleaned.includes('/')) {
+    } else if (cleaned.includes('/') || cleaned.includes('\\')) {
       // Working directory paths - treat as relative to current directory
+      return cleaned;
+    } else if (cleaned.includes('.')) {
+      // Simple filename with extension
       return cleaned;
     }
     
@@ -121,37 +129,46 @@ class MessageUtils {
   static isValidFilePath(path) {
     if (!path || typeof path !== 'string') return false;
     
-    // Must contain a file extension
-    const hasExtension = /\.[a-zA-Z0-9]{1,6}$/.test(path);
+    // Remove line number suffix if present (e.g., "file.js:123")
+    const pathWithoutLineNum = path.replace(/:([0-9]+)$/, '');
+    
+    // Must contain a file extension (more permissive)
+    const hasExtension = /\.[a-zA-Z0-9]{1,8}$/.test(pathWithoutLineNum);
     if (!hasExtension) return false;
     
-    // Must contain at least one directory separator
-    const hasDirectory = path.includes('/');
-    if (!hasDirectory) return false;
+    // For paths with directories, must contain at least one separator
+    // For simple filenames, allow if they have an extension
+    const hasDirectory = pathWithoutLineNum.includes('/') || pathWithoutLineNum.includes('\\');
+    const isSimpleFilename = !hasDirectory && pathWithoutLineNum.length > 0;
+    
+    if (!hasDirectory && !isSimpleFilename) return false;
     
     // Exclude obvious non-file patterns
     const excludePatterns = [
       /^https?:\/\//, // URLs
       /^mailto:/, // Email links
       /^ftp:\/\//, // FTP links
-      /^\d+\.\d+\./, // Version numbers (but allow if it has a path separator)
       /^www\./, // Web addresses
+      /^[0-9]+\.[0-9]+\.[0-9]/, // Version numbers like 1.2.3
     ];
     
     for (const pattern of excludePatterns) {
-      if (pattern.test(path)) return false;
-    }
-    
-    // Special case: allow version numbers if they have a clear path structure
-    if (/^\d+\.\d+\./.test(path) && path.split('/').length < 2) {
-      return false;
+      if (pattern.test(pathWithoutLineNum)) return false;
     }
     
     // Additional validation: shouldn't be too long (probably not a file path)
-    if (path.length > 200) return false;
+    if (pathWithoutLineNum.length > 250) return false;
     
-    // Shouldn't contain spaces (unless properly quoted, but we'll be conservative)
-    if (path.includes(' ')) return false;
+    // Allow spaces in file paths (common and legitimate)
+    // But reject if it looks like a sentence (multiple words with common sentence patterns)
+    if (pathWithoutLineNum.includes(' ')) {
+      const words = pathWithoutLineNum.split(' ');
+      if (words.length > 3) return false; // Too many words, probably not a file path
+      
+      // Check for common sentence indicators
+      const sentenceIndicators = /\b(the|and|or|in|on|at|to|for|of|with|by)\b/i;
+      if (sentenceIndicators.test(pathWithoutLineNum)) return false;
+    }
     
     return true;
   }
@@ -692,7 +709,7 @@ class MessageUtils {
     // Add text content FIRST and prominently (this is the main response)
     if (textBlocks.length > 0) {
       const textContent = textBlocks.map(block => block.text || '').join('\n\n');
-      html += `<div class="assistant-response primary-response">${this.formatTextContent(textContent)}</div>`;
+      html += `<div class="assistant-response primary-response">${this.formatTextContent(textContent, cwd)}</div>`;
     }
 
     // Add task logs AFTER the main response (as supporting details)
@@ -710,7 +727,7 @@ class MessageUtils {
     orderedContent.forEach(block => {
       if (block.type === 'text') {
         if (block.text && block.text.trim()) {
-          html += `<div class="response-text">${this.formatTextContent(block.text)}</div>`;
+          html += `<div class="response-text">${this.formatTextContent(block.text, cwd)}</div>`;
         }
       } else if (block.type === 'tool_use') {
         html += this.createInlineToolCall(block, 'completed', cwd);
@@ -731,7 +748,7 @@ class MessageUtils {
     return `
       <div class="message-actions">
         <button class="revert-btn"
-                onclick="MessageActions.revertToMessage('${sessionId}', '${message.id}')"
+                onclick="revertToMessage('${sessionId}', '${message.id}')"
                 title="Revert files to this point">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
             <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>

@@ -67,7 +67,7 @@
   width: 100%;
   background: var(--color-surface);
   border-bottom: 1px solid var(--color-border);
-  padding: 0 var(--space-12);
+  padding: 0; /* Let children handle padding for stickiness */
   overflow: hidden;
   -webkit-app-region: no-drag; /* Allow tab interactions */
   position: relative;
@@ -79,11 +79,12 @@
   align-items: center;
   gap: var(--space-2);
   overflow-x: auto;
-  padding: var(--space-4) 0;
+  padding: var(--space-4) 0 var(--space-4) var(--space-12);
   /* Hide scrollbar but allow scrolling */
   scrollbar-width: none;
   -ms-overflow-style: none;
-  width: 100%;
+  flex: 1; /* Allow tabs to take available space */
+  min-width: 0; /* Critical for flex + overflow */
 }
 
 .session-tabs::-webkit-scrollbar {
@@ -234,7 +235,6 @@
   height: 36px;
   padding: 0;
   justify-content: center;
-  margin-left: var(--space-6);
   margin-top: -1px;
 }
 
@@ -243,6 +243,15 @@
   border-color: rgba(var(--color-primary-rgb), 0.3);
   color: var(--color-primary);
   transform: translateY(-1px);
+}
+
+#newSessionTabContainer {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  padding: 0 var(--space-12) 0 var(--space-6);
+  /* Use a box-shadow to create a faux gradient overlay, indicating more content */
+  box-shadow: -15px 0 15px -10px var(--color-surface) inset;
 }
 
 /* ============================================================================

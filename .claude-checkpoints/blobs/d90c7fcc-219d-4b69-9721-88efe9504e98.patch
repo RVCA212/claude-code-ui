@@ -1,0 +1,34 @@
+Index: readme.md
+===================================================================
+--- readme.md	before
++++ readme.md	after
+@@ -1,29 +1,8 @@
+ See `example_usage.py` for a complete working example.
+ 
+ ## Repository Structure
+ 
+-```
+-├── auto_prompt
+-│   └── agent.py           # Core agent implementation
+-├── cloudcode              # Main SDK package
+-├── dist                   # Distribution packages
+-├── examples               # Example scripts
+-│   ├── 2_agents.py
+-│   └── plan_then_excecute.py
+-├── lmsys_backend          # Backend implementation
+-│   ├── main.py
+-│   └── config.py
+-├── md                     # Markdown documentation
+-├── agent.py               # Agent implementation
+-├── cloudcode.py           # Main CloudCode SDK file
+-├── example_usage.py       # Usage example
+-├── headless_example.py    # Headless operation example
+-├── sandbox_example.py     # Sandbox environment example
+-├── setup.py               # Package setup
+-└── requirements.txt       # Project dependencies
+-```
+-
+ ### Key Directories
+ 
+ - `auto_prompt/`: Contains core agent implementation
+ - `cloudcode/`: Main SDK package

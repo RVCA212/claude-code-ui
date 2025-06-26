@@ -1202,7 +1202,6 @@
 
 /* Clickable file path styling - makes file paths in messages interactive */
 .file-path-link {
-  display: inline;
   color: var(--color-primary);
   text-decoration: none;
   cursor: pointer;
