@@ -211,7 +211,7 @@ class MessageUtils {
   static createThinkingSection(thinking, isCollapsed = true) {
     if (!thinking || !thinking.thinking) return '';
 
-    const thinkingId = 'thinking_' + Math.random().toString(36).substr(2, 9);
+    const thinkingId = 'thinking_' + Math.random().toString(36).substring(2, 11);
     const toggleText = isCollapsed ? 'expand' : 'collapse';
     const contentStyle = isCollapsed ? 'display: none;' : '';
 
@@ -244,7 +244,7 @@ class MessageUtils {
 
   // Create tool call HTML
   static createToolCallSection(toolCall, cwd) {
-    const toolId = 'tool_' + Math.random().toString(36).substr(2, 9);
+    const toolId = 'tool_' + Math.random().toString(36).substring(2, 11);
     // Always expand Edit, MultiEdit, and Write tools by default
     const isCollapsed = !['Edit', 'MultiEdit', 'Write'].includes(toolCall.name);
     const contentStyle = isCollapsed ? 'display: none;' : '';
@@ -269,7 +269,7 @@ class MessageUtils {
 
   // Create inline tool call HTML for use within message flow
   static createInlineToolCall(toolCall, status = 'completed', cwd) {
-    const toolId = 'inline_tool_' + Math.random().toString(36).substr(2, 9);
+    const toolId = 'inline_tool_' + Math.random().toString(36).substring(2, 11);
     // Always expand Edit, MultiEdit, and Write tools by default
     const isCollapsed = !['Edit', 'MultiEdit', 'Write'].includes(toolCall.name);
     const contentStyle = isCollapsed ? 'display: none;' : '';
@@ -332,22 +332,29 @@ class MessageUtils {
       return this.getRelativePath(filePath, cwd);
     };
 
+    const createClickableFilePath = (filePath) => {
+      if (!filePath) return 'unknown';
+      const relativePath = createRelativePath(filePath);
+      return `<span class="file-path-link" data-file-path="${this.escapeHTML(filePath)}" title="Click to open ${this.escapeHTML(relativePath)}">${this.escapeHTML(relativePath)}</span>`;
+    };
+
     switch (toolCall.name) {
       case 'Edit':
         const editFilePath = toolCall.input.file_path;
         const editFileName = editFilePath ? editFilePath.split('/').pop() : 'unknown';
-        return editFileName;
+        return editFileName.includes('/') ? createClickableFilePath(editFilePath) : editFileName;
       case 'MultiEdit':
-        return `Making ${toolCall.input.edits?.length || 0} edits to: ${createRelativePath(toolCall.input.file_path)}`;
+        return `Making ${toolCall.input.edits?.length || 0} edits to: ${createClickableFilePath(toolCall.input.file_path)}`;
       case 'Write':
-        return `Writing file: ${createRelativePath(toolCall.input.file_path)}`;
+        return `Writing file: ${createClickableFilePath(toolCall.input.file_path)}`;
       case 'Read':
         const filePath = toolCall.input.file_path;
         const fileName = filePath ? filePath.split('/').pop() : 'unknown';
         const offset = toolCall.input.offset || 1;
         const limit = toolCall.input.limit || 'all';
         const lineRange = limit === 'all' ? `${offset}+` : `${offset}-${offset + limit - 1}`;
-        return `${fileName}:${lineRange}`;
+        const fileDisplay = filePath ? createClickableFilePath(filePath) : fileName;
+        return `${fileDisplay}:${lineRange}`;
       case 'Bash':
         return toolCall.input.description || `Running command: ${toolCall.input.command}`;
       case 'LS':
@@ -379,13 +386,29 @@ class MessageUtils {
     }
 
     // For other tools, show the traditional input/output view
-    let details = '<div class="tool-input"><strong>Input:</strong><pre>' +
-                  this.escapeHTML(JSON.stringify(toolCall.input, null, 2)) +
-                  '</pre></div>';
+    let inputDisplay = this.escapeHTML(JSON.stringify(toolCall.input, null, 2));
+    
+    // Make file paths clickable in input JSON
+    if (toolCall.input && toolCall.input.file_path) {
+      const relativePath = this.getRelativePath(toolCall.input.file_path, cwd);
+      const escapedFilePath = this.escapeHTML(toolCall.input.file_path);
+      const clickableFilePath = `<span class="file-path-link" data-file-path="${escapedFilePath}" title="Click to open ${this.escapeHTML(relativePath)}">${escapedFilePath}</span>`;
+      inputDisplay = inputDisplay.replace(
+        new RegExp(escapedFilePath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'),
+        clickableFilePath
+      );
+    }
+
+    let details = '<div class="tool-input"><strong>Input:</strong><pre>' + inputDisplay + '</pre></div>';
 
     if (toolCall.output) {
+      let outputContent = this.escapeHTML(toolCall.output);
+      
+      // Apply file path formatting to output content
+      outputContent = this.formatTextContent(outputContent, cwd);
+      
       details += '<div class="tool-output"><strong>Output:</strong><div class="tool-output-content">' +
-                  this.escapeHTML(toolCall.output) +
+                  outputContent +
                   '</div></div>';
     }
 
@@ -394,8 +417,9 @@ class MessageUtils {
 
   // Create professional diff view for Edit and MultiEdit tools
   static createDiffView(toolCall, cwd) {
-    const filePath = this.getRelativePath(toolCall.input.file_path, cwd);
-    const diffViewId = 'diff_' + Math.random().toString(36).substr(2, 9);
+    const relativePath = this.getRelativePath(toolCall.input.file_path, cwd);
+    const absolutePath = toolCall.input.file_path;
+    const diffViewId = 'diff_' + Math.random().toString(36).substring(2, 11);
 
     let diffContent = '';
 
@@ -416,7 +440,7 @@ class MessageUtils {
         <div class="diff-header">
           <div class="diff-file-info">
             <span class="codicon codicon-file-code"></span>
-            <span class="diff-file-path">${this.escapeHTML(filePath)}</span>
+            <span class="file-path-link diff-file-path" data-file-path="${this.escapeHTML(absolutePath)}" title="Click to open ${this.escapeHTML(relativePath)}">${this.escapeHTML(relativePath)}</span>
           </div>
           <div class="diff-actions">
             <button class="diff-mode-toggle" onclick="MessageUtils.toggleDiffMode('${diffViewId}')" title="Switch to side-by-side view">
@@ -650,7 +674,7 @@ class MessageUtils {
   static createTaskLogsSection(toolCalls, thinking, cwd) {
     if (!toolCalls.length && !thinking) return '';
 
-    const logsId = 'logs_' + Math.random().toString(36).substr(2, 9);
+    const logsId = 'logs_' + Math.random().toString(36).substring(2, 11);
     const isCollapsed = true;
     const contentStyle = isCollapsed ? 'display: none;' : '';
 

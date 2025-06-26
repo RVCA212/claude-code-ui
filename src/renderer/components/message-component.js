@@ -282,6 +282,9 @@ class MessageComponent {
       // Add user message to UI immediately
       this.addUserMessage(message);
 
+      // Show typing indicator
+      this.showTypingIndicator();
+
       // Clear input
       this.messageInput.value = '';
       this.handleInputChange();
@@ -342,6 +345,9 @@ class MessageComponent {
     if (sessionId !== this.sessionManager.getCurrentSessionId()) {
       return;
     }
+
+    // Hide the typing indicator as soon as the first stream chunk arrives
+    this.hideTypingIndicator();
 
     if (isComplete) {
       this.setStreaming(false);
@@ -1265,6 +1271,39 @@ class MessageComponent {
       this.lockIcon.classList.remove('codicon-lock');
       this.lockIcon.classList.add('codicon-unlock');
       this.lockBtn.title = 'Lock window (stay always on top)';
+    }
+  }
+
+  showTypingIndicator() {
+    if (!this.messagesContainer) return;
+
+    // Ensure no other indicators are present
+    this.hideTypingIndicator();
+
+    const indicatorHTML = `
+      <div class="conversation-turn assistant" id="typing-indicator-container">
+        <div class="conversation-content">
+          <div class="typing-indicator">
+            <div class="typing-dots">
+              <div class="typing-dot"></div>
+              <div class="typing-dot"></div>
+              <div class="typing-dot"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    this.messagesContainer.insertAdjacentHTML('beforeend', indicatorHTML);
+    this.scrollToBottom();
+  }
+
+  hideTypingIndicator() {
+    if (!this.messagesContainer) return;
+
+    const indicator = this.messagesContainer.querySelector('#typing-indicator-container');
+    if (indicator) {
+      indicator.remove();
     }
   }
 }

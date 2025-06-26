@@ -1030,6 +1030,24 @@
   text-overflow: ellipsis;
 }
 
+/* Special styling for clickable file paths in diff headers */
+.diff-file-path.file-path-link {
+  color: var(--color-primary);
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-standard);
+  background-color: rgba(var(--color-primary-rgb), 0.08);
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(var(--color-primary-rgb), 0.2);
+}
+
+.diff-file-path.file-path-link:hover {
+  background-color: rgba(var(--color-primary-rgb), 0.15);
+  border-color: rgba(var(--color-primary-rgb), 0.4);
+  color: var(--color-primary-hover);
+  text-decoration: underline;
+}
+
 .diff-actions {
   display: flex;
   align-items: center;
