@@ -36,7 +36,7 @@ class ModelConfig {
       const config = JSON.parse(data);
 
       this.currentModel = config.model || '';
-      this.taskTemplate = config.taskTemplate || 'Create a new folder in the cwd and accomplish the following task into it: \n\n<task>\n\n</task> ultrathink through this task to complete it effectively:';
+      this.taskTemplate = config.taskTemplate || 'Create a new folder in the cwd and accomplish the following task into it:<task>\n\n</task> ultrathink through this task to complete it effectively:';
 
       // Load system prompt settings
       this.systemPrompt = config.systemPrompt || '';
@@ -66,7 +66,7 @@ class ModelConfig {
       // File doesn't exist or is invalid, use default
       console.log('No model config found, using default (Sonnet)');
       this.currentModel = '';
-      this.taskTemplate = 'Create a new folder in the cwd and accomplish the following task into it: \n\n<task>\n\n</task> ultrathink through this task to complete it effectively:';
+      this.taskTemplate = 'Create a new folder in the cwd and accomplish the following task into it:<task>\n\n</task> ultrathink through this task to complete it effectively:';
 
       // Default system prompt settings
       this.systemPrompt = '';

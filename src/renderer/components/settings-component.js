@@ -746,11 +746,11 @@ class SettingsComponent {
     }
 
     try {
-      const defaultTemplate = 'Create a new folder in the cwd and accomplish the following task into it: \n\n<task>\n\n</task> ultrathink through this task to complete it effectively:';
+      const defaultTemplate = 'Create a new folder in the cwd and accomplish the following task into it:<task>\n\n</task> ultrathink through this task to complete it effectively:';
       await window.electronAPI.setTaskTemplate(defaultTemplate);
       this.invalidateCache('taskTemplate');
 
-            if (this.taskTemplateInput) {
+      if (this.taskTemplateInput) {
         this.taskTemplateInput.value = defaultTemplate;
       }
 
@@ -958,12 +958,12 @@ class SettingsComponent {
     }
 
     let key = e.key.toUpperCase();
-    
+
     // Ignore presses of only modifier keys
     if (['CONTROL', 'ALT', 'SHIFT', 'COMMAND', 'OPTION', 'META'].includes(key)) {
       return null;
     }
-    
+
     // Normalize key names to match Electron's accelerator format
     if (/^F\d{1,2}$/.test(e.code)) {
       key = e.code;
@@ -981,7 +981,7 @@ class SettingsComponent {
       };
       key = keyMap[e.key] || key;
     }
-    
+
     // A valid shortcut should have a modifier OR be a function key.
     if (modifiers.length === 0 && !/^F\d{1,2}$/.test(key)) {
       return null;

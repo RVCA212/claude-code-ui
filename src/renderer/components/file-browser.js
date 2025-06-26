@@ -596,7 +596,7 @@ class FileBrowser {
       } catch (error) {
         console.warn('Failed to load custom task template, using default:', error);
         // Fallback to default template
-        taskTemplate = 'Create a new folder in the cwd and accomplish the following task into it: \n\n<task>\n\n</task> ultrathink through this task to complete it effectively:';
+        taskTemplate = 'Create a new folder in the cwd and accomplish the following task into it:<task>\n\n</task> ultrathink through this task to complete it effectively:';
       }
 
       messageInput.value = taskTemplate;
@@ -1084,16 +1084,16 @@ class FileBrowser {
 
   getFileTypeForViewing(filePath) {
     const extension = filePath.split('.').pop()?.toLowerCase();
-    
+
     // Files that should be opened in the file viewer
     const viewableExtensions = ['png', 'jpg', 'jpeg', 'gif', 'bmp', 'webp', 'pdf'];
-    
+
     console.log('File type detection:', filePath, 'extension:', extension, 'viewable:', viewableExtensions.includes(extension));
-    
+
     if (viewableExtensions.includes(extension)) {
       return 'viewable';
     }
-    
+
     // All other files go to the text editor
     return 'editable';
   }
@@ -1598,8 +1598,8 @@ class FileBrowser {
     // Show/hide other children of file-browser (except status bar and sidebar containers)
     if (this.root) {
       Array.from(this.root.children).forEach(child => {
-        if (child.classList.contains('file-browser-status') || 
-            child.id === 'conversationHistorySidebar' || 
+        if (child.classList.contains('file-browser-status') ||
+            child.id === 'conversationHistorySidebar' ||
             child.id === 'tasksSidebar') {
           return; // Always keep visible
         }
@@ -1735,7 +1735,7 @@ class FileBrowser {
       this.tooltip.addEventListener('mouseenter', () => {
         this.cancelTooltipHiding();
       });
-      
+
       this.tooltip.addEventListener('mouseleave', () => {
         this.hideTooltipWithDelay();
       });
@@ -2004,7 +2004,7 @@ class FileBrowser {
   // Helper method to convert Mac-style paths to Unix paths
   normalizePath(filePath) {
     if (!filePath) return filePath;
-    
+
     // Convert Mac-style paths (e.g., "Macintosh HD:Users:..." to "/Users/...")
     if (filePath.includes('Macintosh HD:')) {
       // Remove "Macintosh HD:" prefix and convert colons to slashes
@@ -2013,7 +2013,7 @@ class FileBrowser {
       console.log('Converted Mac path:', filePath, '->', normalized);
       return normalized;
     }
-    
+
     return filePath;
   }
 
@@ -2114,7 +2114,7 @@ class FileBrowser {
       }
 
       // Handle individual file opening (for absolute paths)
-      
+
       // Set working directory to file's parent directory first
       const result = await window.electronAPI.setWorkingDirectoryFromFile(normalizedPath);
       if (result.success) {
@@ -2218,7 +2218,7 @@ class FileBrowser {
         console.error('Failed to navigate to file location:', error);
         // Fallback: just try to open the file directly
         const fileType = this.getFileTypeForViewing(filePath);
-        
+
         if (fileType === 'viewable') {
           const fileViewer = window.app?.getComponent('fileViewer');
           if (fileViewer) {
@@ -2254,7 +2254,7 @@ class FileBrowser {
   updateIndentationForWidth(width, indentationPx) {
     this.currentIndentationPx = indentationPx;
     console.log(`Updating indentation: width=${width}px, indentation=${indentationPx}px per level`);
-    
+
     // Re-render the file list with new indentation
     this.renderFileList();
   }

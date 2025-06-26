@@ -477,10 +477,10 @@ async function registerGlobalShortcut() {
     // Get the configured shortcut from settings
     const currentShortcut = await modelConfig.getGlobalShortcut();
     const shortcut = currentShortcut || 'CommandOrControl+Shift+C';
-    
+
     // Unregister any existing shortcuts first
     globalShortcut.unregisterAll();
-    
+
     const isRegistered = globalShortcut.register(shortcut, () => {
       console.log('Global shortcut triggered:', shortcut);
       toggleWindow();
@@ -492,7 +492,7 @@ async function registerGlobalShortcut() {
       console.error(`❌ Failed to register global shortcut ${shortcut}`);
       console.log('The shortcut may already be in use by another application');
     }
-    
+
     return { success: isRegistered, shortcut };
   } catch (error) {
     console.error('Error registering global shortcut:', error);
@@ -676,12 +676,9 @@ async function initializeApp() {
 // App event handlers
 app.whenReady().then(async () => {
   await initializeApp();
-  await createWindow();
-  createTray();
 
-  // Register configurable global keyboard shortcut
-  await registerGlobalShortcut();
-
+  // Register IPC handlers before creating the window to prevent race conditions
+  // where the renderer process calls them on startup before they are registered.
   ipcMain.handle('set-window-lock', (event, locked) => {
     isWindowLocked = locked;
     if (mainWindow) {
@@ -712,16 +709,22 @@ app.whenReady().then(async () => {
     try {
       // Save the shortcut setting
       await modelConfig.setGlobalShortcut(shortcut);
-      
+
       // Re-register the shortcut
       const result = await registerGlobalShortcut();
-      
+
       return result;
     } catch (error) {
       console.error('Failed to set global shortcut:', error);
       return { success: false, error: error.message };
     }
   });
+
+  await createWindow();
+  createTray();
+
+  // Register configurable global keyboard shortcut
+  await registerGlobalShortcut();
 });
 
 app.on('window-all-closed', () => {
