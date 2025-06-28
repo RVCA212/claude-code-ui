@@ -610,6 +610,14 @@ class IPCHandlers {
       return await this.fileOperations.requestWindowDetectionPermissions();
     });
 
+    ipcMain.handle('enable-window-detection-with-permissions', async () => {
+      return await this.fileOperations.enableWindowDetectionWithPermissions();
+    });
+
+    ipcMain.handle('get-window-detection-permission-status', async () => {
+      return await this.fileOperations.getWindowDetectionPermissionStatus();
+    });
+
     ipcMain.handle('clear-window-detection-cache', async () => {
       return this.fileOperations.clearWindowDetectionCache();
     });

@@ -92,6 +92,8 @@ class PreloadBridge {
       // Window detection operations
       getOpenApplicationWindows: () => ipcRenderer.invoke('get-open-application-windows'),
       requestWindowDetectionPermissions: () => ipcRenderer.invoke('request-window-detection-permissions'),
+      enableWindowDetectionWithPermissions: () => ipcRenderer.invoke('enable-window-detection-with-permissions'),
+      getWindowDetectionPermissionStatus: () => ipcRenderer.invoke('get-window-detection-permission-status'),
       clearWindowDetectionCache: () => ipcRenderer.invoke('clear-window-detection-cache'),
 
       // Window detection debugging
@@ -162,7 +164,7 @@ class PreloadBridge {
       'setWorkingDirectoryFromFile', 'readFile', 'writeFile', 'watchFile', 'unwatchFile',
       'searchFilesByPrefix', 'getDirectoryContentsOnly',
       'createWorkspace', 'getWorkspaces', 'deleteWorkspace', 'setActiveWorkspace', 'getActiveWorkspace', 'clearActiveWorkspace', 'getWorkspaceContext', 'getWorkspaceFolders',
-      'getOpenApplicationWindows', 'requestWindowDetectionPermissions', 'clearWindowDetectionCache',
+      'getOpenApplicationWindows', 'requestWindowDetectionPermissions', 'enableWindowDetectionWithPermissions', 'getWindowDetectionPermissionStatus', 'clearWindowDetectionCache',
       'setWindowDetectionDebug', 'getWindowDetectionDiagnostics', 'testAppleScript',
       'getMcpServers', 'saveMcpServer', 'deleteMcpServer', 'toggleMcpServer', 'testMcpServer',
       'onSessionsLoaded', 'onMessageStream', 'onSessionUpdated', 'onSessionDeleted', 'onSessionCreated', 'onAllSessionsCleared',

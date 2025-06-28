@@ -1,0 +1,149 @@
+{
+  "logFormatVersion": 1,
+  "jobId": "364791f4-95e3-4811-a8a4-2301951aeca0",
+  "status": "Invalid",
+  "statusSummary": "Archive contains critical validation errors",
+  "statusCode": 4000,
+  "archiveFilename": "Cloud Code.zip",
+  "uploadDate": "2025-06-28T16:55:05.258Z",
+  "sha256": "89bf12e294935de45da0dde192b9ee18c397e3fe2262ee766a6f2e28d0cdabfb",
+  "ticketContents": null,
+  "issues": [
+    {
+      "severity": "error",
+      "code": null,
+      "path": "Cloud Code.zip/Cloud Code.app/Contents/Frameworks/Cloud Code Helper (Plugin).app/Contents/MacOS/Cloud Code Helper (Plugin)",
+      "message": "The binary is not signed with a valid Developer ID certificate.",
+      "docUrl": "https://developer.apple.com/documentation/security/notarizing_macos_software_before_distribution/resolving_common_notarization_issues#3087721",
+      "architecture": "x86_64"
+    },
+    {
+      "severity": "error",
+      "code": null,
+      "path": "Cloud Code.zip/Cloud Code.app/Contents/Frameworks/Cloud Code Helper (Renderer).app/Contents/MacOS/Cloud Code Helper (Renderer)",
+      "message": "The binary is not signed with a valid Developer ID certificate.",
+      "docUrl": "https://developer.apple.com/documentation/security/notarizing_macos_software_before_distribution/resolving_common_notarization_issues#3087721",
+      "architecture": "x86_64"
+    },
+    {
+      "severity": "error",
+      "code": null,
+      "path": "Cloud Code.zip/Cloud Code.app/Contents/Frameworks/Cloud Code Helper.app/Contents/MacOS/Cloud Code Helper",
+      "message": "The binary is not signed with a valid Developer ID certificate.",
+      "docUrl": "https://developer.apple.com/documentation/security/notarizing_macos_software_before_distribution/resolving_common_notarization_issues#3087721",
+      "architecture": "x86_64"
+    },
+    {
+      "severity": "error",
+      "code": null,
+      "path": "Cloud Code.zip/Cloud Code.app/Contents/Frameworks/Cloud Code Helper (GPU).app/Contents/MacOS/Cloud Code Helper (GPU)",
+      "message": "The binary is not signed with a valid Developer ID certificate.",
+      "docUrl": "https://developer.apple.com/documentation/security/notarizing_macos_software_before_distribution/resolving_common_notarization_issues#3087721",
+      "architecture": "x86_64"
+    },
+    {
+      "severity": "error",
+      "code": null,
+      "path": "Cloud Code.zip/Cloud Code.app/Contents/MacOS/Cloud Code",
+      "message": "The binary is not signed with a valid Developer ID certificate.",
+      "docUrl": "https://developer.apple.com/documentation/security/notarizing_macos_software_before_distribution/resolving_common_notarization_issues#3087721",
+      "architecture": "x86_64"
+    },
+    {
+      "severity": "error",
+      "code": null,
+      "path": "Cloud Code.zip/Cloud Code.app/Contents/Resources/app.asar.unpacked/node_modules/node-pty/build/Release/pty.node",
+      "message": "The binary is not signed with a valid Developer ID certificate.",
+      "docUrl": "https://developer.apple.com/documentation/security/notarizing_macos_software_before_distribution/resolving_common_notarization_issues#3087721",
+      "architecture": "x86_64"
+    },
+    {
+      "severity": "error",
+      "code": null,
+      "path": "Cloud Code.zip/Cloud Code.app/Contents/Resources/app.asar.unpacked/node_modules/node-pty/build/Release/spawn-helper",
+      "message": "The binary is not signed with a valid Developer ID certificate.",
+      "docUrl": "https://developer.apple.com/documentation/security/notarizing_macos_software_before_distribution/resolving_common_notarization_issues#3087721",
+      "architecture": "x86_64"
+    },
+    {
+      "severity": "error",
+      "code": null,
+      "path": "Cloud Code.zip/Cloud Code.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Electron Framework",
+      "message": "The binary is not signed with a valid Developer ID certificate.",
+      "docUrl": "https://developer.apple.com/documentation/security/notarizing_macos_software_before_distribution/resolving_common_notarization_issues#3087721",
+      "architecture": "x86_64"
+    },
+    {
+      "severity": "error",
+      "code": null,
+      "path": "Cloud Code.zip/Cloud Code.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Libraries/libEGL.dylib",
+      "message": "The binary is not signed with a valid Developer ID certificate.",
+      "docUrl": "https://developer.apple.com/documentation/security/notarizing_macos_software_before_distribution/resolving_common_notarization_issues#3087721",
+      "architecture": "x86_64"
+    },
+    {
+      "severity": "error",
+      "code": null,
+      "path": "Cloud Code.zip/Cloud Code.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Libraries/libvk_swiftshader.dylib",
+      "message": "The binary is not signed with a valid Developer ID certificate.",
+      "docUrl": "https://developer.apple.com/documentation/security/notarizing_macos_software_before_distribution/resolving_common_notarization_issues#3087721",
+      "architecture": "x86_64"
+    },
+    {
+      "severity": "error",
+      "code": null,
+      "path": "Cloud Code.zip/Cloud Code.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Libraries/libGLESv2.dylib",
+      "message": "The binary is not signed with a valid Developer ID certificate.",
+      "docUrl": "https://developer.apple.com/documentation/security/notarizing_macos_software_before_distribution/resolving_common_notarization_issues#3087721",
+      "architecture": "x86_64"
+    },
+    {
+      "severity": "error",
+      "code": null,
+      "path": "Cloud Code.zip/Cloud Code.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Libraries/libffmpeg.dylib",
+      "message": "The binary is not signed with a valid Developer ID certificate.",
+      "docUrl": "https://developer.apple.com/documentation/security/notarizing_macos_software_before_distribution/resolving_common_notarization_issues#3087721",
+      "architecture": "x86_64"
+    },
+    {
+      "severity": "error",
+      "code": null,
+      "path": "Cloud Code.zip/Cloud Code.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Helpers/chrome_crashpad_handler",
+      "message": "The binary is not signed with a valid Developer ID certificate.",
+      "docUrl": "https://developer.apple.com/documentation/security/notarizing_macos_software_before_distribution/resolving_common_notarization_issues#3087721",
+      "architecture": "x86_64"
+    },
+    {
+      "severity": "error",
+      "code": null,
+      "path": "Cloud Code.zip/Cloud Code.app/Contents/Frameworks/ReactiveObjC.framework/Versions/A/ReactiveObjC",
+      "message": "The binary is not signed with a valid Developer ID certificate.",
+      "docUrl": "https://developer.apple.com/documentation/security/notarizing_macos_software_before_distribution/resolving_common_notarization_issues#3087721",
+      "architecture": "x86_64"
+    },
+    {
+      "severity": "error",
+      "code": null,
+      "path": "Cloud Code.zip/Cloud Code.app/Contents/Frameworks/Squirrel.framework/Versions/A/Squirrel",
+      "message": "The binary is not signed with a valid Developer ID certificate.",
+      "docUrl": "https://developer.apple.com/documentation/security/notarizing_macos_software_before_distribution/resolving_common_notarization_issues#3087721",
+      "architecture": "x86_64"
+    },
+    {
+      "severity": "error",
+      "code": null,
+      "path": "Cloud Code.zip/Cloud Code.app/Contents/Frameworks/Squirrel.framework/Versions/A/Resources/ShipIt",
+      "message": "The binary is not signed with a valid Developer ID certificate.",
+      "docUrl": "https://developer.apple.com/documentation/security/notarizing_macos_software_before_distribution/resolving_common_notarization_issues#3087721",
+      "architecture": "x86_64"
+    },
+    {
+      "severity": "error",
+      "code": null,
+      "path": "Cloud Code.zip/Cloud Code.app/Contents/Frameworks/Mantle.framework/Versions/A/Mantle",
+      "message": "The binary is not signed with a valid Developer ID certificate.",
+      "docUrl": "https://developer.apple.com/documentation/security/notarizing_macos_software_before_distribution/resolving_common_notarization_issues#3087721",
+      "architecture": "x86_64"
+    }
+  ]
+}

@@ -60,6 +60,10 @@ class WindowDetector {
 
     // Debug mode for detailed logging
     this.debugMode = process.env.NODE_ENV === 'development' || process.env.DEBUG_WINDOW_DETECTION === 'true';
+    
+    // Permission request control
+    this.permissionRequestAttempted = false; // Prevent multiple requests in same session
+    this.userConsentForPermissions = false; // User must explicitly consent
   }
 
   /**
@@ -174,13 +178,87 @@ class WindowDetector {
 
   /**
    * Request accessibility permissions (user must grant manually)
+   * Only requests if user has explicitly consented and not already attempted
    */
-  async requestAccessibilityPermissions() {
+  async requestAccessibilityPermissions(userConsent = false) {
     try {
+      // Only request permissions if user explicitly consents and we haven't already tried
+      if (!userConsent || this.permissionRequestAttempted) {
+        if (this.debugMode) {
+          console.log('Skipping permission request - userConsent:', userConsent, 'already attempted:', this.permissionRequestAttempted);
+        }
+        return await this.checkAccessibilityPermissions();
+      }
+
+      if (this.debugMode) {
+        console.log('User consented to accessibility permission request');
+      }
+
+      this.permissionRequestAttempted = true;
+      this.userConsentForPermissions = true;
       return systemPreferences.isTrustedAccessibilityClient(true);
     } catch (error) {
       console.error('Error requesting accessibility permissions:', error);
       return false;
+    }
+  }
+
+  /**
+   * Enable window detection with user consent
+   * This method should be called when user explicitly wants to enable window detection
+   */
+  async enableWindowDetectionWithPermissions() {
+    try {
+      const hasPermissions = await this.checkAccessibilityPermissions();
+      if (hasPermissions) {
+        this.userConsentForPermissions = true;
+        return {
+          success: true,
+          hasPermissions: true,
+          message: 'Window detection enabled - accessibility permissions already granted'
+        };
+      }
+
+      // Request permissions with user consent
+      const permissionGranted = await this.requestAccessibilityPermissions(true);
+      
+      return {
+        success: permissionGranted,
+        hasPermissions: permissionGranted,
+        message: permissionGranted 
+          ? 'Window detection enabled successfully'
+          : 'Accessibility permissions required for window detection. Please grant permissions in System Preferences > Security & Privacy > Accessibility'
+      };
+    } catch (error) {
+      console.error('Error enabling window detection:', error);
+      return {
+        success: false,
+        hasPermissions: false,
+        message: `Failed to enable window detection: ${error.message}`
+      };
+    }
+  }
+
+  /**
+   * Get the current permission and consent status
+   */
+  async getPermissionStatus() {
+    try {
+      const hasPermissions = await this.checkAccessibilityPermissions();
+      return {
+        hasAccessibilityPermissions: hasPermissions,
+        userConsentForPermissions: this.userConsentForPermissions,
+        permissionRequestAttempted: this.permissionRequestAttempted,
+        windowDetectionEnabled: hasPermissions && this.userConsentForPermissions
+      };
+    } catch (error) {
+      console.error('Error getting permission status:', error);
+      return {
+        hasAccessibilityPermissions: false,
+        userConsentForPermissions: false,
+        permissionRequestAttempted: false,
+        windowDetectionEnabled: false
+      };
     }
   }
 
@@ -1887,16 +1965,27 @@ class WindowDetector {
         console.log(`Filtered ${runningApps.length} running apps to ${enabledApps.length} enabled apps`);
       }
 
-      // Check if we have accessibility permissions
+      // Check if we have accessibility permissions and user consent
       const hasPermissions = await this.checkAccessibilityPermissions();
-      if (!hasPermissions) {
-        console.warn('No accessibility permissions - cannot detect open files');
+      const windowDetectionEnabled = hasPermissions && this.userConsentForPermissions;
+      
+      if (!windowDetectionEnabled) {
+        if (this.debugMode) {
+          console.log('Window detection disabled - hasPermissions:', hasPermissions, 'userConsent:', this.userConsentForPermissions);
+        }
+        
+        // Return graceful response instead of error
         return {
-          success: false,
-          error: 'Accessibility permissions required',
-          requiresPermissions: true,
+          success: true, // Changed to true since this is expected behavior
+          windowDetectionAvailable: false,
+          hasAccessibilityPermissions: hasPermissions,
+          userConsentForPermissions: this.userConsentForPermissions,
+          message: !hasPermissions 
+            ? 'Accessibility permissions required for window detection'
+            : 'Window detection not enabled. Enable in settings to detect open files.',
           files: [],
-          workspaces: []
+          workspaces: [],
+          runningApps: []
         };
       }
 
@@ -2016,6 +2105,9 @@ class WindowDetector {
 
       return {
         success: true,
+        windowDetectionAvailable: true,
+        hasAccessibilityPermissions: true,
+        userConsentForPermissions: this.userConsentForPermissions,
         files: combinedFiles,
         workspaces: grouped.workspaces,
         individualFiles: grouped.individualFiles,

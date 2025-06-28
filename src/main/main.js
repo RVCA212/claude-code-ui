@@ -1,5 +1,6 @@
 const { app, BrowserWindow, Tray, Menu, nativeImage, ipcMain, globalShortcut } = require('electron');
 const path = require('path');
+require('fix-path')();
 
 // Import our modular components
 const SessionManager = require('./session-manager');

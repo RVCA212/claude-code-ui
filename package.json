@@ -9,7 +9,11 @@
     "build": "electron-builder",
     "install-claude": "npm install -g @anthropic-ai/claude-code",
     "rebuild": "electron-builder install-app-deps --arch=arm64",
-    "postinstall": "electron-builder install-app-deps --arch=arm64"
+    "postinstall": "electron-builder install-app-deps --arch=arm64",
+    "clean": "rm -rf dist",
+    "build:mac": "npm run clean && electron-builder --mac",
+    "notarize": "node scripts/notarize.js",
+    "dist": "npm run build:mac"
   },
   "keywords": [
     "electron",
@@ -21,6 +25,7 @@
   "author": "Cloud Code",
   "license": "MIT",
   "devDependencies": {
+    "@electron/notarize": "^3.0.1",
     "@electron/rebuild": "^3.7.2",
     "@vscode/codicons": "^0.0.36",
     "electron": "^27.0.0",
@@ -31,6 +36,7 @@
     "@monaco-editor/loader": "^1.5.0",
     "better-sqlite3": "^11.10.0",
     "diff": "^5.2.0",
+    "fix-path": "^3.0.0",
     "monaco-editor": "^0.52.2",
     "node-mac-permissions": "^2.5.0",
     "node-pty": "^1.0.0",
@@ -54,15 +60,15 @@
     ],
     "mac": {
       "category": "public.app-category.developer-tools",
-      "icon": "assets/icon-large.png",
+      "icon": "assets/icon.icns",
       "hardenedRuntime": true,
       "entitlements": "build/entitlements.mac.plist",
       "entitlementsInherit": "build/entitlements.mac.plist",
-      "identity": null,
       "extendInfo": {
         "LSUIElement": false,
         "LSBackgroundOnly": false
-      }
+      },
+      "gatekeeperAssess": false
     },
     "win": {
       "target": "nsis",
@@ -71,6 +77,29 @@
     "linux": {
       "target": "AppImage",
       "icon": "assets/icon-large.png"
-    }
+    },
+    "afterSign": "scripts/notarize.js",
+    "dmg": {
+      "title": "Cloud Code",
+      "background": "assets/dmg-background.png",
+      "iconSize": 80,
+      "contents": [
+        {
+          "x": 130,
+          "y": 220
+        },
+        {
+          "x": 410,
+          "y": 220,
+          "type": "link",
+          "path": "/Applications"
+        }
+      ]
+    },
+    "asarUnpack": [
+      "renderer/icons/**/*",
+      "node_modules/@vscode/codicons/dist/codicon.ttf",
+      "**/better-sqlite3/build/Release/*.node"
+    ]
   }
 }

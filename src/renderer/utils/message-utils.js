@@ -31,6 +31,33 @@ class MessageUtils {
     return { textBlocks: [], toolCalls: [], thinking: null, orderedContent: [] };
   }
 
+  // Helper to convert a (possibly relative) path to an absolute path using cwd
+  static toAbsolutePath(filePath, cwd) {
+    if (!filePath || !cwd) return filePath;
+
+    // If already absolute or home-relative, return as-is
+    if (filePath.startsWith('/') || filePath.startsWith('~')) {
+      return filePath;
+    }
+
+    // Attempt to use Node's path module first (available in Electron renderers with nodeIntegration)
+    let pathModule = null;
+    try {
+      // eslint-disable-next-line global-require
+      pathModule = require('path');
+    } catch (_) {
+      // Fallback to simple string handling if require is not available
+    }
+
+    if (pathModule && typeof pathModule.resolve === 'function') {
+      return pathModule.resolve(cwd, filePath);
+    }
+
+    // Fallback: naïve join that handles leading './' and '../'
+    const trimmedCwd = cwd.endsWith('/') ? cwd.slice(0, -1) : cwd;
+    return `${trimmedCwd}/${filePath.replace(/^\.\//, '')}`;
+  }
+
   // Format text content with markdown-like formatting and clickable file paths
   static formatTextContent(text, cwd) {
     if (!text) return '';
@@ -40,8 +67,10 @@ class MessageUtils {
       .replace(this.getFilePathRegex(), (match, filePath) => {
         const cleanPath = this.cleanFilePath(filePath);
         if (this.isValidFilePath(cleanPath)) {
-          console.log('Creating clickable link for:', cleanPath); // Debug logging
-          return `<span class="file-path-link" data-file-path="${this.escapeHTML(cleanPath)}" title="Click to open ${this.escapeHTML(cleanPath)}">${this.escapeHTML(match.trim())}</span>`;
+          // Resolve to absolute path if needed so the editor always receives a full path
+          const absolutePath = this.toAbsolutePath(cleanPath, cwd);
+          console.log('Creating clickable link for:', absolutePath); // Debug logging
+          return `<span class="file-path-link" data-file-path="${this.escapeHTML(absolutePath)}" title="Click to open ${this.escapeHTML(absolutePath)}">${this.escapeHTML(match.trim())}</span>`;
         }
         console.log('Rejected file path:', cleanPath); // Debug logging
         return match; // Return original if not a valid file path
@@ -97,16 +126,16 @@ class MessageUtils {
   // Clean and normalize file paths
   static cleanFilePath(filePath) {
     if (!filePath) return '';
-    
+
     // Remove leading/trailing whitespace
     let cleaned = filePath.trim();
-    
+
     // Remove leading quotes, backticks, or brackets that might be from markdown context
     cleaned = cleaned.replace(/^["'`()\[\]]+/, '').replace(/["'`()\[\]]+$/, '');
-    
+
     // Remove trailing punctuation that might be from sentence context
     cleaned = cleaned.replace(/[,.;!?]+$/, '');
-    
+
     // Handle different path formats
     if (cleaned.startsWith('./') || cleaned.startsWith('../')) {
       // Relative paths - keep as is
@@ -121,28 +150,28 @@ class MessageUtils {
       // Simple filename with extension
       return cleaned;
     }
-    
+
     return cleaned;
   }
 
   // Validate if a string is likely a file path
   static isValidFilePath(path) {
     if (!path || typeof path !== 'string') return false;
-    
+
     // Remove line number suffix if present (e.g., "file.js:123")
     const pathWithoutLineNum = path.replace(/:([0-9]+)$/, '');
-    
+
     // Must contain a file extension (more permissive)
     const hasExtension = /\.[a-zA-Z0-9]{1,8}$/.test(pathWithoutLineNum);
     if (!hasExtension) return false;
-    
+
     // For paths with directories, must contain at least one separator
     // For simple filenames, allow if they have an extension
     const hasDirectory = pathWithoutLineNum.includes('/') || pathWithoutLineNum.includes('\\');
     const isSimpleFilename = !hasDirectory && pathWithoutLineNum.length > 0;
-    
+
     if (!hasDirectory && !isSimpleFilename) return false;
-    
+
     // Exclude obvious non-file patterns
     const excludePatterns = [
       /^https?:\/\//, // URLs
@@ -151,25 +180,25 @@ class MessageUtils {
       /^www\./, // Web addresses
       /^[0-9]+\.[0-9]+\.[0-9]/, // Version numbers like 1.2.3
     ];
-    
+
     for (const pattern of excludePatterns) {
       if (pattern.test(pathWithoutLineNum)) return false;
     }
-    
+
     // Additional validation: shouldn't be too long (probably not a file path)
     if (pathWithoutLineNum.length > 250) return false;
-    
+
     // Allow spaces in file paths (common and legitimate)
     // But reject if it looks like a sentence (multiple words with common sentence patterns)
     if (pathWithoutLineNum.includes(' ')) {
       const words = pathWithoutLineNum.split(' ');
       if (words.length > 3) return false; // Too many words, probably not a file path
-      
+
       // Check for common sentence indicators
       const sentenceIndicators = /\b(the|and|or|in|on|at|to|for|of|with|by)\b/i;
       if (sentenceIndicators.test(pathWithoutLineNum)) return false;
     }
-    
+
     return true;
   }
 
@@ -179,18 +208,18 @@ class MessageUtils {
       event.preventDefault();
       event.stopPropagation();
     }
-    
+
     // Try to open the file through the existing file browser/editor system
     if (window.app && window.app.getComponent) {
       const fileBrowser = window.app.getComponent('fileBrowser');
       const fileEditor = window.app.getComponent('fileEditor');
-      
+
       if (filePath && (fileBrowser || fileEditor)) {
         // Determine if this is a viewable file (image, PDF) or editable file
         const viewableExtensions = ['png', 'jpg', 'jpeg', 'gif', 'bmp', 'webp', 'pdf'];
         const extension = filePath.split('.').pop()?.toLowerCase();
         const isViewable = viewableExtensions.includes(extension);
-        
+
         if (isViewable) {
           // Try to open in file viewer
           const fileViewer = window.app.getComponent('fileViewer');
@@ -277,7 +306,7 @@ class MessageUtils {
     const toolIcon = this.getToolIcon(toolCall.name);
     const toolSummary = this.getToolSummary(toolCall, cwd);
     const finalStatus = toolCall.status || (toolCall.output ? 'completed' : status);
-    
+
     let statusIndicator = '';
     if (finalStatus === 'in_progress') statusIndicator = '⏳';
     else if (finalStatus === 'failed') statusIndicator = '❌';
@@ -339,8 +368,9 @@ class MessageUtils {
 
     const createClickableFilePath = (filePath) => {
       if (!filePath) return 'unknown';
-      const relativePath = createRelativePath(filePath);
-      return `<span class="file-path-link" data-file-path="${this.escapeHTML(filePath)}" title="Click to open ${this.escapeHTML(relativePath)}">${this.escapeHTML(relativePath)}</span>`;
+      const absolutePath = this.toAbsolutePath(filePath, cwd);
+      const relativePath = createRelativePath(absolutePath);
+      return `<span class="file-path-link" data-file-path="${this.escapeHTML(absolutePath)}" title="Click to open ${this.escapeHTML(relativePath)}">${this.escapeHTML(relativePath)}</span>`;
     };
 
     switch (toolCall.name) {
@@ -392,11 +422,12 @@ class MessageUtils {
     } else {
         // For other tools, show the traditional input/output view
         let inputDisplay = this.escapeHTML(JSON.stringify(toolCall.input, null, 2));
-        
+
         // Make file paths clickable in input JSON
         if (toolCall.input && toolCall.input.file_path) {
-          const relativePath = this.getRelativePath(toolCall.input.file_path, cwd);
-          const escapedFilePath = this.escapeHTML(toolCall.input.file_path);
+          const absolutePathForInput = this.toAbsolutePath(toolCall.input.file_path, cwd);
+          const relativePath = this.getRelativePath(absolutePathForInput, cwd);
+          const escapedFilePath = this.escapeHTML(absolutePathForInput);
           const clickableFilePath = `<span class="file-path-link" data-file-path="${escapedFilePath}" title="Click to open ${this.escapeHTML(relativePath)}">${escapedFilePath}</span>`;
           inputDisplay = inputDisplay.replace(
             new RegExp(escapedFilePath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'),
@@ -409,10 +440,10 @@ class MessageUtils {
 
     if (toolCall.output) {
       let outputContent = this.escapeHTML(toolCall.output);
-      
+
       // Apply file path formatting to output content
       outputContent = this.formatTextContent(outputContent, cwd);
-      
+
       details += `<div class="tool-output ${toolCall.status === 'failed' ? 'error' : ''}"><strong>Output:</strong><div class="tool-output-content">` +
                   outputContent +
                   '</div></div>';
@@ -424,7 +455,7 @@ class MessageUtils {
   // Create professional diff view for Edit and MultiEdit tools
   static createDiffView(toolCall, cwd) {
     const relativePath = this.getRelativePath(toolCall.input.file_path, cwd);
-    const absolutePath = toolCall.input.file_path;
+    const absolutePath = this.toAbsolutePath(toolCall.input.file_path, cwd);
     const diffViewId = 'diff_' + Math.random().toString(36).substring(2, 11);
 
     let diffContent = '';

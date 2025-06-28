@@ -979,23 +979,38 @@ class FileOperations {
     }
   }
 
-  // Request accessibility permissions for window detection
+  // Request accessibility permissions for window detection (deprecated)
   async requestWindowDetectionPermissions() {
+    console.warn('requestWindowDetectionPermissions is deprecated, use enableWindowDetectionWithPermissions instead');
+    return await this.enableWindowDetectionWithPermissions();
+  }
+
+  // Enable window detection with user consent and permissions
+  async enableWindowDetectionWithPermissions() {
     try {
-      const granted = await this.windowDetector.requestAccessibilityPermissions();
-      return {
-        success: true,
-        granted: granted,
-        message: granted ?
-          'Accessibility permissions granted' :
-          'User must manually grant permissions in System Preferences'
-      };
+      return await this.windowDetector.enableWindowDetectionWithPermissions();
     } catch (error) {
-      console.error('Error requesting window detection permissions:', error);
+      console.error('Error enabling window detection with permissions:', error);
       return {
         success: false,
         error: error.message,
         granted: false
+      };
+    }
+  }
+
+  // Get window detection permission status
+  async getWindowDetectionPermissionStatus() {
+    try {
+      return await this.windowDetector.getPermissionStatus();
+    } catch (error) {
+      console.error('Error getting window detection permission status:', error);
+      return {
+        hasAccessibilityPermissions: false,
+        userConsentForPermissions: false,
+        permissionRequestAttempted: false,
+        windowDetectionEnabled: false,
+        error: error.message
       };
     }
   }
