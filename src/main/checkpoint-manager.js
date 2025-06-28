@@ -34,10 +34,7 @@ class CheckpointManager {
           full_snapshot INTEGER DEFAULT 0,
           old_content TEXT,
           new_content TEXT,
-          tool_type TEXT,
-          pre_edit_content TEXT,
-          post_edit_content TEXT,
-          edit_summary TEXT
+          tool_type TEXT
         )
       `);
 
@@ -76,7 +73,7 @@ class CheckpointManager {
       if (toolUse.name === 'Write') {
         newContentForCheckpoint = toolUse.input.content || '';
         patch = diff.createPatch(path.basename(file_path), fullContentBeforeEdit, newContentForCheckpoint, 'before', 'after');
-      } else if (toolUse.name === 'Edit' || toolUse.name === 'MultiEdit') {
+      } else if (toolUse.name === 'Edit' || toolUse.name === 'MultiEdit' || toolUse.name === 'NotebookEdit') {
         // For edits, we need to capture the actual content after the edit is applied
         // This is a placeholder that will be updated by updateCheckpointWithPostEditContent
         newContentForCheckpoint = '...PENDING_POST_EDIT_CONTENT...';
@@ -130,12 +127,15 @@ class CheckpointManager {
         postEditContent = await fs.readFile(filePath, 'utf8');
       } catch (err) {
         console.error('Failed to read post-edit content for checkpoint update:', err);
+        // Delete the orphaned pending checkpoint
+        this.checkpointDb.prepare('DELETE FROM checkpoints WHERE id = ?').run(checkpointId);
+        console.warn(`Deleted orphaned pending checkpoint: ${checkpointId}`);
         return false;
       }
 
       // Update the checkpoint with the actual new content
       const updateStmt = this.checkpointDb.prepare(`
-        UPDATE checkpoints 
+        UPDATE checkpoints
         SET new_content = ?, patch_path = ?
         WHERE id = ?
       `);
@@ -148,13 +148,13 @@ class CheckpointManager {
       }
 
       const patch = diff.createPatch(
-        path.basename(filePath), 
-        checkpoint.old_content, 
-        postEditContent, 
-        'before', 
+        path.basename(filePath),
+        checkpoint.old_content,
+        postEditContent,
+        'before',
         'after'
       );
-      
+
       const patchPath = path.join(this.checkpointBlobsDir, `${checkpointId}.patch`);
       const tempPatchPath = patchPath + '.tmp';
       await fs.writeFile(tempPatchPath, patch);
@@ -203,34 +203,62 @@ class CheckpointManager {
 
   // Get checkpoints for a session up to a specific message
   async getCheckpointsToRevert(sessionId, messageId) {
+    console.log('=== GET CHECKPOINTS TO REVERT DEBUG START ===');
+    console.log('Parameters - sessionId:', sessionId, 'messageId:', messageId);
+    
     if (!this.checkpointDb) {
+      console.log('Checkpoint database not initialized');
+      console.log('=== GET CHECKPOINTS TO REVERT DEBUG END ===');
       return [];
     }
 
     try {
       // First, get the timestamp of the target message
+      console.log('Querying for message timestamp...');
       const messageStmt = this.checkpointDb.prepare(`
-        SELECT MIN(ts) as target_ts FROM checkpoints 
+        SELECT MIN(ts) as target_ts FROM checkpoints
         WHERE message_id = ? AND session_id = ?
       `);
       const messageResult = messageStmt.get(messageId, sessionId);
-      
+      console.log('Message timestamp query result:', messageResult);
+
       if (!messageResult || !messageResult.target_ts) {
         // No checkpoints found for this message
         console.log(`No checkpoints found for message ${messageId} in session ${sessionId}`);
+        
+        // Additional debugging: check exact matches
+        const exactSessionStmt = this.checkpointDb.prepare(`
+          SELECT COUNT(*) as count FROM checkpoints WHERE session_id = ?
+        `);
+        const sessionCount = exactSessionStmt.get(sessionId);
+        console.log(`Total checkpoints for exact session ID match: ${sessionCount.count}`);
+        
+        const exactMessageStmt = this.checkpointDb.prepare(`
+          SELECT COUNT(*) as count FROM checkpoints WHERE message_id = ?
+        `);
+        const messageCount = exactMessageStmt.get(messageId);
+        console.log(`Total checkpoints for exact message ID match: ${messageCount.count}`);
+        
+        console.log('=== GET CHECKPOINTS TO REVERT DEBUG END ===');
         return [];
       }
 
       // Get all checkpoints from this message's timestamp onwards
+      console.log('Querying for checkpoints from timestamp:', messageResult.target_ts);
       const stmt = this.checkpointDb.prepare(`
         SELECT * FROM checkpoints
         WHERE session_id = ? AND ts >= ?
         ORDER BY ts DESC
       `);
 
-      return stmt.all(sessionId, messageResult.target_ts);
+      const checkpoints = stmt.all(sessionId, messageResult.target_ts);
+      console.log('Found', checkpoints.length, 'checkpoints from timestamp query');
+      console.log('=== GET CHECKPOINTS TO REVERT DEBUG END ===');
+      return checkpoints;
     } catch (error) {
+      console.error('=== GET CHECKPOINTS TO REVERT DEBUG ERROR ===');
       console.error('Failed to get checkpoints:', error);
+      console.error('=== GET CHECKPOINTS TO REVERT DEBUG END ===');
       return [];
     }
   }
@@ -300,10 +328,10 @@ class CheckpointManager {
       if (failedFiles.length > 0) {
         console.warn(`Some files failed to revert:`, failedFiles);
         // Still return successful files, but include failure information
-        return { 
-          revertedFiles, 
-          failedFiles, 
-          partialSuccess: revertedFiles.length > 0 
+        return {
+          revertedFiles,
+          failedFiles,
+          partialSuccess: revertedFiles.length > 0
         };
       }
 
@@ -389,10 +417,10 @@ class CheckpointManager {
       if (failedFiles.length > 0) {
         console.warn(`Some files failed to unrevert:`, failedFiles);
         // Still return successful files, but include failure information
-        return { 
-          restoredFiles, 
-          failedFiles, 
-          partialSuccess: restoredFiles.length > 0 
+        return {
+          restoredFiles,
+          failedFiles,
+          partialSuccess: restoredFiles.length > 0
         };
       }
 
@@ -415,23 +443,89 @@ class CheckpointManager {
 
   // Check if there are file changes for a message
   async hasFileChanges(sessionId, messageId) {
+    console.log('=== HAS FILE CHANGES DEBUG START ===');
+    console.log('Parameters - sessionId:', sessionId, 'messageId:', messageId);
+    
     if (!sessionId || !messageId) {
       console.warn('hasFileChanges called with invalid parameters:', { sessionId, messageId });
+      console.log('=== HAS FILE CHANGES DEBUG END ===');
       return false;
     }
 
     if (!this.checkpointDb) {
       console.warn('Checkpoint database not initialized, returning false for hasFileChanges');
+      console.log('=== HAS FILE CHANGES DEBUG END ===');
       return false;
     }
 
     try {
+      console.log('Calling getCheckpointsToRevert with sessionId:', sessionId, 'messageId:', messageId);
       const checkpoints = await this.getCheckpointsToRevert(sessionId, messageId);
+      console.log('getCheckpointsToRevert returned', checkpoints.length, 'checkpoints');
+      if (checkpoints.length > 0) {
+        console.log('Checkpoints found:', checkpoints.map(c => ({ id: c.id, file_path: c.file_path, message_id: c.message_id, ts: c.ts })));
+      }
       const hasChanges = checkpoints.length > 0;
+      
+      if (!hasChanges) {
+        // Provide detailed debugging information when no checkpoints found
+        console.log(`No checkpoints found for message ${messageId} in session ${sessionId}`);
+        
+        // Check if session exists at all in database
+        const sessionCheckpoints = this.checkpointDb.prepare(`
+          SELECT DISTINCT session_id FROM checkpoints WHERE session_id = ?
+        `).all(sessionId);
+        
+        if (sessionCheckpoints.length === 0) {
+          console.log(`  Session ${sessionId} has no checkpoints in database`);
+          
+          // Show available sessions for debugging
+          const availableSessions = this.checkpointDb.prepare(`
+            SELECT DISTINCT session_id FROM checkpoints ORDER BY ts DESC LIMIT 5
+          `).all();
+          console.log(`  Available sessions (last 5):`, availableSessions.map(s => s.session_id));
+        } else {
+          console.log(`  Session ${sessionId} exists in database`);
+          
+          // Check if message exists in this session
+          const messageCheckpoints = this.checkpointDb.prepare(`
+            SELECT message_id FROM checkpoints WHERE session_id = ?
+          `).all(sessionId);
+          console.log(`  Available message IDs in this session:`, messageCheckpoints.map(m => m.message_id));
+          
+          // Check for similar message IDs
+          const similarMessages = this.checkpointDb.prepare(`
+            SELECT DISTINCT message_id FROM checkpoints WHERE message_id LIKE ?
+          `).all(`%${messageId.substring(0, 10)}%`);
+          if (similarMessages.length > 0) {
+            console.log(`  Similar message IDs found:`, similarMessages.map(m => m.message_id));
+          }
+        }
+      }
+      
       console.log(`Session ${sessionId}, Message ${messageId}: ${hasChanges ? 'has' : 'no'} file changes (${checkpoints.length} checkpoints)`);
+      console.log('=== HAS FILE CHANGES DEBUG END ===');
       return hasChanges;
     } catch (error) {
+      console.error('=== HAS FILE CHANGES DEBUG ERROR ===');
       console.error('Failed to check file changes for session', sessionId, 'message', messageId, ':', error);
+      console.error('=== HAS FILE CHANGES DEBUG END ===');
+      return false;
+    }
+  }
+
+  // Validate that a session ID exists in the checkpoint database
+  validateSessionId(sessionId) {
+    if (!this.checkpointDb || !sessionId) {
+      return false;
+    }
+
+    try {
+      const stmt = this.checkpointDb.prepare('SELECT COUNT(*) as count FROM checkpoints WHERE session_id = ?');
+      const result = stmt.get(sessionId);
+      return result.count > 0;
+    } catch (error) {
+      console.error('Failed to validate session ID in checkpoints:', error);
       return false;
     }
   }

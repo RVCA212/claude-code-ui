@@ -224,11 +224,7 @@ class ClaudeProcessManager {
       claudeProcess.stdout.on('data', async (data) => {
         const chunk = data.toString();
         output += chunk;
-
-        // Log raw chunk for debugging
-        console.log('Raw Claude stdout chunk received:', JSON.stringify(chunk));
-        console.log('Chunk length:', chunk.length, 'bytes');
-
+        
         // Add chunk to buffer
         jsonBuffer += chunk;
 
@@ -320,13 +316,33 @@ class ClaudeProcessManager {
                             }
                         }
 
-                        if (block.name === 'Edit' || block.name === 'MultiEdit' || block.name === 'Write') {
+                        const isFileModTool = ['Edit', 'MultiEdit', 'Write', 'NotebookEdit'].includes(block.name);
+
+                        if (isFileModTool) {
+                          console.log('=== CHECKPOINT CREATION DEBUG ===');
                           console.log('Detected file modification tool, creating checkpoint:', block.name);
+                          console.log('Session ID for checkpoint:', sessionId);
+                          console.log('Assistant message ID for checkpoint:', assistantMessage.id);
+
+                          // Normalize input for CheckpointManager
+                          const toolUseForCheckpoint = { ...block };
+                          if (block.name === 'NotebookEdit' && block.input.notebook_path) {
+                              toolUseForCheckpoint.input.file_path = block.input.notebook_path;
+                          }
+
                           try {
-                            await this.checkpointManager.createCheckpoint(block, sessionId, assistantMessage.id);
+                            console.log('Calling createCheckpoint with:', { 
+                              toolName: toolUseForCheckpoint.name,
+                              sessionId: sessionId,
+                              messageId: assistantMessage.id,
+                              filePath: toolUseForCheckpoint.input?.file_path
+                            });
+                            await this.checkpointManager.createCheckpoint(toolUseForCheckpoint, sessionId, assistantMessage.id);
+                            console.log('Checkpoint created successfully');
                           } catch (error) {
                             console.error('Failed to create checkpoint for tool use:', error);
                           }
+                          console.log('=== CHECKPOINT CREATION DEBUG END ===');
                         }
                     }
                   }
@@ -364,7 +380,7 @@ class ClaudeProcessManager {
                             toolCall.status = 'failed';
                         }
                         console.log(`Updated tool_use ${tool_use_id} with result.`);
-                        
+
                         this.mainWindow.webContents.send('message-stream', {
                             sessionId,
                             message: assistantMessage,
@@ -377,7 +393,7 @@ class ClaudeProcessManager {
               console.log('Received user message echo:', parsed);
             } else if (parsed.type === 'result') {
               console.log('Received result message:', parsed);
-              
+
               // Handle tool execution results and update checkpoints with post-edit content
               if (parsed.tool_call_id) {
                 await this.handleToolResult(parsed, sessionId, assistantMessage.id);
@@ -420,85 +436,41 @@ class ClaudeProcessManager {
         console.log('Final stderr output:', JSON.stringify(errorOutput));
         console.log('Final assistant message:', JSON.stringify(assistantMessage));
 
-        // Process any remaining buffer content
-        if (jsonBuffer.trim()) {
-          console.log('Processing remaining buffer:', JSON.stringify(jsonBuffer));
-          try {
-            const parsed = JSON.parse(jsonBuffer.trim());
-            console.log('Parsed remaining JSON:', JSON.stringify(parsed, null, 2));
+        // Process any remaining buffer content before finalizing
+        this.processRemainingBuffer(jsonBuffer, assistantMessage);
 
-            let assistantPayload = null;
-            if (parsed.type === 'assistant' && parsed.message && parsed.message.role === 'assistant') {
-              assistantPayload = parsed.message;
-            } else if (parsed.type === 'message' && parsed.role === 'assistant') {
-              assistantPayload = parsed;
-            }
-
-            if (assistantPayload) {
-              // Update assistant message with structured content by accumulating
-              assistantMessage.id = assistantPayload.id || assistantMessage.id;
-              if (assistantPayload.content && Array.isArray(assistantPayload.content)) {
-                const newContent = assistantPayload.content.filter(b => b.type !== 'thinking');
-                assistantMessage.content = [...(assistantMessage.content || []), ...newContent];
-              }
-            }
-          } catch (e) {
-            console.log('Failed to parse remaining buffer:', e.message);
-          }
-        }
+        // Finalize the assistant message regardless of exit code
+        const finalizeResult = await this.finalizeAssistantMessage(sessionId, assistantMessage, cwd, code, errorOutput);
 
         if (code === 0) {
-          // Add final assistant message to session and save
-          try {
-            const savedMessage = await this.sessionManager.addMessageToSession(sessionId, assistantMessage);
-            console.log('Assistant message saved to session:', savedMessage.id);
-
-            // Update session's last assistant message and mark as historical if conversation seems complete
-            const session = this.sessionManager.getSession(sessionId);
-            if (session) {
-              // Extract text content from assistant message for storage
-              let assistantText = '';
-              if (assistantMessage.content && Array.isArray(assistantMessage.content)) {
-                const textBlocks = assistantMessage.content.filter(block => block.type === 'text');
-                assistantText = textBlocks.map(block => block.text || '').join('\n');
-              }
-              session.lastAssistantMessage = assistantText;
-
-              // Mark as historical after successful completion (can still be resumed)
-              session.status = 'historical';
-              await this.sessionManager.saveSession(sessionId);
-            }
-
-            // Send final message to renderer
-            this.mainWindow.webContents.send('message-stream', {
-              sessionId,
-              message: assistantMessage,
-              isComplete: true,
-              cwd: cwd
-            });
-
-            // Clear recovery state on successful completion
-            await this.sessionManager.clearRecoveryState(sessionId);
-
-            resolve(assistantMessage);
-          } catch (saveError) {
-            console.error('Failed to save assistant message:', saveError);
-            // Still resolve but log the error
-            resolve(assistantMessage);
-          }
+          // Clear recovery state on successful completion
+          await this.sessionManager.clearRecoveryState(sessionId);
+          resolve(finalizeResult.savedMessage || assistantMessage);
         } else {
           console.error('Claude process failed:', { code, errorOutput, sessionId });
 
-          // Keep recovery state on failure for potential retry
+          // Keep recovery state on failure for potential retry, but include assistant message content
           await this.sessionManager.saveRecoveryState(sessionId, {
             lastUserMessage: session.messages[session.messages.length - 1]?.content,
             claudeSessionId: session.claudeSessionId,
-            status: 'failed',
+            status: code === 143 ? 'interrupted' : 'failed',
             error: errorOutput,
-            failedAt: new Date().toISOString()
+            failedAt: new Date().toISOString(),
+            // Include assistant message content for recovery
+            partialAssistantMessage: finalizeResult.savedMessage ? {
+              id: finalizeResult.savedMessage.id,
+              content: finalizeResult.savedMessage.content
+            } : null
           });
 
-          reject(new Error(`Claude process failed with code ${code}: ${errorOutput}`));
+          // For SIGTERM (code 143), resolve with the saved message instead of rejecting
+          // This allows the UI to show the partial response that was captured
+          if (code === 143 && finalizeResult.savedMessage) {
+            console.log('Process was interrupted (SIGTERM), but assistant message was saved:', finalizeResult.savedMessage.id);
+            resolve(finalizeResult.savedMessage);
+          } else {
+            reject(new Error(`Claude process failed with code ${code}: ${errorOutput}`));
+          }
         }
       });
 
@@ -663,7 +635,7 @@ class ClaudeProcessManager {
   async handleToolResult(resultMessage, sessionId, messageId) {
     try {
       console.log('Processing tool result for checkpoint update:', resultMessage.tool_call_id);
-      
+
       // Look for file modification tool results that need checkpoint updates
       if (resultMessage.content && Array.isArray(resultMessage.content)) {
         for (const block of resultMessage.content) {
@@ -683,17 +655,17 @@ class ClaudeProcessManager {
     try {
       // Get all pending checkpoints for this session and message that need post-edit content
       const pendingCheckpoints = await this.checkpointManager.getPendingCheckpoints(sessionId, messageId);
-      
+
       for (const checkpoint of pendingCheckpoints) {
         if (checkpoint.new_content === '...PENDING_POST_EDIT_CONTENT...') {
           console.log('Updating checkpoint with post-edit content:', checkpoint.id, 'for file:', checkpoint.file_path);
-          
+
           // Update the checkpoint with actual post-edit content
           const updateSuccess = await this.checkpointManager.updateCheckpointWithPostEditContent(
-            checkpoint.id, 
+            checkpoint.id,
             checkpoint.file_path
           );
-          
+
           if (updateSuccess) {
             console.log('Successfully updated checkpoint:', checkpoint.id);
           } else {

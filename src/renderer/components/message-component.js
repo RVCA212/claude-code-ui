@@ -357,6 +357,15 @@ class MessageComponent {
   handleSessionChange(detail) {
     const { sessionId, context } = detail;
 
+    // Log session transition for debugging
+    console.log('📝 Session change detected:', {
+      from: this.sessionManager?.getCurrentSessionId() || 'none',
+      to: sessionId || 'none',
+      isDraft: context?.isDraft,
+      hasContext: !!context,
+      claudeSessionId: context?.claudeSessionId?.substring(0, 8) + '...' || 'none'
+    });
+
     // Close file mention dropdown when session changes
     this.hideMentionDropdown();
 
@@ -433,8 +442,7 @@ class MessageComponent {
 
     this.scrollToBottom();
 
-    // Check and show revert buttons for assistant messages with file changes
-    this.checkAndShowRevertButtons(context);
+    // No need to manually add revert buttons - they're already included in createMessageHTML
   }
 
   showEmptyState() {
@@ -518,12 +526,11 @@ class MessageComponent {
       `;
     } else if (message.type === 'user') {
       // Always show the Restore checkpoint button so the user can attempt an undo at any time.
-      // When clicked, we run revertToLatestChanges which will determine if there are changes to revert.
       return `
         <div class="message-actions">
           <button class="revert-btn"
-                  onclick="window.messageComponent.revertToLatestChanges('${sessionId}')"
-                  title="Restore checkpoint – revert recent file changes">
+                  onclick="window.messageComponent.revertChangesAfterMessage('${sessionId}', '${message.id}')"
+                  title="Restore checkpoint – revert file changes from the next assistant message">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M3 7v6h6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
               <path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
@@ -549,7 +556,7 @@ class MessageComponent {
       <div class="conversation-turn user" id="message-${messageId}">
         <div class="conversation-content">
           <div class="message-content">${DOMUtils.escapeHTML(content)}</div>
-          ${this.createMessageActions({ id: messageId }, sessionId)}
+          ${this.createMessageActions({ id: messageId, type: 'user' }, sessionId)}
           <div class="conversation-timestamp">${timestamp}</div>
         </div>
       </div>
@@ -643,12 +650,7 @@ class MessageComponent {
     this.messagesContainer.insertAdjacentHTML('beforeend', finalMessageHTML);
     this.scrollToBottom();
 
-    // Check and show revert buttons for user messages with subsequent file changes
-    // Get the current session context to check all messages
-    const currentSession = this.sessionManager.getSession(sessionId);
-    if (currentSession && currentSession.messages) {
-      this.checkAndShowRevertButtons({ id: sessionId, messages: currentSession.messages });
-    }
+    // No need to manually add revert buttons - they're already included in createMessageHTML
   }
 
   async revertToMessage(sessionId, messageId) {
@@ -668,30 +670,47 @@ class MessageComponent {
     }
   }
 
-  // Revert to the most recent file changes in the conversation
-  async revertToLatestChanges(sessionId) {
+  // Revert file changes that occurred after a specific user message
+  async revertChangesAfterMessage(sessionId, userMessageId) {
     try {
+      console.log('=== REVERT CHANGES DEBUG START ===');
+      console.log('Session ID:', sessionId);
+      console.log('User Message ID:', userMessageId);
+      
       // Get the current session to find all messages
       const currentSession = this.sessionManager.getSession(sessionId);
       if (!currentSession || !currentSession.messages) {
+        console.log('No session found or no messages in session');
         this.showError('No conversation found to revert');
         return;
       }
 
-      // Find the most recent assistant message with file changes
-      const latestAssistantMessageWithChanges = await this.findLatestAssistantMessageWithChanges(currentSession.messages, sessionId);
+      console.log('Session found with', currentSession.messages.length, 'messages');
+      console.log('Session messages:', currentSession.messages.map(m => ({ id: m.id, type: m.type, content: typeof m.content === 'string' ? m.content.substring(0, 50) + '...' : `[${m.content?.length || 0} blocks]` })));
 
-      if (latestAssistantMessageWithChanges) {
+      // Find the next assistant message after the user's message that has file changes
+      const targetAssistantMessage = await this.findNextAssistantMessageWithChanges(
+        currentSession.messages,
+        userMessageId,
+        sessionId
+      );
+
+      if (targetAssistantMessage) {
+        console.log('Found target assistant message:', targetAssistantMessage.id);
+        console.log('=== REVERT CHANGES DEBUG END ===');
         // Revert to before this assistant message's changes
-        await this.revertToMessage(sessionId, latestAssistantMessageWithChanges.id);
+        await this.revertToMessage(sessionId, targetAssistantMessage.id);
       } else {
+        console.log('No target assistant message found with file changes');
+        console.log('=== REVERT CHANGES DEBUG END ===');
         // No file changes found to revert - show informative message instead of error
-        console.log('No file changes found to revert in session', sessionId);
-        // Could show a toast/notification instead of an error
-        this.showError('No file changes found in this conversation to restore from');
+        console.log('No subsequent file changes found to revert in session', sessionId);
+        this.showError('No file changes were made in the following turn to restore from.');
       }
     } catch (error) {
-      console.error('Failed to revert to latest changes:', error);
+      console.error('=== REVERT CHANGES DEBUG ERROR ===');
+      console.error('Failed to revert changes after message:', error);
+      console.error('=== REVERT CHANGES DEBUG END ===');
       this.showError('Failed to revert file changes');
     }
   }
@@ -776,7 +795,10 @@ class MessageComponent {
     if (isDraft) {
         this.sessionInfo.innerHTML = '';
     } else if (context && context.claudeSessionId) {
-      this.sessionInfo.textContent = `Session: ${context.claudeSessionId.substring(0, 8)}...`;
+      // Show truncated Claude session ID with tooltip showing full ID and internal session ID
+      const truncatedId = context.claudeSessionId.substring(0, 8);
+      this.sessionInfo.textContent = `Session: ${truncatedId}...`;
+      this.sessionInfo.title = `Claude Session: ${context.claudeSessionId}\nInternal ID: ${context.id || 'N/A'}`;
     } else {
       this.sessionInfo.innerHTML = '';
     }
@@ -819,6 +841,14 @@ class MessageComponent {
     this.updateSendButtonState();
 
     if (this.sendBtn && this.stopBtn) {
+      const sessionId = this.sessionManager.getCurrentSessionId();
+      console.log('🎮 Updating message component button states:', {
+        streaming,
+        sessionId: sessionId || 'draft',
+        sendBtnVisible: !streaming,
+        stopBtnVisible: streaming
+      });
+      
       if (streaming) {
         this.sendBtn.style.display = 'none';
         this.stopBtn.style.display = 'flex';
@@ -1156,7 +1186,9 @@ class MessageComponent {
     if (!actionsContainer) return;
 
     const sessionId = this.sessionManager.getCurrentSessionId();
-    const message = { id: messageId }; // Minimal message object for actions
+    // Determine message type from the DOM element
+    const messageType = messageElement.classList.contains('user') ? 'user' : 'assistant';
+    const message = { id: messageId, type: messageType }; // Minimal message object for actions
 
     actionsContainer.innerHTML = this.createMessageActions(message, sessionId).replace('<div class="message-actions">', '').replace('</div>', '');
   }
@@ -1223,46 +1255,7 @@ class MessageComponent {
     return (position & Node.DOCUMENT_POSITION_FOLLOWING) !== 0;
   }
 
-  // Show revert buttons on all user messages
-  async checkAndShowRevertButtons(context) {
-    if (!context || !context.messages) {
-      return;
-    }
 
-    // Process all user messages and show revert buttons
-    for (const message of context.messages) {
-      if (message.type === 'user') {
-        await this.checkAndShowRevertButton(message.id, context.id);
-      }
-    }
-  }
-
-  // Always show restore checkpoint button on user messages
-  async checkAndShowRevertButton(userMessageId, sessionId) {
-    if (!userMessageId || !sessionId) {
-      return;
-    }
-
-    try {
-      const messageActionsContainer = document.querySelector(`[data-message-id="${userMessageId}"][data-session-id="${sessionId}"][data-message-type="user"]`);
-      if (!messageActionsContainer) return;
-
-      // Always add the revert button - it will handle finding the appropriate checkpoint when clicked
-      messageActionsContainer.innerHTML = `
-        <button class="revert-btn"
-                onclick="window.messageComponent.revertToLatestChanges('${sessionId}')"
-                title="Restore checkpoint - revert recent file changes">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M3 7v6h6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-            <path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-          Restore checkpoint
-        </button>
-      `;
-    } catch (error) {
-      console.error('Error adding restore button:', error);
-    }
-  }
 
   // Find the latest (most recent) assistant message that made file changes
   async findLatestAssistantMessageWithChanges(allMessages, sessionId) {
@@ -1296,26 +1289,54 @@ class MessageComponent {
   }
 
   // Find the next assistant message after a user message that made file changes
-  async findNextAssistantMessageWithChanges(allMessages, userMessageIndex, sessionId) {
-    if (!allMessages || !Array.isArray(allMessages) || userMessageIndex < 0) {
+  async findNextAssistantMessageWithChanges(allMessages, userMessageId, sessionId) {
+    console.log('=== FIND ASSISTANT MESSAGE DEBUG START ===');
+    console.log('Looking for user message ID:', userMessageId);
+    console.log('Total messages to search:', allMessages?.length || 0);
+    
+    if (!allMessages || !Array.isArray(allMessages)) {
+      console.log('No messages array provided');
       return null;
     }
 
-    // Look for assistant messages after the user message
+    const userMessageIndex = allMessages.findIndex(m => m.id === userMessageId);
+    console.log('User message index:', userMessageIndex);
+    
+    if (userMessageIndex === -1) {
+      console.log('User message not found for revert check');
+      console.log('Available message IDs:', allMessages.map(m => m.id));
+      console.log('=== FIND ASSISTANT MESSAGE DEBUG END ===');
+      return null;
+    }
+
+    console.log('Found user message at index:', userMessageIndex);
+    console.log('Searching', allMessages.length - userMessageIndex - 1, 'messages after user message');
+
+    // Look for the first assistant message after the user message that has file changes
     for (let i = userMessageIndex + 1; i < allMessages.length; i++) {
       const message = allMessages[i];
+      console.log(`Checking message ${i}:`, { id: message?.id, type: message?.type });
+      
       if (message && message.type === 'assistant' && message.id) {
-        // Check if this assistant message made file changes
         try {
+          console.log('Checking file changes for assistant message:', message.id);
           const hasChanges = await window.electronAPI.hasFileChanges(sessionId, message.id);
+          console.log('HasFileChanges result for', message.id, ':', hasChanges);
+          
           if (hasChanges) {
-            return message;
+            console.log('Found assistant message with file changes:', message.id);
+            console.log('=== FIND ASSISTANT MESSAGE DEBUG END ===');
+            return message; // Return the first one found
           }
         } catch (error) {
           console.error('Error checking file changes for assistant message:', message.id, error);
+          // Continue checking other messages
         }
       }
     }
+
+    console.log('No subsequent assistant message with file changes found');
+    console.log('=== FIND ASSISTANT MESSAGE DEBUG END ===');
     return null;
   }
 
