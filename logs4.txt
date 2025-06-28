@@ -1,0 +1,105 @@
+Preload script initialized with secure API bridge
+codicon.css:1
+
+
+       Failed to load resource: net::ERR_FILE_NOT_FOUND
+app.js:14 Initializing Claude Code Chat...
+file-browser.js:112 Directory watching event listener set up
+file-browser.js:360 Loading open application windows...
+file-browser.js:2339 Sidebar resizer initialized
+file-editor.js:105 Global file watching event listener set up
+chat-sidebar.js:77 Chat sidebar drag and drop initialized
+chat-sidebar.js:27 Chat Sidebar component initialized
+global-search.js:4 GlobalSearch: Constructor called
+global-search.js:37 GlobalSearch: Initializing elements...
+global-search.js:45 GlobalSearch elements found: Object
+global-search.js:33 GlobalSearch: Initialization complete
+app-component.js:70 Folder sidebar hidden by default for compact layout
+app-component.js:80 Chat area set to blank by default
+app-component.js:57 App components initialized successfully
+app.js:25 Claude Code Chat initialized successfully
+index.html:727 Initializing global header button states
+index.html:851 Chat button: always active when no editor
+session-manager.js:795 Navigating to home directory for new draft conversation
+file-browser.js:366 Loaded 0 open files from applications
+index.html:851 Chat button: always active when no editor
+session-manager.js:800 Successfully navigated to home directory: /Users/seansullivan
+session-manager.js:834 Entered draft mode with title: New Conversation
+2file-browser.js:148 Started watching directory: /Users/seansullivan
+chat-sidebar.js:164 Chat sidebar message activity notification received
+session-manager.js:240 Session 756e6238-f2e3-48e8-b2d6-711aabc60853 has no working directory set
+session-manager.js:858 Created session from draft: 756e6238-f2e3-48e8-b2d6-711aabc60853
+index.html:788 Global search button clicked
+index.html:789 window.globalSearch available: true
+index.html:793 Calling globalSearch.toggle()
+global-search.js:201 GlobalSearch.toggle() called, isOpen: false
+global-search.js:120 GlobalSearch.open() called
+global-search.js:129 Current directory: /Users/seansullivan
+global-search.js:134 Showing modal
+global-search.js:160 Focusing search input
+global-search.js:688 Loaded 0 quick select workspaces
+global-search.js:142 Modal computed styles: {display: 'flex', position: 'fixed', zIndex: '1000', top: '0px', left: '0px', …}
+file-browser.js:168 Failed to stop watching directory: Directory not being watched
+stopWatchingDirectory @ file-browser.js:168
+await in stopWatchingDirectory (async)
+startWatchingDirectory @ file-browser.js:141
+updateDirectory @ file-browser.js:733
+navigateToDirectory @ file-browser.js:590
+await in navigateToDirectory (async)
+activateSelection @ global-search.js:535
+(anonymous) @ global-search.js:85
+file-browser.js:148 Started watching directory: /Users/seansullivan/airportgaiming
+session-manager.js:162 Navigating to home directory for new conversation
+session-manager.js:167 Successfully navigated to home directory: /Users/seansullivan
+session-manager.js:834 Entered draft mode with title: New Conversation
+file-browser.js:168 Failed to stop watching directory: watcher.close is not a function
+stopWatchingDirectory @ file-browser.js:168
+await in stopWatchingDirectory (async)
+startWatchingDirectory @ file-browser.js:141
+updateDirectory @ file-browser.js:733
+createNewSession @ session-manager.js:171
+await in createNewSession (async)
+onclick @ index.html:1
+file-browser.js:148 Started watching directory: /Users/seansullivan
+index.html:788 Global search button clicked
+index.html:789 window.globalSearch available: true
+index.html:793 Calling globalSearch.toggle()
+global-search.js:201 GlobalSearch.toggle() called, isOpen: false
+global-search.js:120 GlobalSearch.open() called
+global-search.js:129 Current directory: /Users/seansullivan
+global-search.js:134 Showing modal
+global-search.js:160 Focusing search input
+global-search.js:142 Modal computed styles: {display: 'flex', position: 'fixed', zIndex: '1000', top: '0px', left: '0px', …}
+global-search.js:688 Loaded 0 quick select workspaces
+file-browser.js:168 Failed to stop watching directory: watcher.close is not a function
+stopWatchingDirectory @ file-browser.js:168
+await in stopWatchingDirectory (async)
+startWatchingDirectory @ file-browser.js:141
+updateDirectory @ file-browser.js:733
+navigateToDirectory @ file-browser.js:590
+await in navigateToDirectory (async)
+activateSelection @ global-search.js:535
+(anonymous) @ global-search.js:85
+file-browser.js:148 Started watching directory: /Users/seansullivan/airportgaiming
+chat-sidebar.js:164 Chat sidebar message activity notification received
+session-manager.js:240 Session f31f8b0e-0b59-4f11-9fdc-539e7835961e has no working directory set
+session-manager.js:858 Created session from draft: f31f8b0e-0b59-4f11-9fdc-539e7835961e
+13message-utils.js:72 Creating clickable link for: README.md
+message-utils.js:72 Creating clickable link for: Node.js
+message-utils.js:72 Creating clickable link for: v18.x
+message-utils.js:72 Creating clickable link for: v9.x
+message-utils.js:72 Creating clickable link for: .env.local
+2message-utils.js:72 Creating clickable link for: CONTRIBUTING.md
+2message-utils.js:72 Creating clickable link for: /Users/seansullivan/airportgaiming/README.md
+message-utils.js:72 Creating clickable link for: /Users/seansullivan/airportgaiming/Node.js
+message-utils.js:72 Creating clickable link for: /Users/seansullivan/airportgaiming/v18.x
+message-utils.js:72 Creating clickable link for: /Users/seansullivan/airportgaiming/v9.x
+message-utils.js:72 Creating clickable link for: /Users/seansullivan/airportgaiming/.env.local
+2message-utils.js:72 Creating clickable link for: /Users/seansullivan/airportgaiming/CONTRIBUTING.md
+file-editor.js:201 Opening file: /Users/seansullivan/airportgaiming/CONTRIBUTING.md
+file-editor.js:209 Monaco not initialized, initializing now...
+file-editor.js:123 Starting Monaco initialization...
+file-editor.js:133 Monaco loaded successfully
+file-editor.js:151 Monaco Editor initialized successfully
+file-editor.js:304 Failed to open file: Error: ENOENT: no such file or directory, access '/Users/seansullivan/airportgaiming/CONTRIBUTING.md'
+    at FileEditorComponent.openFile (file-editor.js:231:15)

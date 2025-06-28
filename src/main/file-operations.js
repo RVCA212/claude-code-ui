@@ -394,13 +394,13 @@ class FileOperations {
   // Read file content
   async readFile(filePath) {
     try {
-      const validatedPath = this.validateFilePath(filePath);
+      const resolvedPath = path.resolve(this.currentWorkingDirectory, filePath);
 
       // Check if file exists and is readable
-      await fs.access(validatedPath, fs.constants.R_OK);
+      await fs.access(resolvedPath, fs.constants.R_OK);
 
       // Check if file is binary
-      const isBinary = await this.isBinaryFile(validatedPath);
+      const isBinary = await this.isBinaryFile(resolvedPath);
 
       if (isBinary) {
         return {
@@ -412,10 +412,10 @@ class FileOperations {
       }
 
       // Read text file
-      const content = await fs.readFile(validatedPath, 'utf-8');
+      const content = await fs.readFile(resolvedPath, 'utf-8');
 
       // Check file size (limit to 5MB for safety)
-      const stats = await fs.stat(validatedPath);
+      const stats = await fs.stat(resolvedPath);
       if (stats.size > 5 * 1024 * 1024) {
         return {
           success: false,
@@ -447,10 +447,10 @@ class FileOperations {
   // Write file content
   async writeFile(filePath, content) {
     try {
-      const validatedPath = this.validateFilePath(filePath);
+      const resolvedPath = path.resolve(this.currentWorkingDirectory, filePath);
 
       // Check if parent directory exists
-      const parentDir = path.dirname(validatedPath);
+      const parentDir = path.dirname(resolvedPath);
       try {
         await fs.access(parentDir, fs.constants.W_OK);
       } catch (error) {
@@ -460,15 +460,15 @@ class FileOperations {
       // Create backup if file exists
       let backupPath = null;
       try {
-        await fs.access(validatedPath, fs.constants.F_OK);
-        backupPath = `${validatedPath}.backup.${Date.now()}`;
-        await fs.copyFile(validatedPath, backupPath);
+        await fs.access(resolvedPath, fs.constants.F_OK);
+        backupPath = `${resolvedPath}.backup.${Date.now()}`;
+        await fs.copyFile(resolvedPath, backupPath);
       } catch (error) {
         // File doesn't exist, no backup needed
       }
 
       // Write the file
-      await fs.writeFile(validatedPath, content, 'utf-8');
+      await fs.writeFile(resolvedPath, content, 'utf-8');
 
       // Clean up backup after successful write
       if (backupPath) {
@@ -502,7 +502,7 @@ class FileOperations {
   // File watching functionality
   watchFile(filePath, callback) {
     try {
-      const validatedPath = this.validateFilePath(filePath);
+      const resolvedPath = path.resolve(this.currentWorkingDirectory, filePath);
 
       if (!this.fileWatchers) {
         this.fileWatchers = new Map();
@@ -513,7 +513,7 @@ class FileOperations {
       }
 
       // Don't create duplicate watchers
-      if (this.fileWatchers.has(validatedPath)) {
+      if (this.fileWatchers.has(resolvedPath)) {
         return {
           success: true,
           message: 'File already being watched',
@@ -521,14 +521,14 @@ class FileOperations {
         };
       }
 
-      const watcher = fs.watch(validatedPath, (eventType, filename) => {
+      const watcher = fs.watch(resolvedPath, (eventType, filename) => {
         // Many editors (VS Code, JetBrains, etc.) perform an *atomic save* that writes to a
         // temporary file and then renames it over the original. That triggers a `rename`
         // event instead of `change`, causing us to miss updates. We therefore treat both
         // `change` *and* `rename` as indications that the file *may* have new contents.
         if (eventType === 'change' || eventType === 'rename') {
           // Debounce rapid file changes (common during saves)
-          const existingTimer = this.fileWatcherTimers.get(validatedPath);
+          const existingTimer = this.fileWatcherTimers.get(resolvedPath);
           if (existingTimer) {
             clearTimeout(existingTimer);
           }
@@ -539,10 +539,10 @@ class FileOperations {
               path: filePath,
               timestamp: Date.now()
             });
-            this.fileWatcherTimers.delete(validatedPath);
+            this.fileWatcherTimers.delete(resolvedPath);
           }, 100); // 100ms debounce
 
-          this.fileWatcherTimers.set(validatedPath, timer);
+          this.fileWatcherTimers.set(resolvedPath, timer);
 
           // If we received a `rename`, the original watcher can stop firing further
           // events because the inode it watched was replaced. In that case we recreate
@@ -551,10 +551,10 @@ class FileOperations {
             // Delay re-establishing the watcher until after we have handled the change.
             setTimeout(() => {
               try {
-                if (this.fileWatchers.has(validatedPath)) {
-                  const staleWatcher = this.fileWatchers.get(validatedPath);
+                if (this.fileWatchers.has(resolvedPath)) {
+                  const staleWatcher = this.fileWatchers.get(resolvedPath);
                   staleWatcher.close();
-                  this.fileWatchers.delete(validatedPath);
+                  this.fileWatchers.delete(resolvedPath);
                 }
                 // Recreate the watcher with the same callback so future changes are captured.
                 // This can also fail if the file was, for example, deleted.
@@ -566,8 +566,8 @@ class FileOperations {
                 console.error('Error while re-establishing file watcher:', rewatchErr);
                 // If closing the stale watcher or re-watching failed, it's probably invalid.
                 // Remove it to prevent errors on subsequent unwatch calls.
-                if (this.fileWatchers.has(validatedPath)) {
-                  this.fileWatchers.delete(validatedPath);
+                if (this.fileWatchers.has(resolvedPath)) {
+                  this.fileWatchers.delete(resolvedPath);
                 }
               }
             }, 150); // slightly longer than debounce to avoid immediate recursion
@@ -575,7 +575,7 @@ class FileOperations {
         }
       });
 
-      this.fileWatchers.set(validatedPath, watcher);
+      this.fileWatchers.set(resolvedPath, watcher);
 
       console.log('Started watching file:', filePath);
 
@@ -598,9 +598,9 @@ class FileOperations {
   // Stop watching file
   unwatchFile(filePath) {
     try {
-      const validatedPath = this.validateFilePath(filePath);
+      const resolvedPath = path.resolve(this.currentWorkingDirectory, filePath);
 
-      if (!this.fileWatchers || !this.fileWatchers.has(validatedPath)) {
+      if (!this.fileWatchers || !this.fileWatchers.has(resolvedPath)) {
         return {
           success: false,
           error: 'File not being watched',
@@ -608,14 +608,14 @@ class FileOperations {
         };
       }
 
-      const watcher = this.fileWatchers.get(validatedPath);
+      const watcher = this.fileWatchers.get(resolvedPath);
       watcher.close();
-      this.fileWatchers.delete(validatedPath);
+      this.fileWatchers.delete(resolvedPath);
 
       // Clean up any pending timer for this file
-      if (this.fileWatcherTimers && this.fileWatcherTimers.has(validatedPath)) {
-        clearTimeout(this.fileWatcherTimers.get(validatedPath));
-        this.fileWatcherTimers.delete(validatedPath);
+      if (this.fileWatcherTimers && this.fileWatcherTimers.has(resolvedPath)) {
+        clearTimeout(this.fileWatcherTimers.get(resolvedPath));
+        this.fileWatcherTimers.delete(resolvedPath);
       }
 
       console.log('Stopped watching file:', filePath);

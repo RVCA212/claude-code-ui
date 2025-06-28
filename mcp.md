@@ -230,7 +230,7 @@ Based on the MCP documentation, the implementation will use these Claude CLI com
 # Add SSE server
 claude mcp add --transport sse server-name https://example.com/sse --header "X-API-Key: key"
 
-# Add HTTP server  
+# Add HTTP server
 claude mcp add --transport http server-name https://example.com/mcp --header "Authorization: Bearer token"
 
 # List configured servers
@@ -278,7 +278,7 @@ Add MCP server management section to the settings modal:
     <div class="mcp-servers-list" id="mcpServersList">
       <!-- Dynamically populated -->
     </div>
-    
+
     <!-- Add/Edit form -->
     <div class="mcp-server-form" id="mcpServerForm">
       <input type="hidden" id="mcpServerId">
@@ -309,7 +309,7 @@ Add MCP server management section to the settings modal:
         <button type="button" id="cancelMcpServerBtn">Cancel</button>
       </div>
     </div>
-    
+
     <button type="button" id="addMcpServerBtn">Add MCP Server</button>
   </div>
 </div>
@@ -334,11 +334,11 @@ setupMcpEventListeners() {
   if (this.addMcpServerBtn) {
     this.addMcpServerBtn.addEventListener('click', () => this.showMcpServerForm());
   }
-  
+
   if (this.saveMcpServerBtn) {
     this.saveMcpServerBtn.addEventListener('click', () => this.saveMcpServer());
   }
-  
+
   if (this.cancelMcpServerBtn) {
     this.cancelMcpServerBtn.addEventListener('click', () => this.hideMcpServerForm());
   }
@@ -401,7 +401,7 @@ Modify `src/main/claude-process-manager.js` to register MCP servers before start
 async function registerMcpServers() {
   const servers = await getMcpServers();
   const enabledServers = servers.filter(s => s.enabled);
-  
+
   for (const server of enabledServers) {
     await registerSingleMcpServer(server);
   }
@@ -409,14 +409,14 @@ async function registerMcpServers() {
 
 async function registerSingleMcpServer(server) {
   const args = ['mcp', 'add', '--transport', server.transport, server.name, server.url];
-  
+
   // Add headers if present
   if (server.headers) {
     for (const [key, value] of Object.entries(server.headers)) {
       args.push('--header', `${key}: ${value}`);
     }
   }
-  
+
   return new Promise((resolve, reject) => {
     const process = spawn('claude', args);
     // Handle process completion

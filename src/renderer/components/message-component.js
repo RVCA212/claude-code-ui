@@ -517,10 +517,19 @@ class MessageComponent {
         </div>
       `;
     } else if (message.type === 'user') {
-      // Show restore checkpoint button for user messages that have subsequent assistant responses with file changes
+      // Always show the Restore checkpoint button so the user can attempt an undo at any time.
+      // When clicked, we run revertToLatestChanges which will determine if there are changes to revert.
       return `
-        <div class="message-actions" data-message-id="${message.id}" data-session-id="${sessionId}" data-message-type="user">
-          <!-- Restore button will be conditionally added by checkAndShowRevertButton -->
+        <div class="message-actions">
+          <button class="revert-btn"
+                  onclick="window.messageComponent.revertToLatestChanges('${sessionId}')"
+                  title="Restore checkpoint – revert recent file changes">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M3 7v6h6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            Restore checkpoint
+          </button>
         </div>
       `;
     } else {
@@ -671,7 +680,7 @@ class MessageComponent {
 
       // Find the most recent assistant message with file changes
       const latestAssistantMessageWithChanges = await this.findLatestAssistantMessageWithChanges(currentSession.messages, sessionId);
-      
+
       if (latestAssistantMessageWithChanges) {
         // Revert to before this assistant message's changes
         await this.revertToMessage(sessionId, latestAssistantMessageWithChanges.id);
@@ -1219,7 +1228,7 @@ class MessageComponent {
     if (!context || !context.messages) {
       return;
     }
-    
+
     // Process all user messages and show revert buttons
     for (const message of context.messages) {
       if (message.type === 'user') {
