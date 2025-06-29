@@ -1,0 +1,81 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## Development Commands
+
+```bash
+# Install dependencies
+npm install
+pnpm install
+
+# Development server
+npm run dev
+pnpm dev
+
+# Production build
+npm run build
+pnpm build
+
+# Start production server
+npm run start
+pnpm start
+```
+
+## Development Environment
+
+### Prerequisites
+- Node.js (latest LTS)
+- npm or pnpm
+- TypeScript knowledge
+
+### Key Development Tools
+- Next.js 14 (App Router)
+- TypeScript
+- Tailwind CSS
+- MDX for content
+
+## Project Workflow
+
+### Blog Post Management
+- Blog posts are MDX files in `app/blog/posts/`
+- Frontmatter required:
+  ```mdx
+  ---
+  title: Post Title
+  publishedAt: YYYY-MM-DD
+  summary: Brief description
+  image: optional-image-path
+  ---
+  ```
+
+### Project Updates
+- Modify project details in `app/projects/page.tsx`
+
+## Code Architecture Principles
+
+1. File-based routing with Next.js App Router
+2. Static site generation for blog posts
+3. MDX for rich content rendering
+4. Tailwind CSS for styling
+5. Modular component structure
+
+## Performance and SEO Features
+
+- Vercel Analytics integration
+- Speed Insights
+- Dynamic OG image generation
+- Automatic RSS feed
+- Sitemap generation
+- robots.txt configuration
+
+## Deployment
+
+Optimized for Vercel, compatible with Next.js-supporting platforms.
+
+## Code Style Guidelines
+
+- Follow existing patterns in components
+- Use TypeScript for type safety
+- Leverage MDX for rich content
+- Maintain responsive design principles

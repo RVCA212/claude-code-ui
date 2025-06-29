@@ -1,0 +1,32 @@
+Index: README.md
+===================================================================
+--- README.md	before
++++ README.md	after
+@@ -155,7 +155,26 @@
+ - Accessibility: High
+ 
+ ## 📂 Project Structure
+ 
++```
++.                                   # Root Project Directory
++├── app/                            # Next.js App Router
++│   └── page.tsx                    # Main page component
++├── public/                         # Static assets
++│   └── images/                     # Project images
++│       ├── airgaming256.png
++│       ├── airportgaming-logo.png
++│       ├── gaming-ex.png
++│       └── gaming-ex2.png
++├── styles/                         # Global styles
++│   └── globals.css                 # Tailwind CSS styles
++├── nextconfig.js                   # Next.js configuration
++├── package.json                    # Project dependencies and scripts
++├── postcss.config.js               # PostCSS configuration
++├── tailwind.config.js              # Tailwind CSS configuration
++└── tsconfig.json                   # TypeScript configuration
++```
++
+ ---
+ 
+ **Turning Airport Waiting into Playtime!** 🎮✈️
+\ No newline at end of file

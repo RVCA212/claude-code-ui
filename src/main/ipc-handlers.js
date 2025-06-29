@@ -393,97 +393,255 @@ class IPCHandlers {
 
   registerCheckpointHandlers() {
     ipcMain.handle('revert-to-message', async (event, sessionId, messageId) => {
+      console.log('=== REVERT TO MESSAGE IPC HANDLER START ===');
+      console.log('Parameters:', { sessionId, messageId });
+
       try {
+        // Enhanced parameter validation
+        if (!sessionId || !messageId) {
+          console.error('Invalid parameters for revert operation');
+          return {
+            success: false,
+            error: 'Invalid session ID or message ID provided'
+          };
+        }
+
         console.log('Reverting session', sessionId, 'to message', messageId);
+
+        // Enhanced session validation with detailed reporting
+        const sessionValidation = this.checkpointManager.validateSessionId(sessionId);
+        console.log('Session validation result:', sessionValidation);
+
+        if (!sessionValidation.valid) {
+          console.error(`Cannot revert: Session validation failed - ${sessionValidation.reason}`);
+
+          // Get session statistics for better error reporting
+          const sessionStats = this.checkpointManager.getSessionStatistics(sessionId);
+          console.log('Session statistics:', sessionStats);
+
+          return {
+            success: false,
+            error: `No file changes found for this session to revert from: ${sessionValidation.reason}`,
+            sessionStats
+          };
+        }
+
+        console.log(`Session has ${sessionValidation.count} checkpoints`);
+
+        // Check if the specific message has file changes before attempting revert
+        const hasChanges = await this.checkpointManager.hasFileChanges(sessionId, messageId);
+        console.log(`Message ${messageId} has file changes: ${hasChanges}`);
+
+        if (!hasChanges) {
+          console.warn('No file changes found for the specified message');
+          return {
+            success: false,
+            error: 'No file changes were made in this message to restore from',
+            sessionValidation
+          };
+        }
+
         const revertedFiles = await this.checkpointManager.revertToCheckpoint(sessionId, messageId);
 
         // Mark messages after the revert point as invalidated so the UI can dim them
-        const session = this.sessionManager.getSession(sessionId);
-        if (session && Array.isArray(session.messages)) {
-          const messageIndex = session.messages.findIndex(m => m.id === messageId);
-          if (messageIndex >= 0) {
-            for (let i = messageIndex + 1; i < session.messages.length; i++) {
-              session.messages[i].invalidated = true;
+        try {
+          const session = this.sessionManager.getSession(sessionId);
+          if (session && Array.isArray(session.messages)) {
+            const messageIndex = session.messages.findIndex(m => m.id === messageId);
+            if (messageIndex >= 0) {
+              for (let i = messageIndex + 1; i < session.messages.length; i++) {
+                session.messages[i].invalidated = true;
+              }
+              // Mark the session as having an active revert
+              session.currentRevertMessageId = messageId;
+              await this.sessionManager.saveSession(sessionId);
+              console.log('Session state updated with revert information');
+            } else {
+              console.warn(`Message ${messageId} not found in session messages for UI update`);
             }
-            // Mark the session as having an active revert
-            session.currentRevertMessageId = messageId;
-            await this.sessionManager.saveSession(sessionId);
+          } else {
+            console.warn('Session not found or has no messages for UI update');
           }
+        } catch (sessionUpdateError) {
+          console.error('Failed to update session state after revert:', sessionUpdateError);
+          // Don't fail the entire operation for this
         }
 
         // Handle both simple array response and enhanced error response
         if (Array.isArray(revertedFiles)) {
+          console.log(`Successfully reverted ${revertedFiles.length} files`);
+          console.log('=== REVERT TO MESSAGE IPC HANDLER END ===');
           return {
             success: true,
             revertedFiles,
-            message: `Successfully reverted ${revertedFiles.length} files`
+            message: `Successfully reverted ${revertedFiles.length} files`,
+            sessionValidation
           };
-        } else if (revertedFiles.partialSuccess) {
+        } else if (revertedFiles && revertedFiles.partialSuccess) {
+          console.log(`Partial success: reverted ${revertedFiles.revertedFiles.length} files, ${revertedFiles.failedFiles.length} failed`);
+          console.log('=== REVERT TO MESSAGE IPC HANDLER END ===');
           return {
             success: true,
             revertedFiles: revertedFiles.revertedFiles,
             failedFiles: revertedFiles.failedFiles,
-            message: `Reverted ${revertedFiles.revertedFiles.length} files, ${revertedFiles.failedFiles.length} failed`
+            message: `Reverted ${revertedFiles.revertedFiles.length} files, ${revertedFiles.failedFiles.length} failed`,
+            sessionValidation
           };
-        } else {
+        } else if (revertedFiles && revertedFiles.failedFiles) {
+          console.error('All files failed to revert:', revertedFiles.failedFiles);
+          console.log('=== REVERT TO MESSAGE IPC HANDLER END ===');
           return {
             success: false,
-            error: `Failed to revert files: ${revertedFiles.failedFiles.map(f => f.error).join(', ')}`
+            error: `Failed to revert files: ${revertedFiles.failedFiles.map(f => f.error).join(', ')}`,
+            failedFiles: revertedFiles.failedFiles,
+            sessionValidation
+          };
+        } else {
+          console.error('Unexpected revert result format:', revertedFiles);
+          console.log('=== REVERT TO MESSAGE IPC HANDLER END ===');
+          return {
+            success: false,
+            error: 'Unexpected error during revert operation',
+            sessionValidation
           };
         }
       } catch (error) {
+        console.error('=== REVERT TO MESSAGE IPC HANDLER ERROR ===');
         console.error('Failed to revert to message:', error);
+        console.error('Stack trace:', error.stack);
+        console.log('=== REVERT TO MESSAGE IPC HANDLER END ===');
         return {
           success: false,
-          error: error.message
+          error: error.message,
+          errorType: error.name,
+          stack: error.stack
         };
       }
     });
 
-    ipcMain.handle('unrevert-from-message', async (event, sessionId, messageId) => {
+        ipcMain.handle('unrevert-from-message', async (event, sessionId, messageId) => {
+      console.log('=== UNREVERT FROM MESSAGE IPC HANDLER START ===');
+      console.log('Parameters:', { sessionId, messageId });
+
       try {
+        // Enhanced parameter validation
+        if (!sessionId || !messageId) {
+          console.error('Invalid parameters for unrevert operation');
+          return {
+            success: false,
+            error: 'Invalid session ID or message ID provided'
+          };
+        }
+
         console.log('Unreverting session', sessionId, 'from message', messageId);
+
+        // Enhanced session validation with detailed reporting
+        const sessionValidation = this.checkpointManager.validateSessionId(sessionId);
+        console.log('Session validation result:', sessionValidation);
+
+        if (!sessionValidation.valid) {
+          console.error(`Cannot unrevert: Session validation failed - ${sessionValidation.reason}`);
+
+          // Get session statistics for better error reporting
+          const sessionStats = this.checkpointManager.getSessionStatistics(sessionId);
+          console.log('Session statistics:', sessionStats);
+
+          return {
+            success: false,
+            error: `No file changes found for this session to unrevert from: ${sessionValidation.reason}`,
+            sessionStats
+          };
+        }
+
+        console.log(`Session has ${sessionValidation.count} checkpoints`);
+
+        // Check if the specific message has file changes before attempting unrevert
+        const hasChanges = await this.checkpointManager.hasFileChanges(sessionId, messageId);
+        console.log(`Message ${messageId} has file changes: ${hasChanges}`);
+
+        if (!hasChanges) {
+          console.warn('No file changes found for the specified message');
+          return {
+            success: false,
+            error: 'No file changes were made in this message to restore from',
+            sessionValidation
+          };
+        }
+
         const restoredFiles = await this.checkpointManager.unrevertFromCheckpoint(sessionId, messageId);
 
         // Remove invalidated flags from messages after the revert point
-        const session = this.sessionManager.getSession(sessionId);
-        if (session && Array.isArray(session.messages)) {
-          const messageIndex = session.messages.findIndex(m => m.id === messageId);
-          if (messageIndex >= 0) {
-            for (let i = messageIndex + 1; i < session.messages.length; i++) {
-              delete session.messages[i].invalidated;
+        try {
+          const session = this.sessionManager.getSession(sessionId);
+          if (session && Array.isArray(session.messages)) {
+            const messageIndex = session.messages.findIndex(m => m.id === messageId);
+            if (messageIndex >= 0) {
+              for (let i = messageIndex + 1; i < session.messages.length; i++) {
+                delete session.messages[i].invalidated;
+              }
+              // Clear the current revert state
+              delete session.currentRevertMessageId;
+              await this.sessionManager.saveSession(sessionId);
+              console.log('Session state updated to clear revert information');
+            } else {
+              console.warn(`Message ${messageId} not found in session messages for UI update`);
             }
-            // Clear the current revert state
-            delete session.currentRevertMessageId;
-            await this.sessionManager.saveSession(sessionId);
+          } else {
+            console.warn('Session not found or has no messages for UI update');
           }
+        } catch (sessionUpdateError) {
+          console.error('Failed to update session state after unrevert:', sessionUpdateError);
+          // Don't fail the entire operation for this
         }
 
         // Handle both simple array response and enhanced error response
         if (Array.isArray(restoredFiles)) {
+          console.log(`Successfully restored ${restoredFiles.length} files`);
+          console.log('=== UNREVERT FROM MESSAGE IPC HANDLER END ===');
           return {
             success: true,
             restoredFiles,
-            message: `Successfully restored ${restoredFiles.length} files`
+            message: `Successfully restored ${restoredFiles.length} files`,
+            sessionValidation
           };
-        } else if (restoredFiles.partialSuccess) {
+        } else if (restoredFiles && restoredFiles.partialSuccess) {
+          console.log(`Partial success: restored ${restoredFiles.restoredFiles.length} files, ${restoredFiles.failedFiles.length} failed`);
+          console.log('=== UNREVERT FROM MESSAGE IPC HANDLER END ===');
           return {
             success: true,
             restoredFiles: restoredFiles.restoredFiles,
             failedFiles: restoredFiles.failedFiles,
-            message: `Restored ${restoredFiles.restoredFiles.length} files, ${restoredFiles.failedFiles.length} failed`
+            message: `Restored ${restoredFiles.restoredFiles.length} files, ${restoredFiles.failedFiles.length} failed`,
+            sessionValidation
           };
-        } else {
+        } else if (restoredFiles && restoredFiles.failedFiles) {
+          console.error('All files failed to restore:', restoredFiles.failedFiles);
+          console.log('=== UNREVERT FROM MESSAGE IPC HANDLER END ===');
           return {
             success: false,
-            error: `Failed to restore files: ${restoredFiles.failedFiles.map(f => f.error).join(', ')}`
+            error: `Failed to restore files: ${restoredFiles.failedFiles.map(f => f.error).join(', ')}`,
+            failedFiles: restoredFiles.failedFiles,
+            sessionValidation
+          };
+        } else {
+          console.error('Unexpected unrevert result format:', restoredFiles);
+          console.log('=== UNREVERT FROM MESSAGE IPC HANDLER END ===');
+          return {
+            success: false,
+            error: 'Unexpected error during unrevert operation',
+            sessionValidation
           };
         }
       } catch (error) {
+        console.error('=== UNREVERT FROM MESSAGE IPC HANDLER ERROR ===');
         console.error('Failed to unrevert from message:', error);
+        console.error('Stack trace:', error.stack);
+        console.log('=== UNREVERT FROM MESSAGE IPC HANDLER END ===');
         return {
           success: false,
-          error: error.message
+          error: error.message,
+          errorType: error.name,
+          stack: error.stack
         };
       }
     });
@@ -497,12 +655,114 @@ class IPCHandlers {
       }
     });
 
-    ipcMain.handle('has-file-changes', async (event, sessionId, messageId) => {
+        ipcMain.handle('has-file-changes', async (event, sessionId, messageId) => {
+      console.log('=== HAS FILE CHANGES IPC HANDLER START ===');
+      console.log('Parameters:', { sessionId, messageId });
+
       try {
-        return await this.checkpointManager.hasFileChanges(sessionId, messageId);
+        // Enhanced parameter validation
+        if (!sessionId || !messageId) {
+          console.error('Invalid parameters for has-file-changes check');
+          console.log('=== HAS FILE CHANGES IPC HANDLER END ===');
+          return false;
+        }
+
+        // Enhanced session validation with detailed reporting
+        const sessionValidation = this.checkpointManager.validateSessionId(sessionId);
+        console.log('Session validation result:', sessionValidation);
+
+        if (!sessionValidation.valid) {
+          console.log(`No checkpoints found for session ${sessionId}: ${sessionValidation.reason}`);
+          console.log('This may be expected for new sessions or sessions without file modifications');
+
+          // Get session statistics for debugging
+          const sessionStats = this.checkpointManager.getSessionStatistics(sessionId);
+          if (sessionStats) {
+            console.log('Session statistics:', sessionStats);
+          }
+
+          console.log('=== HAS FILE CHANGES IPC HANDLER END ===');
+          return false;
+        }
+
+        console.log(`Session has ${sessionValidation.count} total checkpoints`);
+
+        const hasChanges = await this.checkpointManager.hasFileChanges(sessionId, messageId);
+        console.log(`Final result: message ${messageId} has file changes: ${hasChanges}`);
+        console.log('=== HAS FILE CHANGES IPC HANDLER END ===');
+
+        return hasChanges;
       } catch (error) {
+        console.error('=== HAS FILE CHANGES IPC HANDLER ERROR ===');
         console.error('Failed to check file changes:', error);
+        console.error('Stack trace:', error.stack);
+
+        // Provide detailed error context for debugging
+        console.error('Error context:', {
+          sessionId,
+          messageId,
+          errorType: error.name,
+          errorMessage: error.message
+        });
+
+        console.log('=== HAS FILE CHANGES IPC HANDLER END ===');
         return false;
+      }
+    });
+
+        ipcMain.handle('get-all-checkpoints-for-session', async (event, sessionId) => {
+      try {
+        console.log(`Getting all checkpoints for session: ${sessionId}`);
+
+        if (!sessionId) {
+          console.warn('get-all-checkpoints-for-session called with missing sessionId');
+          return [];
+        }
+
+        const checkpoints = await this.checkpointManager.getAllCheckpointsForSession(sessionId);
+        console.log(`Found ${checkpoints.length} checkpoints for session ${sessionId}`);
+        return checkpoints;
+      } catch (error) {
+        console.error('IPC get-all-checkpoints-for-session error:', error);
+        return [];
+      }
+    });
+
+    // Add session statistics handler for debugging
+    ipcMain.handle('get-session-statistics', async (event, sessionId) => {
+      try {
+        console.log(`Getting session statistics for: ${sessionId}`);
+
+        if (!sessionId) {
+          console.warn('get-session-statistics called with missing sessionId');
+          return null;
+        }
+
+        const stats = this.checkpointManager.getSessionStatistics(sessionId);
+        console.log(`Session statistics for ${sessionId}:`, stats);
+        return stats;
+      } catch (error) {
+        console.error('IPC get-session-statistics error:', error);
+        return null;
+      }
+    });
+
+    // Add enhanced session validation handler
+    ipcMain.handle('validate-checkpoint-session', async (event, sessionId) => {
+      try {
+        console.log(`Validating checkpoint session: ${sessionId}`);
+
+        if (!sessionId) {
+          console.warn('validate-checkpoint-session called with missing sessionId');
+          return { valid: false, reason: 'No session ID provided' };
+        }
+
+        const validation = this.checkpointManager.validateSessionId(sessionId);
+        console.log(`Session validation result for ${sessionId}:`, validation);
+        return validation;
+      } catch (error) {
+        console.error('IPC validate-checkpoint-session error:', error);
+        return { valid: false, reason: `Validation error: ${error.message}` };
       }
     });
   }

@@ -1,0 +1,306 @@
+{
+  "tool_name": "MultiEdit",
+  "test_scenario": "Add docstrings to multiple functions",
+  "success": true,
+  "messages": [
+    {
+      "type": "system",
+      "subtype": "init",
+      "cwd": "/Users/seansullivan/Downloads/claude-code-chat",
+      "session_id": "74814fec-ed90-4a9b-8367-1f261c96a576",
+      "tools": [
+        "Task",
+        "Bash",
+        "Glob",
+        "Grep",
+        "LS",
+        "exit_plan_mode",
+        "Read",
+        "Edit",
+        "MultiEdit",
+        "Write",
+        "NotebookRead",
+        "NotebookEdit",
+        "WebFetch",
+        "TodoRead",
+        "TodoWrite",
+        "WebSearch",
+        "mcp__context7__resolve-library-id",
+        "mcp__context7__get-library-docs"
+      ],
+      "mcp_servers": [
+        {
+          "name": "context7",
+          "status": "connected"
+        }
+      ],
+      "model": "claude-sonnet-4-20250514",
+      "permissionMode": "default",
+      "apiKeySource": "/login managed key"
+    },
+    {
+      "type": "assistant",
+      "message": {
+        "id": "msg_01Ve1xrKHZGt3sc5hr1oMC5w",
+        "type": "message",
+        "role": "assistant",
+        "model": "claude-sonnet-4-20250514",
+        "content": [
+          {
+            "type": "text",
+            "text": "I'll add docstrings to all three functions in test_files/multiedit_test.py using the MultiEdit tool. Let me first read the file to see the current functions."
+          }
+        ],
+        "stop_reason": null,
+        "stop_sequence": null,
+        "usage": {
+          "input_tokens": 4,
+          "cache_creation_input_tokens": 3309,
+          "cache_read_input_tokens": 13881,
+          "output_tokens": 3,
+          "service_tier": "standard"
+        }
+      },
+      "parent_tool_use_id": null,
+      "session_id": "74814fec-ed90-4a9b-8367-1f261c96a576"
+    },
+    {
+      "type": "assistant",
+      "message": {
+        "id": "msg_01Ve1xrKHZGt3sc5hr1oMC5w",
+        "type": "message",
+        "role": "assistant",
+        "model": "claude-sonnet-4-20250514",
+        "content": [
+          {
+            "type": "tool_use",
+            "id": "toolu_01XsyYCTeX9N1AP1qNUCXJuF",
+            "name": "Read",
+            "input": {
+              "file_path": "/Users/seansullivan/Downloads/claude-code-chat/test_files/multiedit_test.py"
+            }
+          }
+        ],
+        "stop_reason": null,
+        "stop_sequence": null,
+        "usage": {
+          "input_tokens": 4,
+          "cache_creation_input_tokens": 3309,
+          "cache_read_input_tokens": 13881,
+          "output_tokens": 120,
+          "service_tier": "standard"
+        }
+      },
+      "parent_tool_use_id": null,
+      "session_id": "74814fec-ed90-4a9b-8367-1f261c96a576"
+    },
+    {
+      "type": "user",
+      "message": {
+        "role": "user",
+        "content": [
+          {
+            "tool_use_id": "toolu_01XsyYCTeX9N1AP1qNUCXJuF",
+            "type": "tool_result",
+            "content": "     1\u2192def add(a, b):\n     2\u2192    return a + b\n     3\u2192\n     4\u2192def subtract(a, b):\n     5\u2192    return a - b\n     6\u2192\n     7\u2192def multiply(a, b):\n     8\u2192    return a * b\n     9\u2192"
+          }
+        ]
+      },
+      "parent_tool_use_id": null,
+      "session_id": "74814fec-ed90-4a9b-8367-1f261c96a576"
+    },
+    {
+      "type": "assistant",
+      "message": {
+        "id": "msg_01WpVgpsBtdyfPS4cNsfFhRe",
+        "type": "message",
+        "role": "assistant",
+        "model": "claude-sonnet-4-20250514",
+        "content": [
+          {
+            "type": "text",
+            "text": "Now I'll add docstrings to all three functions using MultiEdit:"
+          }
+        ],
+        "stop_reason": null,
+        "stop_sequence": null,
+        "usage": {
+          "input_tokens": 7,
+          "cache_creation_input_tokens": 403,
+          "cache_read_input_tokens": 17190,
+          "output_tokens": 5,
+          "service_tier": "standard"
+        }
+      },
+      "parent_tool_use_id": null,
+      "session_id": "74814fec-ed90-4a9b-8367-1f261c96a576"
+    },
+    {
+      "type": "assistant",
+      "message": {
+        "id": "msg_01WpVgpsBtdyfPS4cNsfFhRe",
+        "type": "message",
+        "role": "assistant",
+        "model": "claude-sonnet-4-20250514",
+        "content": [
+          {
+            "type": "tool_use",
+            "id": "toolu_01HiwH9mdohMZFSaXNCBAR4w",
+            "name": "MultiEdit",
+            "input": {
+              "file_path": "/Users/seansullivan/Downloads/claude-code-chat/test_files/multiedit_test.py",
+              "edits": [
+                {
+                  "old_string": "def add(a, b):\n    return a + b",
+                  "new_string": "def add(a, b):\n    \"\"\"Add two numbers together.\n    \n    Args:\n        a: First number\n        b: Second number\n        \n    Returns:\n        The sum of a and b\n    \"\"\"\n    return a + b"
+                },
+                {
+                  "old_string": "def subtract(a, b):\n    return a - b",
+                  "new_string": "def subtract(a, b):\n    \"\"\"Subtract the second number from the first.\n    \n    Args:\n        a: First number\n        b: Second number\n        \n    Returns:\n        The difference of a and b\n    \"\"\"\n    return a - b"
+                },
+                {
+                  "old_string": "def multiply(a, b):\n    return a * b",
+                  "new_string": "def multiply(a, b):\n    \"\"\"Multiply two numbers together.\n    \n    Args:\n        a: First number\n        b: Second number\n        \n    Returns:\n        The product of a and b\n    \"\"\"\n    return a * b"
+                }
+              ]
+            }
+          }
+        ],
+        "stop_reason": null,
+        "stop_sequence": null,
+        "usage": {
+          "input_tokens": 7,
+          "cache_creation_input_tokens": 403,
+          "cache_read_input_tokens": 17190,
+          "output_tokens": 5,
+          "service_tier": "standard"
+        }
+      },
+      "parent_tool_use_id": null,
+      "session_id": "74814fec-ed90-4a9b-8367-1f261c96a576"
+    },
+    {
+      "type": "user",
+      "message": {
+        "role": "user",
+        "content": [
+          {
+            "type": "tool_result",
+            "content": "Claude requested permissions to use MultiEdit, but you haven't granted it yet.",
+            "is_error": true,
+            "tool_use_id": "toolu_01HiwH9mdohMZFSaXNCBAR4w"
+          }
+        ]
+      },
+      "parent_tool_use_id": null,
+      "session_id": "74814fec-ed90-4a9b-8367-1f261c96a576"
+    },
+    {
+      "type": "assistant",
+      "message": {
+        "id": "msg_01WU4T3FYD1CF11x97qoNPEP",
+        "type": "message",
+        "role": "assistant",
+        "model": "claude-sonnet-4-20250514",
+        "content": [
+          {
+            "type": "tool_use",
+            "id": "toolu_01WNo13GcxSmurzmyqmNbKvQ",
+            "name": "MultiEdit",
+            "input": {
+              "file_path": "/Users/seansullivan/Downloads/claude-code-chat/test_files/multiedit_test.py",
+              "edits": [
+                {
+                  "old_string": "def add(a, b):\n    return a + b",
+                  "new_string": "def add(a, b):\n    \"\"\"Add two numbers together.\n    \n    Args:\n        a: First number\n        b: Second number\n        \n    Returns:\n        The sum of a and b\n    \"\"\"\n    return a + b"
+                },
+                {
+                  "old_string": "def subtract(a, b):\n    return a - b",
+                  "new_string": "def subtract(a, b):\n    \"\"\"Subtract the second number from the first.\n    \n    Args:\n        a: First number\n        b: Second number\n        \n    Returns:\n        The difference of a and b\n    \"\"\"\n    return a - b"
+                },
+                {
+                  "old_string": "def multiply(a, b):\n    return a * b",
+                  "new_string": "def multiply(a, b):\n    \"\"\"Multiply two numbers together.\n    \n    Args:\n        a: First number\n        b: Second number\n        \n    Returns:\n        The product of a and b\n    \"\"\"\n    return a * b"
+                }
+              ]
+            }
+          }
+        ],
+        "stop_reason": null,
+        "stop_sequence": null,
+        "usage": {
+          "input_tokens": 8,
+          "cache_creation_input_tokens": 441,
+          "cache_read_input_tokens": 17593,
+          "output_tokens": 31,
+          "service_tier": "standard"
+        }
+      },
+      "parent_tool_use_id": null,
+      "session_id": "74814fec-ed90-4a9b-8367-1f261c96a576"
+    },
+    {
+      "type": "user",
+      "message": {
+        "role": "user",
+        "content": [
+          {
+            "type": "tool_result",
+            "content": "Claude requested permissions to use MultiEdit, but you haven't granted it yet.",
+            "is_error": true,
+            "tool_use_id": "toolu_01WNo13GcxSmurzmyqmNbKvQ"
+          }
+        ]
+      },
+      "parent_tool_use_id": null,
+      "session_id": "74814fec-ed90-4a9b-8367-1f261c96a576"
+    },
+    {
+      "type": "assistant",
+      "message": {
+        "id": "msg_01WDMwQwWTjs6P5XzYmFYgJC",
+        "type": "message",
+        "role": "assistant",
+        "model": "claude-sonnet-4-20250514",
+        "content": [
+          {
+            "type": "text",
+            "text": "I need permission to use the MultiEdit tool to add docstrings to the functions in test_files/multiedit_test.py."
+          }
+        ],
+        "stop_reason": null,
+        "stop_sequence": null,
+        "usage": {
+          "input_tokens": 8,
+          "cache_creation_input_tokens": 426,
+          "cache_read_input_tokens": 18034,
+          "output_tokens": 1,
+          "service_tier": "standard"
+        }
+      },
+      "parent_tool_use_id": null,
+      "session_id": "74814fec-ed90-4a9b-8367-1f261c96a576"
+    },
+    {
+      "type": "result",
+      "subtype": "success",
+      "is_error": false,
+      "duration_ms": 23086,
+      "duration_api_ms": 24669,
+      "num_turns": 9,
+      "result": "I need permission to use the MultiEdit tool to add docstrings to the functions in test_files/multiedit_test.py.",
+      "session_id": "74814fec-ed90-4a9b-8367-1f261c96a576",
+      "total_cost_usd": 0.052714449999999996,
+      "usage": {
+        "input_tokens": 27,
+        "cache_creation_input_tokens": 4579,
+        "cache_read_input_tokens": 66698,
+        "output_tokens": 1020,
+        "server_tool_use": {
+          "web_search_requests": 0
+        }
+      }
+    }
+  ],
+  "stderr": ""
+}

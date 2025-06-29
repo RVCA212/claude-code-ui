@@ -135,6 +135,8 @@ class AppComponent {
     window.debugApp = () => this.logDebugInfo();
     window.diagnoseChatLayout = () => this.diagnoseChatLayout();
     window.toggleChatSidebarDebug = () => this.toggleChatSidebarDebug();
+    window.debugSessionState = () => this.debugSessionState();
+    window.debugButtonStates = () => this.debugButtonStates();
 
     // Set up custom event listeners for component communication
     document.addEventListener('sessionChanged', (e) => {
@@ -656,10 +658,27 @@ class AppComponent {
     const chatSidebar = document.getElementById('chatSidebar');
     const appContent = document.querySelector('.app-content');
 
+    // Get detailed session information
+    const sessionManager = this.components.sessionManager;
+    const currentSessionId = sessionManager?.getCurrentSessionId();
+    const currentSession = currentSessionId ? sessionManager.getSession(currentSessionId) : null;
+
     return {
       isInitialized: this.isInitialized,
       components: Object.keys(this.components),
-      currentSession: this.components.sessionManager?.getCurrentSessionId(),
+      sessionState: {
+        currentSessionId: currentSessionId,
+        isDraftMode: sessionManager?.isDraftModeActive(),
+        streamingSessions: sessionManager?.getStreamingSessions() || [],
+        currentSessionDetails: currentSession ? {
+          internalId: currentSession.id,
+          claudeSessionId: currentSession.claudeSessionId,
+          title: currentSession.title,
+          messageCount: currentSession.messages?.length || 0,
+          lastActivity: currentSession.lastActivity,
+          cwd: currentSession.cwd
+        } : null
+      },
       isStreaming: this.components.messageComponent?.getIsStreaming(),
       currentDirectory: this.components.fileBrowser?.getCurrentDirectory(),
       layoutState: {
@@ -749,6 +768,101 @@ class AppComponent {
       chatSidebar.classList.toggle('debug-visible');
       console.log('Chat sidebar debug overlay toggled');
     }
+  }
+
+  // Debug session state and IDs
+  debugSessionState() {
+    const sessionManager = this.components.sessionManager;
+    if (!sessionManager) {
+      console.error('Session manager not available');
+      return;
+    }
+
+    console.group('🎯 Session State Debug');
+    
+    const currentSessionId = sessionManager.getCurrentSessionId();
+    const isDraftMode = sessionManager.isDraftModeActive();
+    const currentSession = currentSessionId ? sessionManager.getSession(currentSessionId) : null;
+    
+    console.log('📋 Session Overview:');
+    console.log('  Current Session ID (Internal):', currentSessionId || 'None (draft mode)');
+    console.log('  Draft Mode Active:', isDraftMode);
+    console.log('  Streaming Sessions:', sessionManager.getStreamingSessions());
+    
+    if (currentSession) {
+      console.log('📝 Current Session Details:');
+      console.log('  Internal ID:', currentSession.id);
+      console.log('  Claude Session ID:', currentSession.claudeSessionId || 'Not set');
+      console.log('  Title:', currentSession.title);
+      console.log('  Message Count:', currentSession.messages?.length || 0);
+      console.log('  Working Directory:', currentSession.cwd || 'Not set');
+      console.log('  Last Activity:', currentSession.lastActivity);
+      
+      if (currentSession.claudeSessionId) {
+        console.log('🔍 Session ID Analysis:');
+        console.log('  Claude ID (full):', currentSession.claudeSessionId);
+        console.log('  Claude ID (truncated for UI):', currentSession.claudeSessionId.substring(0, 8) + '...');
+        console.log('  ⚠️  Note: Checkpoint operations use Internal ID, not Claude ID');
+      }
+    }
+    
+    // Check session info display in UI
+    const sessionInfoElement = document.getElementById('sessionInfo');
+    if (sessionInfoElement) {
+      console.log('💻 UI Display:');
+      console.log('  Session Info Text:', sessionInfoElement.textContent);
+      console.log('  Session Info Tooltip:', sessionInfoElement.title);
+    }
+    
+    console.groupEnd();
+  }
+
+  // Debug button states across the application
+  debugButtonStates() {
+    console.group('🔘 Button States Debug');
+    
+    // Global header buttons
+    const globalHeader = window.globalHeader;
+    if (globalHeader) {
+      const sidebarBtn = document.getElementById('globalSidebarToggleBtn');
+      const chatBtn = document.getElementById('globalChatToggleBtn');
+      
+      console.log('📍 Global Header Buttons:');
+      console.log('  File Sidebar Toggle:', sidebarBtn?.classList.contains('active') ? 'Active' : 'Inactive');
+      console.log('  Chat Sidebar Toggle:', chatBtn?.classList.contains('active') ? 'Active' : 'Inactive');
+    }
+    
+    // Message component buttons
+    const messageComponent = this.components.messageComponent;
+    if (messageComponent) {
+      const sendBtn = document.getElementById('sendBtn');
+      const stopBtn = document.getElementById('stopBtn');
+      const lockBtn = document.getElementById('lockBtn');
+      
+      console.log('💬 Message Component Buttons:');
+      console.log('  Send Button:', {
+        visible: sendBtn?.style.display !== 'none',
+        disabled: sendBtn?.disabled,
+        hasContent: document.getElementById('messageInput')?.value?.trim().length > 0
+      });
+      console.log('  Stop Button:', {
+        visible: stopBtn?.style.display !== 'none'
+      });
+      console.log('  Lock Button:', {
+        locked: lockBtn?.classList.contains('locked')
+      });
+      console.log('  Is Streaming:', messageComponent.getIsStreaming());
+    }
+    
+    // Layout state affecting buttons
+    const layoutState = this.getLayoutState();
+    console.log('🎨 Layout State:');
+    console.log('  Editor Active:', layoutState.isEditorVisible);
+    console.log('  File Browser Visible:', layoutState.isFileBrowserVisible);
+    console.log('  Chat Sidebar Visible:', layoutState.isChatSidebarVisible);
+    console.log('  Chat-Only Mode:', layoutState.isChatOnly);
+    
+    console.groupEnd();
   }
 }
 

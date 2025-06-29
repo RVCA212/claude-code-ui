@@ -1,0 +1,83 @@
+Index: README.md
+===================================================================
+--- README.md	before
++++ README.md	after
+@@ -51,8 +51,29 @@
+ Edit the `app/projects/page.tsx` file to update your project showcase.
+ 
+ ## 🎨 Customization
+ 
++### Project Structure
++
++```
++portfolio-starter-kit/
++├── app/
++│   ├── blog/
++│   ├── components/
++│   ├── context/
++│   ├── projects/
++│   ├── global.css
++│   ├── layout.tsx
++│   └── page.tsx
++├── CLAUDE.md
++├── README.md
++├── next-env.d.ts
++├── package.json
++├── postcss.config.js
++├── tailwind.config.js
++└── tsconfig.json
++```
++
+ ### Styling with Tailwind CSS
+ - Fully customizable design system
+ - Responsive and mobile-first approach
+ - Edit `tailwind.config.js` to personalize your theme
+@@ -81,48 +102,8 @@
+ # or
+ pnpm start
+ ```
+ 
+-## 📂 Project Structure
+-
+-```
+-.
+-├── CLAUDE.md
+-├── README.md
+-├── app
+-│   ├── CLAUDE.md
+-│   ├── blog
+-│   ├── components
+-│   ├── context
+-│   ├── dark
+-│   ├── easter-egg
+-│   ├── global.css
+-│   ├── layout.tsx
+-│   ├── not-found.tsx
+-│   ├── og
+-│   ├── page.tsx
+-│   ├── plan.md
+-│   ├── privacy
+-│   ├── privacy-policy
+-│   ├── projects
+-│   ├── quotes
+-│   ├── robots.ts
+-│   ├── rss
+-│   ├── sitemap.ts
+-│   └── support
+-├── next-env.d.ts
+-├── package-lock.json
+-├── package.json
+-├── plan.md
+-├── pnpm-lock.yaml
+-├── postcss.config.js
+-├── public
+-│   ├── blog-images
+-│   └── fonts
+-├── tailwind.config.js
+-└── tsconfig.json
+-```
+-
+ ## 🔗 Learn More
+ 
+ ### Technology Stack
+ - [Next.js 14 Documentation](https://nextjs.org/docs)

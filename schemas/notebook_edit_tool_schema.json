@@ -1,0 +1,164 @@
+{
+  "tool_name": "NotebookEdit",
+  "test_scenario": "Add markdown cell to notebook",
+  "success": true,
+  "messages": [
+    {
+      "type": "system",
+      "subtype": "init",
+      "cwd": "/Users/seansullivan/Downloads/claude-code-chat",
+      "session_id": "0f334558-2639-4c52-a27c-35b038b5b5e0",
+      "tools": [
+        "Task",
+        "Bash",
+        "Glob",
+        "Grep",
+        "LS",
+        "exit_plan_mode",
+        "Read",
+        "Edit",
+        "MultiEdit",
+        "Write",
+        "NotebookRead",
+        "NotebookEdit",
+        "WebFetch",
+        "TodoRead",
+        "TodoWrite",
+        "WebSearch",
+        "mcp__context7__resolve-library-id",
+        "mcp__context7__get-library-docs"
+      ],
+      "mcp_servers": [
+        {
+          "name": "context7",
+          "status": "connected"
+        }
+      ],
+      "model": "claude-sonnet-4-20250514",
+      "permissionMode": "default",
+      "apiKeySource": "/login managed key"
+    },
+    {
+      "type": "assistant",
+      "message": {
+        "id": "msg_01Fua1sMDjP9SyQfGUGDLWST",
+        "type": "message",
+        "role": "assistant",
+        "model": "claude-sonnet-4-20250514",
+        "content": [
+          {
+            "type": "text",
+            "text": "I'll add a new markdown cell with the title \"# Test Notebook\" to the notebook."
+          }
+        ],
+        "stop_reason": null,
+        "stop_sequence": null,
+        "usage": {
+          "input_tokens": 4,
+          "cache_creation_input_tokens": 3308,
+          "cache_read_input_tokens": 13881,
+          "output_tokens": 3,
+          "service_tier": "standard"
+        }
+      },
+      "parent_tool_use_id": null,
+      "session_id": "0f334558-2639-4c52-a27c-35b038b5b5e0"
+    },
+    {
+      "type": "assistant",
+      "message": {
+        "id": "msg_01Fua1sMDjP9SyQfGUGDLWST",
+        "type": "message",
+        "role": "assistant",
+        "model": "claude-sonnet-4-20250514",
+        "content": [
+          {
+            "type": "tool_use",
+            "id": "toolu_01DzvGjn8qb72aFa7s3g2PxW",
+            "name": "NotebookEdit",
+            "input": {
+              "notebook_path": "/Users/seansullivan/Downloads/claude-code-chat/test_files/notebook_test.ipynb",
+              "edit_mode": "insert",
+              "cell_type": "markdown",
+              "new_source": "# Test Notebook"
+            }
+          }
+        ],
+        "stop_reason": null,
+        "stop_sequence": null,
+        "usage": {
+          "input_tokens": 4,
+          "cache_creation_input_tokens": 3308,
+          "cache_read_input_tokens": 13881,
+          "output_tokens": 3,
+          "service_tier": "standard"
+        }
+      },
+      "parent_tool_use_id": null,
+      "session_id": "0f334558-2639-4c52-a27c-35b038b5b5e0"
+    },
+    {
+      "type": "user",
+      "message": {
+        "role": "user",
+        "content": [
+          {
+            "type": "tool_result",
+            "content": "Claude requested permissions to use NotebookEdit, but you haven't granted it yet.",
+            "is_error": true,
+            "tool_use_id": "toolu_01DzvGjn8qb72aFa7s3g2PxW"
+          }
+        ]
+      },
+      "parent_tool_use_id": null,
+      "session_id": "0f334558-2639-4c52-a27c-35b038b5b5e0"
+    },
+    {
+      "type": "assistant",
+      "message": {
+        "id": "msg_013z8auhZEzcTZGbkka6hinh",
+        "type": "message",
+        "role": "assistant",
+        "model": "claude-sonnet-4-20250514",
+        "content": [
+          {
+            "type": "text",
+            "text": "I need permission to use the NotebookEdit tool to modify the Jupyter notebook. Please grant permission for the NotebookEdit tool so I can add the markdown cell with \"# Test Notebook\" to the notebook."
+          }
+        ],
+        "stop_reason": null,
+        "stop_sequence": null,
+        "usage": {
+          "input_tokens": 8,
+          "cache_creation_input_tokens": 394,
+          "cache_read_input_tokens": 17189,
+          "output_tokens": 3,
+          "service_tier": "standard"
+        }
+      },
+      "parent_tool_use_id": null,
+      "session_id": "0f334558-2639-4c52-a27c-35b038b5b5e0"
+    },
+    {
+      "type": "result",
+      "subtype": "success",
+      "is_error": false,
+      "duration_ms": 8304,
+      "duration_api_ms": 9748,
+      "num_turns": 4,
+      "result": "I need permission to use the NotebookEdit tool to modify the Jupyter notebook. Please grant permission for the NotebookEdit tool so I can add the markdown cell with \"# Test Notebook\" to the notebook.",
+      "session_id": "0f334558-2639-4c52-a27c-35b038b5b5e0",
+      "total_cost_usd": 0.026713699999999996,
+      "usage": {
+        "input_tokens": 12,
+        "cache_creation_input_tokens": 3702,
+        "cache_read_input_tokens": 31070,
+        "output_tokens": 217,
+        "server_tool_use": {
+          "web_search_requests": 0
+        }
+      }
+    }
+  ],
+  "stderr": ""
+}

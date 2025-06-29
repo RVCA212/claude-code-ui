@@ -1,0 +1,208 @@
+{
+  "tool_name": "Edit",
+  "test_scenario": "Add docstring to function",
+  "success": true,
+  "messages": [
+    {
+      "type": "system",
+      "subtype": "init",
+      "cwd": "/Users/seansullivan/Downloads/claude-code-chat",
+      "session_id": "a659950a-264c-495d-a762-0d2d23e64696",
+      "tools": [
+        "Task",
+        "Bash",
+        "Glob",
+        "Grep",
+        "LS",
+        "exit_plan_mode",
+        "Read",
+        "Edit",
+        "MultiEdit",
+        "Write",
+        "NotebookRead",
+        "NotebookEdit",
+        "WebFetch",
+        "TodoRead",
+        "TodoWrite",
+        "WebSearch",
+        "mcp__context7__resolve-library-id",
+        "mcp__context7__get-library-docs"
+      ],
+      "mcp_servers": [
+        {
+          "name": "context7",
+          "status": "connected"
+        }
+      ],
+      "model": "claude-sonnet-4-20250514",
+      "permissionMode": "default",
+      "apiKeySource": "/login managed key"
+    },
+    {
+      "type": "assistant",
+      "message": {
+        "id": "msg_01V5pWvrjW8B2igse4y7FB65",
+        "type": "message",
+        "role": "assistant",
+        "model": "claude-sonnet-4-20250514",
+        "content": [
+          {
+            "type": "text",
+            "text": "I'll read the file first to see the current content, then add a docstring to the hello function."
+          }
+        ],
+        "stop_reason": null,
+        "stop_sequence": null,
+        "usage": {
+          "input_tokens": 4,
+          "cache_creation_input_tokens": 6447,
+          "cache_read_input_tokens": 10738,
+          "output_tokens": 3,
+          "service_tier": "standard"
+        }
+      },
+      "parent_tool_use_id": null,
+      "session_id": "a659950a-264c-495d-a762-0d2d23e64696"
+    },
+    {
+      "type": "assistant",
+      "message": {
+        "id": "msg_01V5pWvrjW8B2igse4y7FB65",
+        "type": "message",
+        "role": "assistant",
+        "model": "claude-sonnet-4-20250514",
+        "content": [
+          {
+            "type": "tool_use",
+            "id": "toolu_01WhqNQ48oscEruzAvgpjmro",
+            "name": "Read",
+            "input": {
+              "file_path": "/Users/seansullivan/Downloads/claude-code-chat/test_files/edit_test.py"
+            }
+          }
+        ],
+        "stop_reason": null,
+        "stop_sequence": null,
+        "usage": {
+          "input_tokens": 4,
+          "cache_creation_input_tokens": 6447,
+          "cache_read_input_tokens": 10738,
+          "output_tokens": 3,
+          "service_tier": "standard"
+        }
+      },
+      "parent_tool_use_id": null,
+      "session_id": "a659950a-264c-495d-a762-0d2d23e64696"
+    },
+    {
+      "type": "user",
+      "message": {
+        "role": "user",
+        "content": [
+          {
+            "tool_use_id": "toolu_01WhqNQ48oscEruzAvgpjmro",
+            "type": "tool_result",
+            "content": "     1\u2192def hello():\n     2\u2192    print('Hello, World!')"
+          }
+        ]
+      },
+      "parent_tool_use_id": null,
+      "session_id": "a659950a-264c-495d-a762-0d2d23e64696"
+    },
+    {
+      "type": "assistant",
+      "message": {
+        "id": "msg_017EdiuNZHBm55za83SDAyBH",
+        "type": "message",
+        "role": "assistant",
+        "model": "claude-sonnet-4-20250514",
+        "content": [
+          {
+            "type": "tool_use",
+            "id": "toolu_01545usnQD2RxZaAfFvRoQip",
+            "name": "Edit",
+            "input": {
+              "file_path": "/Users/seansullivan/Downloads/claude-code-chat/test_files/edit_test.py",
+              "old_string": "def hello():\n    print('Hello, World!')",
+              "new_string": "def hello():\n    \"\"\"Print a hello world message.\"\"\"\n    print('Hello, World!')"
+            }
+          }
+        ],
+        "stop_reason": null,
+        "stop_sequence": null,
+        "usage": {
+          "input_tokens": 7,
+          "cache_creation_input_tokens": 255,
+          "cache_read_input_tokens": 17185,
+          "output_tokens": 32,
+          "service_tier": "standard"
+        }
+      },
+      "parent_tool_use_id": null,
+      "session_id": "a659950a-264c-495d-a762-0d2d23e64696"
+    },
+    {
+      "type": "user",
+      "message": {
+        "role": "user",
+        "content": [
+          {
+            "type": "tool_result",
+            "content": "Claude requested permissions to use Edit, but you haven't granted it yet.",
+            "is_error": true,
+            "tool_use_id": "toolu_01545usnQD2RxZaAfFvRoQip"
+          }
+        ]
+      },
+      "parent_tool_use_id": null,
+      "session_id": "a659950a-264c-495d-a762-0d2d23e64696"
+    },
+    {
+      "type": "assistant",
+      "message": {
+        "id": "msg_01FkCgGLMxZzCHQhxkuRP6Kr",
+        "type": "message",
+        "role": "assistant",
+        "model": "claude-sonnet-4-20250514",
+        "content": [
+          {
+            "type": "text",
+            "text": "I need Edit permissions to modify the file. Please grant Edit permissions so I can add the docstring to the hello function."
+          }
+        ],
+        "stop_reason": null,
+        "stop_sequence": null,
+        "usage": {
+          "input_tokens": 8,
+          "cache_creation_input_tokens": 177,
+          "cache_read_input_tokens": 17440,
+          "output_tokens": 3,
+          "service_tier": "standard"
+        }
+      },
+      "parent_tool_use_id": null,
+      "session_id": "a659950a-264c-495d-a762-0d2d23e64696"
+    },
+    {
+      "type": "result",
+      "subtype": "success",
+      "is_error": false,
+      "duration_ms": 11614,
+      "duration_api_ms": 13527,
+      "num_turns": 6,
+      "result": "I need Edit permissions to modify the file. Please grant Edit permissions so I can add the docstring to the hello function.",
+      "session_id": "a659950a-264c-495d-a762-0d2d23e64696",
+      "total_cost_usd": 0.04442495,
+      "usage": {
+        "input_tokens": 19,
+        "cache_creation_input_tokens": 6879,
+        "cache_read_input_tokens": 45363,
+        "output_tokens": 310,
+        "server_tool_use": {
+          "web_search_requests": 0
+        }
+      }
+    }
+  ],
+  "stderr": ""
+}

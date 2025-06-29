@@ -1,0 +1,343 @@
+Index: README.md
+===================================================================
+--- README.md	before
++++ README.md	after
+@@ -1,185 +1,185 @@
+-     1→# Airport Gaming 🎮✈️
++# Airport Gaming 🎮✈️
+ 
+-     2→## Project Vision
+-     3→Transform tedious airport layovers into exciting gaming experiences by bringing high-quality gaming stations to airports across America.
++## Project Vision
++Transform tedious airport layovers into exciting gaming experiences by bringing high-quality gaming stations to airports across America.
+ 
+-     4→## Overview
+-     5→Airport Gaming is an innovative single-page web application designed to revolutionize how travelers spend their waiting time at airports. Our mission is to turn idle waiting into interactive entertainment.
++## Overview
++Airport Gaming is an innovative single-page web application designed to revolutionize how travelers spend their waiting time at airports. Our mission is to turn idle waiting into interactive entertainment.
+ 
+-     6→## 🏗 Site Architecture
++## 🏗 Site Architecture
+ 
+-     7→### Component Structure
+-     8→The application is built using a modular, component-based approach with two primary custom components:
++### Component Structure
++The application is built using a modular, component-based approach with two primary custom components:
+ 
+-     9→#### 1. AnimatedBackground Component
+-    10→- Creates a dynamic, immersive background
+-    11→- Features:
+-    12→  - Gradient color transition (from dark blue to deep navy)
+-    13→  - 50 floating particles with random positioning
+-    14→  - Responsive design
+-    15→- Key technologies:
+-    16→  - Tailwind CSS for styling
+-    17→  - Randomized particle generation
+-    18→  - CSS animations
++#### 1. AnimatedBackground Component
++- Creates a dynamic, immersive background
++- Features:
++  - Gradient color transition (from dark blue to deep navy)
++  - 50 floating particles with random positioning
++  - Responsive design
++- Key technologies:
++  - Tailwind CSS for styling
++  - Randomized particle generation
++  - CSS animations
+ 
+-    19→#### 2. FAQItem Component
+-    20→- Interactive FAQ section with expandable questions
+-    21→- Features:
+-    22→  - Smooth expand/collapse animations
+-    23→  - Glassmorphism design
+-    24→  - Hover and interaction effects
+-    25→- Interaction Model:
+-    26→  - Single FAQ item can be open at a time
+-    27→  - Toggle functionality with smooth transitions
++#### 2. FAQItem Component
++- Interactive FAQ section with expandable questions
++- Features:
++  - Smooth expand/collapse animations
++  - Glassmorphism design
++  - Hover and interaction effects
++- Interaction Model:
++  - Single FAQ item can be open at a time
++  - Toggle functionality with smooth transitions
+ 
+-    28→### Page Navigation
+-    29→- Smooth scrolling between sections
+-    30→- Dynamic header with glassmorphism effect
+-    31→- Navigation to:
+-    32→  1. Our Vision
+-    33→  2. Contact Section
++### Page Navigation
++- Smooth scrolling between sections
++- Dynamic header with glassmorphism effect
++- Navigation to:
++  1. Our Vision
++  2. Contact Section
+ 
+-    34→### Section Breakdown
+-    35→1. **Header**
+-    36→   - Logo with airport gaming branding
+-    37→   - Navigation buttons
+-    38→   - Scroll-activated styling
++### Section Breakdown
++1. **Header**
++   - Logo with airport gaming branding
++   - Navigation buttons
++   - Scroll-activated styling
+ 
+-    39→2. **Hero Section**
+-    40→   - Headline: "Making Airports Fun"
+-    41→   - Vision statement
+-    42→   - Animated background
++2. **Hero Section**
++   - Headline: "Making Airports Fun"
++   - Vision statement
++   - Animated background
+ 
+-    43→3. **Gaming Station Showcase**
+-    44→   - Two high-quality gaming station images
+-    45→   - Hover effects with image scaling
+-    46→   - Demonstrates potential airport gaming setup
++3. **Gaming Station Showcase**
++   - Two high-quality gaming station images
++   - Hover effects with image scaling
++   - Demonstrates potential airport gaming setup
+ 
+-    47→4. **FAQ Section**
+-    48→   - 4 Expandable questions covering:
+-    49→     - Current airport gaming availability
+-    50→     - Payment methods
+-    51→     - Game offerings
+-    52→     - Pricing details
++4. **FAQ Section**
++   - 4 Expandable questions covering:
++     - Current airport gaming availability
++     - Payment methods
++     - Game offerings
++     - Pricing details
+ 
+-    53→5. **Footer**
+-    54→   - Contact email
+-    55→   - Terms of Use link
+-    56→   - Privacy Policy link
+-    57→   - Copyright information
++5. **Footer**
++   - Contact email
++   - Terms of Use link
++   - Privacy Policy link
++   - Copyright information
+ 
+-    58→### Technical Implementation
+-    59→- Client-side rendering
+-    60→- State management with React Hooks
+-    61→- Responsive design principles
+-    62→- Performance-optimized animations
++### Technical Implementation
++- Client-side rendering
++- State management with React Hooks
++- Responsive design principles
++- Performance-optimized animations
+ 
+-    63→## 🚀 Key Features
++## 🚀 Key Features
+ 
+-    64→### User Experience
+-    65→- Interactive, responsive single-page design
+-    66→- Animated background with dynamic floating elements
+-    67→- Smooth scrolling navigation
+-    68→- Intuitive FAQ section with expandable questions
+-    69→- Showcase of gaming station concepts
++### User Experience
++- Interactive, responsive single-page design
++- Animated background with dynamic floating elements
++- Smooth scrolling navigation
++- Intuitive FAQ section with expandable questions
++- Showcase of gaming station concepts
+ 
+-    70→### Technical Highlights
+-    71→- Client-side rendered with Next.js
+-    72→- Fully responsive and mobile-friendly
+-    73→- Tailwind CSS for sleek, modern styling
+-    74→- TypeScript for robust type checking
++### Technical Highlights
++- Client-side rendered with Next.js
++- Fully responsive and mobile-friendly
++- Tailwind CSS for sleek, modern styling
++- TypeScript for robust type checking
+ 
+-    75→## 🎲 Gaming Experience
++## 🎲 Gaming Experience
+ 
+-    76→### Pricing
+-    77→- **Rate:** $2.50 per 20 minutes of play
+-    78→- Flexible, affordable gaming sessions
++### Pricing
++- **Rate:** $2.50 per 20 minutes of play
++- Flexible, affordable gaming sessions
+ 
+-    79→### Planned Game Offerings
+-    80→- College Football 25 (CFB 25)
+-    81→- NBA 2K
+-    82→- FIFA
+-    83→- Additional titles coming soon
++### Planned Game Offerings
++- College Football 25 (CFB 25)
++- NBA 2K
++- FIFA
++- Additional titles coming soon
+\ No newline at end of file
+ 
+-    84→### Payment Methods
+-    85→- Apple Pay
+-    86→- Credit Cards
+-    87→- Cash
++### Payment Methods
++- Apple Pay
++- Credit Cards
++- Cash
+ 
+-    88→## 🛠 Technology Stack
+-    89→- **Frontend Framework:** Next.js 13.4.4
+-    90→- **UI Library:** React 18.2.0
+-    91→- **Styling:** Tailwind CSS
+-    92→- **Language:** TypeScript
++## 🛠 Technology Stack
++- **Frontend Framework:** Next.js 13.4.4
++- **UI Library:** React 18.2.0
++- **Styling:** Tailwind CSS
++- **Language:** TypeScript
+ 
+-    93→## 🚀 Quick Start
++## 🚀 Quick Start
+ 
+-    94→### Development Setup
+-    95→```bash
+-    96→# Clone the repository
+-    97→git clone https://github.com/yourusername/airport-gaming.git
++### Development Setup
++```bash
++# Clone the repository
++git clone https://github.com/yourusername/airport-gaming.git
+ 
+-    98→# Navigate to project directory
+-    99→cd airport-gaming
++# Navigate to project directory
++cd airport-gaming
+ 
+-   100→# Install dependencies
+-   101→npm install
++# Install dependencies
++npm install
+ 
+-   102→# Start development server
+-   103→npm run dev
+-   104→```
++# Start development server
++npm run dev
++```
+ 
+-   105→### Production Deployment
+-   106→```bash
+-   107→# Build for production
+-   108→npm run build
++### Production Deployment
++```bash
++# Build for production
++npm run build
+ 
+-   109→# Start production server
+-   110→npm start
+-   111→```
++# Start production server
++npm start
++```
+ 
+-   112→## 🔍 Future Roadmap
+-   113→- Expand game library
+-   114→- Develop airport partnership program
+-   115→- Implement additional gaming platforms
+-   116→- Enhance user engagement features
+-   117→- Add multiplayer capabilities
+-   118→- Develop comprehensive user profiles
++## 🔍 Future Roadmap
++- Expand game library
++- Develop airport partnership program
++- Implement additional gaming platforms
++- Enhance user engagement features
++- Add multiplayer capabilities
++- Develop comprehensive user profiles
+ 
+-   119→## 📞 Contact
+-   120→- **Email:** sean.sullivan3@yahoo.com
++## 📞 Contact
++- **Email:** sean.sullivan3@yahoo.com
+ 
+-   121→## 📄 Performance Metrics
+-   122→- Lighthouse Performance Score: ~90
+-   123→- Mobile Responsiveness: Fully Responsive
+-   124→- Accessibility: High
++## 📄 Performance Metrics
++- Lighthouse Performance Score: ~90
++- Mobile Responsiveness: Fully Responsive
++- Accessibility: High
+ 
+-   125→---
++---
+ 
+-   126→**Turning Airport Waiting into Playtime!** 🎮✈️
++**Turning Airport Waiting into Playtime!** 🎮✈️
+ 
+-   127→## 📂 Project Structure
+-   128→```
+-   129→airport-gaming/
+-   130→├── components/
+-   131→│   ├── AnimatedBackground.tsx
+-   132→│   ├── FAQItem.tsx
+-   133→│   ├── Header.tsx
+-   134→│   └── Footer.tsx
+-   135→├── pages/
+-   136→│   ├── index.tsx
+-   137→│   ├── _app.tsx
+-   138→│   └── _document.tsx
+-   139→├── public/
+-   140→│   ├── images/
+-   141→│   │   ├── gaming-station-1.jpg
+-   142→│   │   └── gaming-station-2.jpg
+-   143→│   └── favicon.ico
+-   144→├── styles/
+-   145→│   └── globals.css
+-   146→├── utils/
+-   147→│   └── animations.ts
+-   148→├── package.json
+-   149→├── tsconfig.json
+-   150→└── tailwind.config.js
+-   151→```
++## 📂 Project Structure
++```
++airport-gaming/
++├── components/
++│   ├── AnimatedBackground.tsx
++│   ├── FAQItem.tsx
++│   ├── Header.tsx
++│   └── Footer.tsx
++├── pages/
++│   ├── index.tsx
++│   ├── _app.tsx
++│   └── _document.tsx
++├── public/
++│   ├── images/
++│   │   ├── gaming-station-1.jpg
++│   │   └── gaming-station-2.jpg
++│   └── favicon.ico
++├── styles/
++│   └── globals.css
++├── utils/
++│   └── animations.ts
++├── package.json
++├── tsconfig.json
++└── tailwind.config.js
++```
+\ No newline at end of file

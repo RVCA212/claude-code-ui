@@ -700,6 +700,7 @@
           this.chatToggleBtn = document.getElementById('globalChatToggleBtn');
           this.settingsBtn = document.getElementById('globalSettingsBtn');
           this.searchBtn = document.getElementById('globalSearchBtn');
+          this.buttonStateUpdateTimeout = null; // For debouncing button state updates
 
           this.init();
         }
@@ -807,6 +808,15 @@
             console.warn('Toggle buttons not available yet, skipping state update');
             return;
           }
+
+          // Debounce button state updates to prevent race conditions during layout transitions
+          clearTimeout(this.buttonStateUpdateTimeout);
+          this.buttonStateUpdateTimeout = setTimeout(() => {
+            this._performButtonStateUpdate();
+          }, 50); // 50ms debounce
+        }
+
+        _performButtonStateUpdate() {
 
           // Update left sidebar button state
           const sidebar = document.querySelector('.sidebar');

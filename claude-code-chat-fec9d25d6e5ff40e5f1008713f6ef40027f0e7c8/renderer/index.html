@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="app">
+        <!-- Settings Modal -->
+        <div class="modal-overlay" id="settingsModal" style="display: none;">
+            <div class="modal">
+                <h3>Settings</h3>
+                <div class="setup-status" id="setupStatus">
+                    <div class="status-item">
+                        <span class="status-label">Claude Code CLI:</span>
+                        <span class="status-value" id="cliStatus">Checking...</span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-label">API Key:</span>
+                        <span class="status-value" id="apiKeyStatus">Checking...</span>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Anthropic API Key</label>
+                    <input type="password" class="form-control" id="apiKeyInput" placeholder="sk-ant-... (optional - can also use ANTHROPIC_API_KEY env var)">
+                    <small class="form-text">Get your API key from <a href="https://console.anthropic.com/" target="_blank">console.anthropic.com</a></small>
+                </div>
+
+                <div class="modal-actions">
+                    <button class="btn btn--secondary" id="cancelSettingsBtn">Cancel</button>
+                    <button class="btn btn--primary" id="saveSettingsBtn">Save Settings</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <!-- File Browser -->
+            <div class="file-browser">
+                <!-- Navigation Toolbar -->
+                <div class="file-browser-toolbar">
+                    <div class="navigation-buttons">
+                        <button class="nav-btn" id="backBtn" title="Back" disabled>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M19 12H5M12 19l-7-7 7-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                        </button>
+                        <button class="nav-btn" id="forwardBtn" title="Forward" disabled>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M5 12h14M12 5l7 7-7 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                        </button>
+                        <button class="nav-btn" id="upBtn" title="Up one level">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M18 15l-6-6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                        </button>
+                        <button class="nav-btn" id="homeBtn" title="Go to home directory">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                <polyline points="9,22 9,12 15,12 15,22" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Breadcrumb Navigation -->
+                <div class="breadcrumb-container">
+                    <div class="breadcrumb" id="breadcrumb">
+                        <!-- Breadcrumb segments will be populated by JavaScript -->
+                    </div>
+                </div>
+
+                <!-- Current Working Directory Indicator -->
+                <div class="working-directory-indicator">
+                    <div class="cwd-label">Working Directory:</div>
+                    <div class="cwd-path" id="cwdPath">~</div>
+                </div>
+
+                <!-- Quick Access Shortcuts -->
+                <div class="quick-access">
+                    <div class="quick-access-header" id="quickAccessHeader">
+                        <span class="quick-access-title">Quick Access</span>
+                        <button class="quick-access-toggle" id="quickAccessToggle" title="Toggle Quick Access">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M18 15l-6-6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="quick-access-list" id="quickAccessList">
+                        <!-- Quick access items will be populated by JavaScript -->
+                    </div>
+                </div>
+
+                <!-- File List Container -->
+                <div class="file-list-container">
+                    <div class="file-list-header">
+                        <span class="file-count" id="fileCount">Loading...</span>
+                        <button class="refresh-btn" id="refreshBtn" title="Refresh directory">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M23 4v6h-6M1 20v-6h6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                        </button>
+                    </div>
+
+                    <!-- Search/Filter -->
+                    <div class="file-search">
+                        <input type="text" id="fileSearchInput" placeholder="Filter files..." class="file-search-input">
+                        <div class="search-icon">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <circle cx="11" cy="11" r="8" stroke="currentColor" stroke-width="2"/>
+                                <path d="M21 21l-4.35-4.35" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                        </div>
+                    </div>
+
+                    <!-- File List -->
+                    <div class="file-list" id="fileList">
+                        <!-- File items will be populated by JavaScript -->
+                        <div class="loading-state" id="loadingState">
+                            <div class="loading-spinner"></div>
+                            <div>Loading directory...</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Status Bar -->
+                <div class="file-browser-status">
+                    <div class="status-text" id="statusText">Ready</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Chat Area -->
+        <div class="main-chat">
+            <div class="chat-header">
+                <div class="conversation-header-info">
+                    <div class="conversation-title-container">
+                        <button class="edit-title-btn" id="editTitleBtn" style="display: none;">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="m18.5 2.5 3 3L12 15l-4 1 1-4 9.5-9.5z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                        </button>
+                    <h2 class="conversation-title" id="conversationTitle" contenteditable="false">
+                        Select a conversation
+                    </h2>
+                    </div>
+                    <div class="conversation-status" id="conversationStatus" style="display: none;"></div>
+                    <div class="conversation-context" id="conversationContext" style="display: none;"></div>
+                </div>
+
+                <!-- Model Selection Dropdown -->
+                <div class="model-selection-container">
+                    <select class="model-select" id="modelSelect">
+                        <option value="">Claude 4 Sonnet (Default)</option>
+                        <option value="claude-3-5-haiku-20241022">Claude 3.5 Haiku</option>
+                        <option value="claude-opus-4-20250514">Claude Opus 4</option>
+                    </select>
+                </div>
+
+                <div class="conversation-actions">
+                    <!-- New Conversation Button -->
+                    <button class="header-action-btn" id="newConversationBtn" title="New Conversation">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </button>
+
+                    <!-- Settings Button -->
+                    <button class="header-action-btn" id="settingsBtn" title="Settings">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            <circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </button>
+
+                    <!-- History Button -->
+                    <button class="history-btn" id="historyBtn" title="Conversation history">
+                        <!-- Clock/history icon -->
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <circle cx="12" cy="12" r="9" stroke="#fff" stroke-width="2"/>
+                            <polyline points="12 7 12 12 15 14" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </button>
+
+                    <!-- History Dropdown -->
+                    <div class="history-dropdown" id="historyDropdown" style="display: none;">
+                        <div class="conversations-list" id="conversationsList">
+                            <!-- Conversations will be populated by JavaScript -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+
+            <div class="messages-container" id="messagesContainer">
+                <div class="empty-state">
+                    <h3>Welcome to Claude Code Chat</h3>
+                    <p>Select a conversation from the sidebar or start a new one to begin chatting with Claude Code.</p>
+                    <div class="features-info">
+                        <h4>Features:</h4>
+                        <ul>
+                            <li>✨ Real Claude Code SDK integration</li>
+                            <li>🔄 Session-based conversations with resume capability</li>
+                            <li>⚡ Streaming responses</li>
+                            <li>🛠️ Full tool access (file operations, web search, etc.)</li>
+                            <li>💾 Persistent conversation history</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <div class="input-area" id="inputArea" style="display: none;">
+                <!-- File Mention Dropdown -->
+                <div class="file-mention-dropdown" id="fileMentionDropdown" style="display: none;">
+                    <div class="file-mention-list" id="fileMentionList">
+                        <!-- File items will be populated by JavaScript -->
+                    </div>
+                </div>
+                
+                <div class="input-container">
+                    <textarea
+                        id="messageInput"
+                        placeholder="Type your message... (Enter to send, Shift+Enter for new line)"
+                        rows="1"
+                    ></textarea>
+                    <button class="send-btn" id="sendBtn" disabled>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="m22 2-7 20-4-9-9-4 20-7z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </button>
+                    <button class="stop-btn" id="stopBtn" style="display: none;">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <rect x="6" y="6" width="12" height="12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </button>
+                </div>
+                <div class="input-info">
+                    <span class="char-counter" id="charCounter">0 characters</span>
+                    <span class="session-info" id="sessionInfo"></span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div class="modal-overlay" id="deleteModal" style="display: none;">
+        <div class="modal">
+            <h3>Delete Conversation</h3>
+            <p>Are you sure you want to delete this conversation? This action cannot be undone.</p>
+            <div class="modal-actions">
+                <button class="btn btn--secondary" id="cancelDeleteBtn">Cancel</button>
+                <button class="btn btn--primary delete-confirm-btn" id="confirmDeleteBtn">Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

@@ -1333,7 +1333,7 @@
     background-color: rgba(var(--color-primary-rgb), 0.12);
     border-color: rgba(var(--color-primary-rgb), 0.3);
   }
-  
+
   .file-path-link:hover {
     background-color: rgba(var(--color-primary-rgb), 0.2);
     border-color: rgba(var(--color-primary-rgb), 0.5);

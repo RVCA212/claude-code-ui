@@ -1,0 +1,97 @@
+Index: hello.md
+===================================================================
+--- hello.md	before
++++ hello.md	after
+@@ -1,1 +1,89 @@
+-Hello World
+\ No newline at end of file
++# Checkpointing Documentation
++
++## Overview
++
++Our Electron app implements a sophisticated checkpointing system that automatically tracks file changes made by Claude Code and allows users to revert those changes through the UI.
++
++## Architecture
++
++### SQLite Database Storage
++
++The checkpointing system uses **better-sqlite3** to store metadata about file changes:
++
++- **Database Location**: `.claude-checkpoints/metadata.db`
++- **Blob Storage**: `.claude-checkpoints/blobs/` (for patch files)
++
++### Database Schema
++
++```sql
++CREATE TABLE checkpoints (
++  id TEXT PRIMARY KEY,           -- UUID for checkpoint
++  session_id TEXT NOT NULL,      -- App session ID
++  message_id TEXT NOT NULL,      -- Message that triggered change
++  file_path TEXT NOT NULL,       -- File that was modified
++  ts DATETIME DEFAULT CURRENT_TIMESTAMP,
++  patch_path TEXT,              -- Relative path to .patch file
++  full_snapshot INTEGER DEFAULT 0, -- 1 for new file creation
++  old_content TEXT,             -- Original file content
++  new_content TEXT,             -- New file content after change
++  tool_type TEXT                -- Claude tool used (Edit, MultiEdit, Write)
++);
++```
++
++## How It Works
++
++### 1. Automatic Checkpoint Creation
++
++The system monitors Claude's tool usage and creates checkpoints when detecting:
++- `Edit` operations (single file edits)
++- `MultiEdit` operations (multiple edits to one file)
++- `Write` operations (file creation/overwrite)
++
++### 2. Checkpoint Process
++
++When a file modification tool is detected:
++
++1. **Content Capture**: Reads current file content before modification
++2. **Diff Generation**: Creates unified diff patch using the `diff` npm package
++3. **Storage**: Saves patch to blob storage and metadata to SQLite
++4. **Linking**: Associates checkpoint with specific session and message
++
++### 3. Reversion System
++
++Users can revert changes through the UI:
++
++1. **Query Checkpoints**: Finds all checkpoints from target message onwards
++2. **Group by File**: Organizes checkpoints by file path
++3. **Backup Creation**: Creates `.bak` files before reverting
++4. **Content Restoration**: Restores original file content or deletes newly created files
++5. **Session Cleanup**: Removes messages after the revert point
++
++## Implementation Details
++
++### Key Functions in main.js
++
++- `initializeCheckpointSystem()`: Sets up database and directories
++- `createCheckpoint()`: Handles different tool types and creates checkpoints
++- `revertToCheckpoint()`: Reverts files to previous state
++- `getCheckpointsToRevert()`: Queries checkpoints for reversion
++
++### UI Integration
++
++The renderer process can:
++- Check if messages have file changes: `has-file-changes`
++- Get checkpoint details: `get-message-checkpoints`  
++- Trigger reversion: `revert-to-message`
++
++### Error Handling
++
++- Graceful degradation if checkpoint system fails to initialize
++- Backup creation before any reversion
++- Comprehensive logging for debugging
++- Recovery from interrupted operations
++
++## Benefits
++
++1. **Safety**: Users can safely experiment knowing changes can be undone
++2. **Granularity**: Revert to any specific message/interaction point
++3. **Efficiency**: Only stores diffs, not full file copies
++4. **Transparency**: Clear UI indicators for which messages modified files
+\ No newline at end of file

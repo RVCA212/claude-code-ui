@@ -1,3 +1,61 @@
---- before/README.md
-+++ after/README.md
-...edit applied...
+Index: README.md
+===================================================================
+--- README.md	before
++++ README.md	after
+@@ -153,28 +153,33 @@
+ - Lighthouse Performance Score: ~90
+ - Mobile Responsiveness: Fully Responsive
+ - Accessibility: High
+ 
++---
++
++**Turning Airport Waiting into Playtime!** 🎮✈️
++
+ ## 📂 Project Structure
+ ```
+-.
+-├── README.md
+-├── airport-gaming
+-│   ├── README.md
+-│   ├── app
+-│   ├── nextconfig.js
+-│   ├── package.json
+-│   ├── postcss.config.js
+-│   ├── public
+-│   ├── styles
+-│   ├── tailwind.config.js
+-│   └── tsconfig.json
+-├── app
+-│   └── page.tsx
+-├── nextconfig.js
++airport-gaming/
++├── components/
++│   ├── AnimatedBackground.tsx
+\ No newline at end of file
++│   ├── FAQItem.tsx
++│   ├── Header.tsx
++│   └── Footer.tsx
++├── pages/
++│   ├── index.tsx
++│   ├── _app.tsx
++│   └── _document.tsx
++├── public/
++│   ├── images/
++│   │   ├── gaming-station-1.jpg
++│   │   └── gaming-station-2.jpg
++│   └── favicon.ico
++├── styles/
++│   └── globals.css
++├── utils/
++│   └── animations.ts
+ ├── package.json
+-└── tsconfig.json
+-```
+-
+----
+-
+-**Turning Airport Waiting into Playtime!** 🎮✈️
++├── tsconfig.json
++└── tailwind.config.js
++```
+\ No newline at end of file

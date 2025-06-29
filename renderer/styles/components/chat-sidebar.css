@@ -1,13 +1,13 @@
 /**
  * Chat Sidebar Component Styles
- * 
+ *
  * Used by: Right panel chat interface when file editor is active
  * Related files:
  *   - src/renderer/components/chat-sidebar.js (sidebar component logic)
  *   - src/renderer/components/message-component.js (message rendering)
  *   - src/renderer/components/session-manager.js (conversation management)
  *   - renderer/index.html (chat-sidebar section)
- * 
+ *
  * Features:
  *   - Fixed-width sidebar layout optimized for right panel
  *   - Conversation header with title editing
@@ -41,7 +41,7 @@
 .chat-sidebar.drag-over {
   border-left: 3px solid var(--color-primary);
   background-color: rgba(var(--color-primary-rgb), 0.05);
-  transition: border-color var(--duration-fast) var(--ease-standard), 
+  transition: border-color var(--duration-fast) var(--ease-standard),
               background-color var(--duration-fast) var(--ease-standard);
 }
 

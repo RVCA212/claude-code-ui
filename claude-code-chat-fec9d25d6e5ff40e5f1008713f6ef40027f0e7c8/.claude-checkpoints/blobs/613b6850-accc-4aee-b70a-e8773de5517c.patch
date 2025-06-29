@@ -1,0 +1,466 @@
+Index: CLAUDE.md
+===================================================================
+--- CLAUDE.md	before
++++ CLAUDE.md	after
+@@ -1,275 +1,246 @@
+-# Claude Code Chat - Architecture Documentation
++# CLAUDE.md
+ 
+-## Overview
++This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+ 
+-Claude Code Chat is an Electron application that provides a clean, modern interface for interacting with the Claude Code SDK. The app uses a subprocess approach to communicate with the Claude Code CLI, enabling session-based conversations with streaming responses and full tool access.
++## Project Overview
+ 
+-## File Structure
++This repository contains multiple integrated components for Claude Code development:
+ 
+-```
+-claude-code-chat/
+-├── package.json              # Dependencies and build configuration
+-├── main.js                   # Electron main process (Node.js backend)
+-├── preload.js               # Secure IPC bridge between main and renderer
+-├── README.md                # User documentation and setup instructions
+-├── ARCHITECTURE.md          # This file - technical documentation
+-├── renderer/                # Frontend application files
+-│   ├── index.html          # Main UI structure and layout
+-│   ├── app.js              # Frontend logic and UI interactions
+-│   └── style.css           # Styling and visual design
+-└── anthropic-sdk-typescript/ # TypeScript SDK examples (reference only)
+-```
++1. **Claude Code Chat** (Electron App) - Desktop GUI application for Claude interactions
++2. **Codesys SDK** (Python) - Programmatic interface for Claude Code CLI automation 
++3. **Anthropic SDK TypeScript** - Reference implementation and examples
+ 
+-## Core Components
++## Development Commands
+ 
+-### 1. Main Process (`main.js`)
++### Electron App (Root Directory)
+ 
+-**Purpose**: Manages the Electron application lifecycle, handles Claude Code CLI integration, and provides secure backend services.
++```bash
++# Install dependencies
++npm install
+ 
+-**Key Responsibilities**:
+-- **Window Management**: Creates and manages the main application window
+-- **Claude CLI Integration**: Spawns and manages `claude` subprocess calls
+-- **Session Storage**: Persists conversation data locally in `~/.claude-code-chat/sessions.json`
+-- **API Key Management**: Securely handles Anthropic API key verification
+-- **IPC Communication**: Provides secure communication between frontend and backend
++# Start the application in development mode
++npm run dev
+ 
+-**Critical Functions**:
+-```javascript
+-// Claude process spawning with streaming JSON output
+-const claudeProcess = spawn('claude', ['-p', '--output-format', 'stream-json', message], {
+-  stdio: 'pipe',
+-  env: { ...process.env, ANTHROPIC_API_KEY: apiKey }
+-});
++# Start the application normally
++npm start
+ 
+-// Session resumption using Claude session IDs
+-if (session.claudeSessionId) {
+-  claudeArgs.push('--resume', session.claudeSessionId);
+-}
+-```
++# Build for distribution
++npm run build
+ 
+-### 2. Preload Script (`preload.js`)
++# Install Claude CLI dependency
++npm run install-claude
+ 
+-**Purpose**: Provides a secure bridge between the main process and renderer, exposing only necessary APIs.
+-
+-**Security Features**:
+-- Context isolation enabled
+-- Node integration disabled in renderer
+-- Selective API exposure through `contextBridge`
+-
+-**Exposed APIs**:
+-```javascript
+-window.electronAPI = {
+-  // Setup and configuration
+-  checkSetup: () => ipcRenderer.invoke('check-setup'),
+-  setApiKey: (apiKey) => ipcRenderer.invoke('set-api-key', apiKey),
+-  
+-  // Session management
+-  getSessions: () => ipcRenderer.invoke('get-sessions'),
+-  createSession: (title) => ipcRenderer.invoke('create-session', title),
+-  
+-  // Messaging with streaming support
+-  sendMessage: (sessionId, message) => ipcRenderer.invoke('send-message', sessionId, message),
+-  onMessageStream: (callback) => ipcRenderer.on('message-stream', callback)
+-};
++# Rebuild native dependencies
++npm run rebuild
+ ```
+ 
+-### 3. Frontend Application (`renderer/`)
++### Python SDK (codesys2/)
+ 
+-#### HTML Structure (`index.html`)
+-- **Settings Modal**: Optional API key configuration
+-- **Sidebar**: Navigation, new conversation, and settings
+-- **Main Chat Area**: Message display and input interface
+-- **Modals**: Settings and delete confirmations
++```bash
++# Install in development mode
++cd codesys2/
++pip install -e .
+ 
+-#### Frontend Logic (`app.js`)
+-**Key Features**:
+-- **Session Management**: Local state management and UI updates
+-- **Real-time Streaming**: Handles streaming message updates from Claude
+-- **Event Handling**: User interactions and keyboard shortcuts
+-- **Status Management**: API key and CLI availability checking
++# Install from PyPI
++pip install codesys
+ 
+-**Core Data Flow**:
+-```javascript
+-// User sends message → Backend spawns Claude process → Streaming updates via IPC
+-await window.electronAPI.sendMessage(currentSessionId, content);
++# Run examples
++python examples/example1_custom_tools.py
++python examples/conversation.py
++python plan_and_execute.py
+ 
+-// Streaming handler updates UI in real-time
+-window.electronAPI.onMessageStream((event, data) => {
+-  const { sessionId, message, isComplete } = data;
+-  handleStreamingMessage(message, isComplete);
+-});
++# Run advanced workflows
++python examples/06_complex_workflow.py
++python examples/parallel/parallel_development_worktree.py
+ ```
+ 
+-#### Styling (`style.css`)
+-- **Design System**: Consistent colors, typography, and spacing
+-- **Dark/Light Mode**: Automatic theme detection via CSS media queries
+-- **Responsive Layout**: Flexible sidebar and main content areas
+-- **Component Styling**: Buttons, modals, message bubbles, and forms
++### TypeScript SDK (anthropic-sdk-typescript/)
+ 
+-## Claude Code SDK Integration
++```bash
++cd anthropic-sdk-typescript/
++yarn install
+ 
+-### Integration Approach
++# Build the SDK
++yarn build
+ 
+-The app uses a **subprocess approach** rather than direct API calls, providing several advantages:
++# Run tests
++yarn test
+ 
+-1. **Full Tool Access**: Leverages Claude Code's complete tool ecosystem
+-2. **Session Management**: Automatic session handling via Claude CLI
+-3. **Streaming Support**: Real-time response streaming
+-4. **CLI Compatibility**: Works exactly like the command-line tool
++# Format code
++yarn format
+ 
+-### Communication Flow
++# Lint code
++yarn lint
++```
+ 
+-```mermaid
+-sequenceDiagram
+-    participant User
+-    participant Renderer
+-    participant Main
+-    participant Claude CLI
+-    participant Anthropic API
++## Code Architecture
+ 
+-    User->>Renderer: Types message
+-    Renderer->>Main: IPC: sendMessage(sessionId, message)
+-    Main->>Claude CLI: spawn('claude', args)
+-    Claude CLI->>Anthropic API: HTTP request with tools
+-    Anthropic API-->>Claude CLI: Streaming response
+-    Claude CLI-->>Main: stdout: stream-json
+-    Main-->>Renderer: IPC: message-stream event
+-    Renderer-->>User: Update UI with streaming text
+-```
++### Electron App Structure
+ 
+-### Session Management
++**Multi-Process Architecture:**
++- **Main Process** (`main.js`): Node.js backend managing Claude CLI integration, session storage, and IPC
++- **Preload Script** (`preload.js`): Secure bridge exposing selective APIs to renderer
++- **Renderer Process** (`renderer/`): Frontend UI handling user interactions and real-time streaming
+ 
+-**Local Session Storage**:
++**Key Integration Pattern:**
+ ```javascript
+-// Session structure
+-{
+-  id: "uuid-v4",                    // App-generated session ID
+-  title: "Conversation Title",       // User-editable title
+-  messages: [...],                   // Message history
+-  claudeSessionId: "claude-session", // Claude CLI session ID for resumption
+-  createdAt: "ISO-timestamp",
+-  updatedAt: "ISO-timestamp"
++// Subprocess approach for full tool access
++const claudeProcess = spawn('claude', ['-p', '--output-format', 'stream-json', message], {
++  stdio: 'pipe',
++  env: { ...process.env, ANTHROPIC_API_KEY: apiKey }
++});
++
++// Session resumption for conversation continuity
++if (session.claudeSessionId) {
++  claudeArgs.push('--resume', session.claudeSessionId);
+ }
+ ```
+ 
+-**Claude Session Resumption**:
+-- Each conversation maintains a Claude session ID
+-- Resumption preserves context across app restarts
+-- Messages are stored locally for immediate UI rendering
++**Session Management:**
++- Local storage: `~/.claude-code-chat/sessions.json`
++- Claude session IDs maintained for context preservation
++- Checkpoint system with SQLite database for recovery
+ 
+-### Command Construction
++### Python SDK (Codesys) Architecture
+ 
+-```javascript
+-// Base command for new conversations
+-['claude', '-p', '--output-format', 'stream-json', userMessage]
++**Core Classes:**
++- **`Agent`**: Main synchronous interface with tool management and streaming
++- **`AsyncAgent`**: Fully asynchronous version for parallel execution
++- **`ToolManager`**: Advanced tool filtering and security policies
++- **`WorktreeManager`**: Git worktree isolation for parallel development
+ 
+-// Command for resuming existing conversations
+-['claude', '-p', '--output-format', 'stream-json', '--resume', claudeSessionId, userMessage]
++**Key Design Patterns:**
++
++1. **Subprocess Integration:**
++```python
++# Spawns claude CLI with full tool access
++agent = Agent(working_dir="./", allowed_tools=["Read", "Edit", "Bash"])
++response = agent.run("Your prompt", stream=True)
+ ```
+ 
+-### Stream Processing
++2. **Plan-and-Execute Workflow:**
++```python
++# Multi-step planning with conversation continuity
++agent.run("Create plan in plan.md", stream=True)
++agent.run_convo("Execute the plan", stream=True)
++```
+ 
+-The app parses Claude's streaming JSON output to provide real-time updates:
+-
+-```javascript
+-// Parse streaming JSON lines
+-const lines = chunk.split('\n').filter(line => line.trim());
+-for (const line of lines) {
+-  const parsed = JSON.parse(line);
+-  
+-  if (parsed.type === 'init' && parsed.sessionId) {
+-    // Store Claude session ID for future resume
+-    session.claudeSessionId = parsed.sessionId;
+-  } else if (parsed.type === 'message' && parsed.role === 'assistant') {
+-    // Update UI with streaming content
+-    updateMessage(parsed.content);
+-  }
+-}
+\ No newline at end of file
++3. **Session Management:**
++```python
++# Conversation continuity across interactions
++session_id = agent.get_last_session_id()
++agent.resume_convo(session_id, "Continue discussion")
+ ```
+ 
+-## Data Storage
++## Prerequisites and Setup
+ 
+-### Session Persistence
+-- **Location**: `~/.claude-code-chat/sessions.json`
+-- **Format**: JSON array of session objects
+-- **Backup**: Automatic saving on changes
+-- **Privacy**: Local storage only, no cloud sync
++### Required Dependencies
+ 
+-### API Key Handling
+-- **Runtime Only**: Stored in process environment variables
+-- **Not Persisted**: Must be re-entered each app launch (unless using system env var)
+-- **Verification**: Tested with simple Claude CLI call before saving
++1. **Claude Code CLI** (required for both Electron and Python SDK):
++```bash
++npm install -g @anthropic-ai/claude-code
++```
+ 
+-## Security Model
++2. **Anthropic API Key** - Set as environment variable or provide through app/SDK
++3. **Node.js v16+** (for Electron app)
++4. **Python 3.8+** (for Python SDK)
+ 
+-### Electron Security Best Practices
+-1. **Context Isolation**: Renderer process isolated from Node.js
+-2. **No Node Integration**: Renderer cannot access Node.js APIs directly
+-3. **Secure IPC**: All communication via predefined, validated channels
+-4. **Sandboxed Renderer**: Limited system access in frontend
+-5. **API Key Protection**: Sensitive data handled only in main process
++### Environment Configuration
+ 
+-### Process Separation
++**API Key Setup:**
++```bash
++export ANTHROPIC_API_KEY="your-api-key-here"
+ ```
+-┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
+-│   Main Process  │◄──►│  Preload Script  │◄──►│ Renderer Process│
+-│   (Node.js)     │    │   (Bridge)       │    │    (Web)        │
+-│                 │    │                  │    │                 │
+-│ • Claude CLI    │    │ • IPC Bridge     │    │ • UI Logic      │
+-│ • File System   │    │ • API Exposure   │    │ • Event Handling│
+-│ • Session Store │    │ • Security       │    │ • DOM Updates   │
+-└─────────────────┘    └──────────────────┘    └─────────────────┘
++
++**Claude CLI Verification:**
++```bash
++claude --version
++claude -p "test message"  # Verify CLI works
+ ```
+ 
+-## Error Handling
++## Component Integration Patterns
+ 
+-### Network and API Errors
+-- Claude CLI process failures are captured and displayed
+-- API key verification provides clear error messages
+-- Network connectivity issues show helpful guidance
++### Cross-Component Workflows
+ 
+-### Recovery Mechanisms
+-- Automatic session restoration on app restart
+-- Graceful handling of interrupted conversations
+-- Process cleanup on app termination
++**Electron App + Python SDK Integration:**
++The Electron app uses subprocess calls to Claude CLI, while the Python SDK provides programmatic automation. Both maintain session continuity through Claude's session system.
+ 
+-### User Feedback
+-- Real-time status updates in UI
+-- Error alerts with actionable information
+-- Status indicators for CLI and API key availability
++**Development Workflow:**
++1. Use Electron app for interactive development and testing
++2. Automate complex workflows with Python SDK
++3. Reference TypeScript SDK for API patterns and advanced features
+ 
+-## Performance Considerations
++### Session and State Management
+ 
+-### Memory Management
+-- Conversation history loaded on demand
+-- Process cleanup for terminated Claude calls
+-- Efficient message rendering for long conversations
++**Session Continuity Across Components:**
++- Claude session IDs are portable between Electron app and Python SDK
++- Both components can resume conversations started by the other
++- Local storage formats are component-specific but Claude sessions are shared
+ 
+-### Streaming Optimization
+-- Incremental DOM updates during streaming
+-- Debounced UI updates for smooth performance
+-- Automatic scrolling to follow conversation
++**State Sharing Pattern:**
++```javascript
++// Electron: Extract session ID
++session.claudeSessionId = parsed.sessionId;
+ 
+-### Storage Efficiency
+-- JSON format for human-readable session storage
+-- Automatic cleanup of orphaned processes
+-- Minimal memory footprint in main process
++// Python: Resume same session
++agent.resume_convo(session_id, "Continue from Electron app")
++```
+ 
+-## Development and Debugging
++## Security Model
+ 
+-### Development Mode
+-```bash
+-npm run dev  # Launches with developer tools enabled
++### Electron Security
++- Context isolation with sandboxed renderer
++- Secure IPC communication via preload script
++- API key handling only in main process
++- No Node.js access in renderer process
++
++### Python SDK Security
++- Tool restriction policies for enterprise use
++- API key filtering and sanitization
++- Explicit allow/deny lists for tools
++- Timeout and rate limiting controls
++
++### Common Security Patterns
++- Environment variable API key storage (not persisted)
++- Local-only session storage
++- Subprocess isolation for Claude CLI execution
++- No network access for sensitive operations
++
++## Advanced Features
++
++### Parallel Development (Python SDK)
++```python
++# Git worktree isolation for concurrent tasks
++from codesys import AsyncAgent
++
++async def parallel_tasks():
++    agent = AsyncAgent()
++    tasks = [agent.run(prompt) for prompt in prompts]
++    results = await asyncio.gather(*tasks)
+ ```
+ 
+-### Logging and Monitoring
+-- Console logging for IPC communication
+-- Process status tracking
+-- Error capture and reporting
++### Checkpoint System (Electron App)
++- SQLite-based checkpoint storage in `.claude-checkpoints/`
++- Automatic conversation recovery after crashes
++- File diff tracking for code changes
++- Metadata storage with better-sqlite3
+ 
+-### Testing Approach
+-- Manual testing via development mode
+-- Claude CLI integration verification
+-- UI responsiveness testing across platforms
++### Streaming Optimization
++- Real-time JSON streaming parsing in Electron
++- Async/await streaming in Python SDK
++- Debounced UI updates for performance
++- Automatic scrolling and message rendering
+ 
+-This architecture provides a robust, secure, and user-friendly interface to Claude Code while maintaining the full power and flexibility of the underlying CLI tool.
++### Tool Management
++- Comprehensive tool restriction system
++- Group-based permissions (read-only, full-access, etc.)
++- Runtime tool policy enforcement
++- MCP (Model Context Protocol) server integration
++
++### Error Handling and Recovery
++- Graceful process cleanup on termination
++- Automatic session restoration
++- Retry logic with exponential backoff
++- Comprehensive error classification and reporting
++
++This multi-component architecture provides both interactive GUI access and programmatic automation capabilities while maintaining session continuity and security best practices across all components.
+\ No newline at end of file

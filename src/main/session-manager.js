@@ -85,6 +85,9 @@ class SessionManager {
       throw new Error('Session not found');
     }
 
+    // Validate session metadata consistency before saving
+    this.validateSessionMetadata(session);
+
     // Update last activity timestamp
     session.lastActivity = new Date().toISOString();
     session.updatedAt = new Date().toISOString();
@@ -267,6 +270,26 @@ class SessionManager {
   getSession(sessionId) {
     if (!sessionId) return null;
     return this.sessions.get(sessionId) || null;
+  }
+
+  // Resolve Claude CLI session ID to internal session UUID
+  resolveClaudeSessionIdToUUID(claudeSessionId) {
+    if (!claudeSessionId) return null;
+    
+    for (const session of this.sessions.values()) {
+      if (session.claudeSessionId === claudeSessionId) {
+        return session.id;
+      }
+    }
+    return null;
+  }
+
+  // Resolve internal session UUID to Claude CLI session ID
+  resolveUUIDToClaudeSessionId(sessionUUID) {
+    if (!sessionUUID) return null;
+    
+    const session = this.sessions.get(sessionUUID);
+    return session ? session.claudeSessionId : null;
   }
 
   // Helper function to determine if a session can be resumed
@@ -605,6 +628,102 @@ class SessionManager {
         clearedCount: 0
       };
     }
+  }
+
+  // ============================================================================
+  // Data Validation Methods
+  // ============================================================================
+
+  // Validate session metadata consistency
+  validateSessionMetadata(session) {
+    if (!session || !session.id) {
+      throw new Error('Session validation failed: missing session ID');
+    }
+
+    // Validate that lastUserMessage and lastAssistantMessage match actual messages
+    if (session.messages && session.messages.length > 0) {
+      const actualLastUserMessage = this.findLastMessageOfType(session.messages, 'user');
+      const actualLastAssistantMessage = this.findLastMessageOfType(session.messages, 'assistant');
+
+      // Check if lastUserMessage metadata matches actual last user message
+      if (actualLastUserMessage && session.lastUserMessage) {
+        if (session.lastUserMessage !== actualLastUserMessage.content) {
+          console.warn(`Session ${session.id}: lastUserMessage metadata doesn't match actual message`);
+          console.warn(`  Metadata: "${session.lastUserMessage}"`);
+          console.warn(`  Actual: "${actualLastUserMessage.content}"`);
+          
+          // Auto-correct the metadata
+          session.lastUserMessage = actualLastUserMessage.content;
+          console.log(`  Auto-corrected lastUserMessage for session ${session.id}`);
+        }
+      }
+
+      // Check if lastAssistantMessage metadata matches actual last assistant message
+      if (actualLastAssistantMessage && session.lastAssistantMessage) {
+        const actualContent = this.extractTextFromMessage(actualLastAssistantMessage.content);
+        if (session.lastAssistantMessage !== actualContent) {
+          console.warn(`Session ${session.id}: lastAssistantMessage metadata doesn't match actual message`);
+          console.warn(`  Metadata length: ${session.lastAssistantMessage.length} chars`);
+          console.warn(`  Actual length: ${actualContent.length} chars`);
+          
+          // Auto-correct the metadata
+          session.lastAssistantMessage = actualContent;
+          console.log(`  Auto-corrected lastAssistantMessage for session ${session.id}`);
+        }
+      }
+    }
+
+    // Validate claudeSessionId format (should be UUID)
+    if (session.claudeSessionId && !this.isValidUUID(session.claudeSessionId)) {
+      console.warn(`Session ${session.id}: claudeSessionId is not a valid UUID: ${session.claudeSessionId}`);
+    }
+
+    // Validate working directory exists if set
+    if (session.cwd) {
+      const fs = require('fs');
+      try {
+        if (!fs.existsSync(session.cwd)) {
+          console.warn(`Session ${session.id}: working directory no longer exists: ${session.cwd}`);
+        }
+      } catch (error) {
+        console.warn(`Session ${session.id}: cannot validate working directory: ${error.message}`);
+      }
+    }
+
+    return true;
+  }
+
+  // Helper: Find the last message of a specific type
+  findLastMessageOfType(messages, type) {
+    for (let i = messages.length - 1; i >= 0; i--) {
+      if (messages[i].type === type) {
+        return messages[i];
+      }
+    }
+    return null;
+  }
+
+  // Helper: Extract text content from message (handles both string and array formats)
+  extractTextFromMessage(content) {
+    if (typeof content === 'string') {
+      return content;
+    }
+    
+    if (Array.isArray(content)) {
+      return content
+        .filter(block => block.type === 'text')
+        .map(block => block.text)
+        .join(' ')
+        .substring(0, 500) + (content.length > 500 ? '...' : ''); // Truncate for metadata
+    }
+    
+    return '';
+  }
+
+  // Helper: Validate UUID format
+  isValidUUID(str) {
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    return uuidRegex.test(str);
   }
 }
 

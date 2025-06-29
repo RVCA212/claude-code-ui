@@ -53,6 +53,9 @@ class PreloadBridge {
       unrevertFromMessage: (sessionId, messageId) => ipcRenderer.invoke('unrevert-from-message', sessionId, messageId),
       getMessageCheckpoints: (sessionId, messageId) => ipcRenderer.invoke('get-message-checkpoints', sessionId, messageId),
       hasFileChanges: (sessionId, messageId) => ipcRenderer.invoke('has-file-changes', sessionId, messageId),
+      getAllCheckpointsForSession: (sessionId) => ipcRenderer.invoke('get-all-checkpoints-for-session', sessionId),
+      getSessionStatistics: (sessionId) => ipcRenderer.invoke('get-session-statistics', sessionId),
+      validateCheckpointSession: (sessionId) => ipcRenderer.invoke('validate-checkpoint-session', sessionId),
 
       // File system & working directory operations
       getDirectoryContents: (dirPath) => ipcRenderer.invoke('get-directory-contents', dirPath),
@@ -114,6 +117,7 @@ class PreloadBridge {
       // Event listeners
       onSessionsLoaded: (callback) => ipcRenderer.on('sessions-loaded', callback),
       onMessageStream: (callback) => ipcRenderer.on('message-stream', callback),
+      onUserMessageSaved: (callback) => ipcRenderer.on('user-message-saved', callback),
       onSessionUpdated: (callback) => ipcRenderer.on('session-updated', callback),
       onSessionDeleted: (callback) => ipcRenderer.on('session-deleted', callback),
       onSessionCreated: (callback) => ipcRenderer.on('session-created', callback),
@@ -158,7 +162,7 @@ class PreloadBridge {
       'getSessions', 'createSession', 'deleteSession', 'clearAllSessions', 'updateSessionTitle', 'getSessionContext',
       'setSessionCwd', 'getSessionCwd', 'validateSessionCwd', 'restoreSessionCwd', 'validateSendDirectory',
       'sendMessage', 'stopMessage',
-      'revertToMessage', 'unrevertFromMessage', 'getMessageCheckpoints', 'hasFileChanges',
+      'revertToMessage', 'unrevertFromMessage', 'getMessageCheckpoints', 'hasFileChanges', 'getAllCheckpointsForSession',
       'getDirectoryContents', 'navigateToDirectory', 'getCurrentDirectory', 'getHomeDirectory',
       'getCommonDirectories', 'navigateBack', 'navigateForward', 'navigateUp',
       'setWorkingDirectoryFromFile', 'readFile', 'writeFile', 'watchFile', 'unwatchFile',
@@ -167,12 +171,12 @@ class PreloadBridge {
       'getOpenApplicationWindows', 'requestWindowDetectionPermissions', 'enableWindowDetectionWithPermissions', 'getWindowDetectionPermissionStatus', 'clearWindowDetectionCache',
       'setWindowDetectionDebug', 'getWindowDetectionDiagnostics', 'testAppleScript',
       'getMcpServers', 'saveMcpServer', 'deleteMcpServer', 'toggleMcpServer', 'testMcpServer',
-      'onSessionsLoaded', 'onMessageStream', 'onSessionUpdated', 'onSessionDeleted', 'onSessionCreated', 'onAllSessionsCleared',
+      'onSessionsLoaded', 'onMessageStream', 'onUserMessageSaved', 'onSessionUpdated', 'onSessionDeleted', 'onSessionCreated', 'onAllSessionsCleared',
       'onFileChanged', 'onTrayOpenWorkspace', 'onTrayOpenExcelFile', 'onTrayOpenPhotoshopFile', 'onTrayInteraction',
       'handleTrayOpenExcelFile', 'handleTrayOpenPhotoshopFile', 'removeAllListeners', 'resizeWindow'
     ];
 
-    const updatedRequiredMethods = [...requiredMethods, 'onTraySelectSession', 'setWindowLock', 'watchDirectory', 'unwatchDirectory', 'onDirectoryChanged'];
+    const updatedRequiredMethods = [...requiredMethods, 'onTraySelectSession', 'setWindowLock', 'watchDirectory', 'unwatchDirectory', 'onDirectoryChanged', 'getSessionStatistics', 'validateCheckpointSession', 'onUserMessageSaved'];
 
     const exposedMethods = Object.keys(this.exposedAPI);
     const missingMethods = updatedRequiredMethods.filter(method => !exposedMethods.includes(method));

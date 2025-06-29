@@ -1,0 +1,39 @@
+Index: README.md
+===================================================================
+--- README.md	before
++++ README.md	after
+@@ -155,5 +155,31 @@
+ - Accessibility: High
+ 
+ ---
+ 
+-**Turning Airport Waiting into Playtime!** 🎮✈️
+\ No newline at end of file
++**Turning Airport Waiting into Playtime!** 🎮✈️
++
++## 📂 Project Structure
++```
++airport-gaming/
++├── components/
++│   ├── AnimatedBackground.tsx
++│   ├── FAQItem.tsx
++│   ├── Header.tsx
++│   └── Footer.tsx
++├── pages/
++│   ├── index.tsx
++│   ├── _app.tsx
++│   └── _document.tsx
++├── public/
++│   ├── images/
++│   │   ├── gaming-station-1.jpg
++│   │   └── gaming-station-2.jpg
++│   └── favicon.ico
++├── styles/
++│   └── globals.css
++├── utils/
++│   └── animations.ts
++├── package.json
++├── tsconfig.json
++└── tailwind.config.js
++```
+\ No newline at end of file

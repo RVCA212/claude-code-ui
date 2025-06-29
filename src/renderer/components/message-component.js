@@ -23,6 +23,9 @@ class MessageComponent {
     // Layout state for compact mode
     this.isCompactMode = false;
 
+    // Pending message update tracking
+    this.pendingMessageUpdate = null;
+
     this.initializeElements();
     this.setupEventListeners();
     this.initializeLayoutState();
@@ -76,6 +79,11 @@ class MessageComponent {
     // Message stream events
     window.electronAPI.onMessageStream((event, data) => {
       this.handleMessageStream(data);
+    });
+
+    // User message saved events (for updating temp IDs with real UUIDs)
+    window.electronAPI.onUserMessageSaved((event, data) => {
+      this.handleUserMessageSaved(data);
     });
 
     // Session change events
@@ -354,6 +362,24 @@ class MessageComponent {
     }
   }
 
+  handleUserMessageSaved(data) {
+    const { sessionId, messageId, content, timestamp } = data;
+
+    console.log('=== USER MESSAGE SAVED EVENT ===');
+    console.log('Event data:', { sessionId, messageId, content: content.substring(0, 50) + '...', timestamp });
+
+    // Only process for the current session
+    if (sessionId !== this.sessionManager.getCurrentSessionId()) {
+      console.log('Ignoring user message saved event for different session');
+      return;
+    }
+
+    // Update the temporary message ID with the real UUID
+    this.updateUserMessageId(messageId);
+
+    console.log('=== USER MESSAGE SAVED EVENT END ===');
+  }
+
   handleSessionChange(detail) {
     const { sessionId, context } = detail;
 
@@ -553,7 +579,7 @@ class MessageComponent {
     const sessionId = this.sessionManager.getCurrentSessionId();
 
     const messageHTML = `
-      <div class="conversation-turn user" id="message-${messageId}">
+      <div class="conversation-turn user" id="message-${messageId}" data-temp-id="${messageId}">
         <div class="conversation-content">
           <div class="message-content">${DOMUtils.escapeHTML(content)}</div>
           ${this.createMessageActions({ id: messageId, type: 'user' }, sessionId)}
@@ -575,6 +601,13 @@ class MessageComponent {
 
     this.messagesContainer.insertAdjacentHTML('beforeend', messageHTML);
     this.scrollToBottom();
+
+    // Store the temporary ID for later update
+    this.pendingMessageUpdate = {
+      tempId: messageId,
+      content: content,
+      timestamp: timestamp
+    };
   }
 
   updateStreamingMessage(message, thinkingContent, cwd) {
@@ -654,19 +687,83 @@ class MessageComponent {
   }
 
   async revertToMessage(sessionId, messageId) {
+    console.log('=== REVERT TO MESSAGE UI START ===');
+    console.log('Parameters:', { sessionId, messageId });
+
     try {
+      // Enhanced parameter validation
+      if (!sessionId || !messageId) {
+        console.error('Invalid parameters for revert operation');
+        this.showError('Invalid session or message information');
+        return;
+      }
+
+      console.log('Calling backend revert operation...');
       const result = await window.electronAPI.revertToMessage(sessionId, messageId);
+      console.log('Backend revert result:', result);
+
       if (result.success) {
+        console.log(`Successfully reverted ${result.revertedFiles?.length || 0} files`);
+
+        // Update UI state
         this.currentRevertMessageId = messageId;
         this.markMessagesAsInvalidated(messageId);
         this.makeMessageEditable(messageId);
         this.setupUnrevertClickHandler();
+
+        // Show success message with details
+        const fileCount = result.revertedFiles?.length || 0;
+        const successMessage = result.message || `Successfully reverted ${fileCount} files`;
+
+        // Could implement a success toast here
+        console.log('Revert operation completed successfully:', successMessage);
+
+        // If there were partial failures, log them
+        if (result.failedFiles && result.failedFiles.length > 0) {
+          console.warn('Some files failed to revert:', result.failedFiles);
+        }
+
+        console.log('=== REVERT TO MESSAGE UI END ===');
       } else {
-        this.showError(result.error || 'Failed to revert');
+        console.error('Revert operation failed:', result.error);
+
+        // Provide enhanced error reporting
+        let errorMessage = result.error || 'Failed to revert';
+
+        // Add context from session validation if available
+        if (result.sessionValidation && !result.sessionValidation.valid) {
+          errorMessage += ` (${result.sessionValidation.reason})`;
+        }
+
+        // Show session statistics for debugging if available
+        if (result.sessionStats) {
+          console.log('Session statistics:', result.sessionStats);
+        }
+
+        this.showError(errorMessage);
+        console.log('=== REVERT TO MESSAGE UI END ===');
       }
     } catch (error) {
+      console.error('=== REVERT TO MESSAGE UI ERROR ===');
       console.error('Failed to revert:', error);
-      this.showError('Failed to revert to message');
+      console.error('Stack trace:', error.stack);
+      console.error('Error context:', {
+        sessionId,
+        messageId,
+        errorType: error.name,
+        errorMessage: error.message
+      });
+
+      // Provide more specific error messages
+      if (error.message.includes('network') || error.message.includes('fetch')) {
+        this.showError('Network error: Unable to communicate with the backend');
+      } else if (error.message.includes('timeout')) {
+        this.showError('Operation timed out: Please try again');
+      } else {
+        this.showError(`Failed to revert to message: ${error.message}`);
+      }
+
+      console.log('=== REVERT TO MESSAGE UI END ===');
     }
   }
 
@@ -676,9 +773,17 @@ class MessageComponent {
       console.log('=== REVERT CHANGES DEBUG START ===');
       console.log('Session ID:', sessionId);
       console.log('User Message ID:', userMessageId);
-      
+
+      // Enhanced parameter validation
+      if (!sessionId || !userMessageId) {
+        console.error('Invalid parameters for revert operation');
+        this.showError('Invalid session or message information');
+        return;
+      }
+
       // Get the current session to find all messages
-      const currentSession = this.sessionManager.getSession(sessionId);
+      // **Fetch latest session context from main process to avoid stale data**
+      const currentSession = await window.electronAPI.getSessionContext(sessionId);
       if (!currentSession || !currentSession.messages) {
         console.log('No session found or no messages in session');
         this.showError('No conversation found to revert');
@@ -686,7 +791,12 @@ class MessageComponent {
       }
 
       console.log('Session found with', currentSession.messages.length, 'messages');
-      console.log('Session messages:', currentSession.messages.map(m => ({ id: m.id, type: m.type, content: typeof m.content === 'string' ? m.content.substring(0, 50) + '...' : `[${m.content?.length || 0} blocks]` })));
+      console.log('Session messages:', currentSession.messages.map(m => ({
+        id: m.id,
+        type: m.type,
+        timestamp: m.timestamp,
+        content: typeof m.content === 'string' ? m.content.substring(0, 50) + '...' : `[${m.content?.length || 0} blocks]`
+      })));
 
       // Find the next assistant message after the user's message that has file changes
       const targetAssistantMessage = await this.findNextAssistantMessageWithChanges(
@@ -697,21 +807,55 @@ class MessageComponent {
 
       if (targetAssistantMessage) {
         console.log('Found target assistant message:', targetAssistantMessage.id);
+        console.log('Target message timestamp:', targetAssistantMessage.timestamp);
         console.log('=== REVERT CHANGES DEBUG END ===');
+
         // Revert to before this assistant message's changes
         await this.revertToMessage(sessionId, targetAssistantMessage.id);
       } else {
         console.log('No target assistant message found with file changes');
+
+        // Enhanced debugging: check if there are any assistant messages at all after the user message
+        const userMessageIndex = currentSession.messages.findIndex(m => m.id === userMessageId);
+        if (userMessageIndex >= 0) {
+          const subsequentMessages = currentSession.messages.slice(userMessageIndex + 1);
+          const assistantMessages = subsequentMessages.filter(m => m.type === 'assistant');
+          console.log(`Found ${assistantMessages.length} assistant messages after user message`);
+
+          if (assistantMessages.length > 0) {
+            console.log('Assistant messages found but none have file changes');
+            this.showError('No file changes were made in the following conversation turns.');
+          } else {
+            console.log('No assistant messages found after user message');
+            this.showError('No assistant responses found after this message to revert from.');
+          }
+        } else {
+          console.error('User message not found in session');
+          this.showError('Could not locate the specified message in the conversation.');
+        }
+
         console.log('=== REVERT CHANGES DEBUG END ===');
-        // No file changes found to revert - show informative message instead of error
-        console.log('No subsequent file changes found to revert in session', sessionId);
-        this.showError('No file changes were made in the following turn to restore from.');
       }
     } catch (error) {
       console.error('=== REVERT CHANGES DEBUG ERROR ===');
       console.error('Failed to revert changes after message:', error);
+      console.error('Stack trace:', error.stack);
+      console.error('Error context:', {
+        sessionId,
+        userMessageId,
+        errorType: error.name,
+        errorMessage: error.message
+      });
       console.error('=== REVERT CHANGES DEBUG END ===');
-      this.showError('Failed to revert file changes');
+
+      // Provide more specific error messages based on error type
+      if (error.message.includes('session')) {
+        this.showError('Session error: Unable to access conversation data');
+      } else if (error.message.includes('message')) {
+        this.showError('Message error: Unable to locate the specified message');
+      } else {
+        this.showError(`Failed to revert file changes: ${error.message}`);
+      }
     }
   }
 
@@ -848,7 +992,7 @@ class MessageComponent {
         sendBtnVisible: !streaming,
         stopBtnVisible: streaming
       });
-      
+
       if (streaming) {
         this.sendBtn.style.display = 'none';
         this.stopBtn.style.display = 'flex';
@@ -1255,8 +1399,6 @@ class MessageComponent {
     return (position & Node.DOCUMENT_POSITION_FOLLOWING) !== 0;
   }
 
-
-
   // Find the latest (most recent) assistant message that made file changes
   async findLatestAssistantMessageWithChanges(allMessages, sessionId) {
     if (!allMessages || !Array.isArray(allMessages)) {
@@ -1293,7 +1435,7 @@ class MessageComponent {
     console.log('=== FIND ASSISTANT MESSAGE DEBUG START ===');
     console.log('Looking for user message ID:', userMessageId);
     console.log('Total messages to search:', allMessages?.length || 0);
-    
+
     if (!allMessages || !Array.isArray(allMessages)) {
       console.log('No messages array provided');
       return null;
@@ -1301,7 +1443,7 @@ class MessageComponent {
 
     const userMessageIndex = allMessages.findIndex(m => m.id === userMessageId);
     console.log('User message index:', userMessageIndex);
-    
+
     if (userMessageIndex === -1) {
       console.log('User message not found for revert check');
       console.log('Available message IDs:', allMessages.map(m => m.id));
@@ -1316,13 +1458,13 @@ class MessageComponent {
     for (let i = userMessageIndex + 1; i < allMessages.length; i++) {
       const message = allMessages[i];
       console.log(`Checking message ${i}:`, { id: message?.id, type: message?.type });
-      
+
       if (message && message.type === 'assistant' && message.id) {
         try {
           console.log('Checking file changes for assistant message:', message.id);
           const hasChanges = await window.electronAPI.hasFileChanges(sessionId, message.id);
           console.log('HasFileChanges result for', message.id, ':', hasChanges);
-          
+
           if (hasChanges) {
             console.log('Found assistant message with file changes:', message.id);
             console.log('=== FIND ASSISTANT MESSAGE DEBUG END ===');
@@ -1330,6 +1472,33 @@ class MessageComponent {
           }
         } catch (error) {
           console.error('Error checking file changes for assistant message:', message.id, error);
+
+          // For robustness, try to find checkpoints using a broader search
+          // This handles cases where message IDs might have been updated after checkpoint creation
+          try {
+            console.log('Trying broad checkpoint search for session:', sessionId);
+            const allCheckpoints = await window.electronAPI.getAllCheckpointsForSession(sessionId);
+            console.log('Found checkpoints in session:', allCheckpoints?.length || 0);
+
+            if (allCheckpoints && allCheckpoints.length > 0) {
+              // Check if any checkpoint was created around this time period
+              const messageTimestamp = new Date(message.timestamp);
+              const recentCheckpoints = allCheckpoints.filter(cp => {
+                const checkpointTime = new Date(cp.ts);
+                const timeDiff = Math.abs(checkpointTime - messageTimestamp);
+                return timeDiff < 60000; // Within 1 minute
+              });
+
+              if (recentCheckpoints.length > 0) {
+                console.log('Found recent checkpoints, assuming this message has changes:', message.id);
+                console.log('=== FIND ASSISTANT MESSAGE DEBUG END ===');
+                return message;
+              }
+            }
+          } catch (broadSearchError) {
+            console.error('Broad checkpoint search also failed:', broadSearchError);
+          }
+
           // Continue checking other messages
         }
       }
@@ -1453,6 +1622,87 @@ class MessageComponent {
     if (indicator) {
       indicator.remove();
     }
+  }
+
+    // Update temporary message ID with real UUID from backend
+  updateUserMessageId(realMessageId) {
+    if (!this.pendingMessageUpdate || !this.messagesContainer || !realMessageId) {
+      console.log('Cannot update message ID: missing pendingUpdate, messagesContainer, or realMessageId');
+      return;
+    }
+
+    console.log('=== UPDATE USER MESSAGE ID DEBUG START ===');
+    console.log('Updating temp ID:', this.pendingMessageUpdate.tempId, 'to real ID:', realMessageId);
+
+    // Validate that the real message ID looks like a UUID
+    const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidPattern.test(realMessageId)) {
+      console.error('Real message ID does not look like a valid UUID:', realMessageId);
+      this.pendingMessageUpdate = null;
+      console.log('=== UPDATE USER MESSAGE ID DEBUG END ===');
+      return;
+    }
+
+    // Find the message element with the temporary ID
+    const tempElement = this.messagesContainer.querySelector(`[data-temp-id="${this.pendingMessageUpdate.tempId}"]`);
+
+    if (tempElement) {
+      console.log('Found temp message element, updating ID and actions');
+
+      // Check if an element with the target ID already exists (avoid duplicates)
+      const existingElement = this.messagesContainer.querySelector(`#message-${realMessageId}`);
+      if (existingElement && existingElement !== tempElement) {
+        console.warn('Element with real message ID already exists, removing temp element');
+        tempElement.remove();
+        this.pendingMessageUpdate = null;
+        console.log('=== UPDATE USER MESSAGE ID DEBUG END ===');
+        return;
+      }
+
+      // Update the element ID
+      tempElement.id = `message-${realMessageId}`;
+
+      // Remove the temporary data attribute
+      tempElement.removeAttribute('data-temp-id');
+
+      // Update the message actions to use the real ID
+      const actionsContainer = tempElement.querySelector('.message-actions');
+      if (actionsContainer) {
+        const sessionId = this.sessionManager.getCurrentSessionId();
+        actionsContainer.innerHTML = this.createMessageActions({ id: realMessageId, type: 'user' }, sessionId)
+          .replace('<div class="message-actions">', '')
+          .replace('</div>', '');
+        console.log('Updated message actions with real ID');
+      }
+
+      console.log('Successfully updated message element from temp ID to real ID');
+    } else {
+      console.warn('Could not find message element with temp ID:', this.pendingMessageUpdate.tempId);
+
+      // Try to find by content as a fallback
+      const allUserMessages = this.messagesContainer.querySelectorAll('.conversation-turn.user');
+      for (const element of allUserMessages) {
+        const messageContent = element.querySelector('.message-content');
+        if (messageContent && messageContent.textContent.trim() === this.pendingMessageUpdate.content.trim()) {
+          console.log('Found message by content match, updating ID');
+          element.id = `message-${realMessageId}`;
+          element.removeAttribute('data-temp-id');
+
+          const actionsContainer = element.querySelector('.message-actions');
+          if (actionsContainer) {
+            const sessionId = this.sessionManager.getCurrentSessionId();
+            actionsContainer.innerHTML = this.createMessageActions({ id: realMessageId, type: 'user' }, sessionId)
+              .replace('<div class="message-actions">', '')
+              .replace('</div>', '');
+          }
+          break;
+        }
+      }
+    }
+
+    // Clear the pending update
+    this.pendingMessageUpdate = null;
+    console.log('=== UPDATE USER MESSAGE ID DEBUG END ===');
   }
 }
 
