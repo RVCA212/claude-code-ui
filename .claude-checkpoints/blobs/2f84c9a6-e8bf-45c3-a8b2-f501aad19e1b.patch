@@ -1,0 +1,23 @@
+Index: README.md
+===================================================================
+--- README.md	before
++++ README.md	after
+@@ -108,17 +108,5 @@
+ │   └── fonts/          # Custom font files
+ ├── package.json        # Project dependencies and scripts
+ ├── tailwind.config.js  # Tailwind CSS configuration
+ └── tsconfig.json       # TypeScript configuration
+-```
+-│   ├── global.css      # Global CSS styles
+-│   ├── layout.tsx      # Main application layout
+-│   ├── page.tsx        # Home/landing page
+-│   ├── projects/       # Projects showcase page
+-│   └── other folders   # Additional application modules
+-├── public/             # Static assets
+-│   ├── blog-images/    # Blog post images
+-│   └── fonts/          # Custom font files
+-├── package.json        # Project dependencies and scripts
+-├── tailwind.config.js  # Tailwind CSS configuration
+-└── tsconfig.json       # TypeScript configuration
+ ```
+\ No newline at end of file

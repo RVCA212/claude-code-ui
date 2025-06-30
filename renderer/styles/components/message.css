@@ -1187,6 +1187,11 @@
 .diff-line-removed {
   background-color: rgba(var(--color-diff-remove-rgb), 0.1);
 }
+.diff-line-skipped {
+  background-color: var(--color-secondary);
+  color: var(--color-text-secondary);
+  font-style: italic;
+}
 .diff-line-empty .diff-line-content {
   background-color: rgba(var(--color-text-secondary), 0.05);
 }
@@ -1218,6 +1223,11 @@
 .diff-unified .diff-line-removed .diff-line-prefix {
   background-color: rgba(var(--color-diff-remove-rgb), 0.2);
   color: var(--color-diff-remove);
+}
+
+.diff-unified .diff-line-skipped .diff-line-prefix {
+  background-color: var(--color-secondary);
+  color: var(--color-text-secondary);
 }
 
 .input-area.welcoming #messageInput {
@@ -1350,4 +1360,479 @@
   white-space: pre-wrap;
   overflow-x: auto;
   color: var(--color-text);
+}
+
+/* ============================================================================
+   Enhanced Checkpoint/Revert UI Styling
+   ============================================================================ */
+
+/* Enhanced invalidated/dimmed message styling with smooth transitions */
+.conversation-turn.invalidated {
+  transition: all var(--duration-slow) var(--ease-standard);
+  opacity: 0.6;
+  filter: grayscale(70%) blur(0.5px);
+  position: relative;
+  pointer-events: auto;
+  cursor: pointer;
+  border-radius: var(--radius-base);
+  margin: var(--space-8) 0;
+}
+
+.conversation-turn.invalidated:hover {
+  opacity: 0.8;
+  filter: grayscale(50%) blur(0px);
+  transform: translateY(-1px);
+  background-color: rgba(var(--color-primary-rgb), 0.03);
+  box-shadow: 0 2px 8px rgba(var(--color-primary-rgb), 0.1);
+}
+
+/* Enhanced unrevert zone - makes entire invalidated area interactive */
+.invalidated-zone {
+  position: relative;
+  background: linear-gradient(180deg,
+    rgba(var(--color-warning-rgb), 0.02) 0%,
+    rgba(var(--color-warning-rgb), 0.05) 100%);
+  border: 2px dashed transparent;
+  border-radius: var(--radius-lg);
+  margin: var(--space-12) 0;
+  padding: var(--space-16);
+  cursor: pointer;
+  transition: all var(--duration-standard) var(--ease-standard);
+  min-height: 60px;
+}
+
+.invalidated-zone:hover {
+  background: linear-gradient(180deg,
+    rgba(var(--color-primary-rgb), 0.05) 0%,
+    rgba(var(--color-primary-rgb), 0.08) 100%);
+  border-color: rgba(var(--color-primary-rgb), 0.3);
+  box-shadow: 0 4px 16px rgba(var(--color-primary-rgb), 0.1);
+  transform: translateY(-2px);
+}
+
+/* Enhanced unrevert area feedback with clear call-to-action */
+.invalidated-zone::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: repeating-linear-gradient(
+    45deg,
+    transparent,
+    transparent 8px,
+    rgba(var(--color-warning-rgb), 0.03) 8px,
+    rgba(var(--color-warning-rgb), 0.03) 16px
+  );
+  border-radius: var(--radius-lg);
+  opacity: 0;
+  transition: opacity var(--duration-standard) var(--ease-standard);
+  pointer-events: none;
+}
+
+.invalidated-zone:hover::before {
+  opacity: 1;
+}
+
+.invalidated-zone::after {
+  content: "🔄 Click anywhere here to restore all file changes";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-hover) 100%);
+  color: var(--color-btn-primary-text);
+  padding: var(--space-12) var(--space-20);
+  border-radius: var(--radius-lg);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  opacity: 0;
+  pointer-events: none;
+  transition: all var(--duration-standard) var(--ease-standard);
+  white-space: nowrap;
+  box-shadow: 0 4px 16px rgba(var(--color-primary-rgb), 0.3);
+  z-index: 10;
+}
+
+.invalidated-zone:hover::after {
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1.02);
+}
+
+/* Enhanced invalidated message styling within the zone */
+.invalidated-zone .conversation-turn.invalidated {
+  background: rgba(var(--color-background-rgb), 0.8);
+  backdrop-filter: blur(2px);
+  border: 1px solid rgba(var(--color-border-rgb), 0.5);
+  margin: var(--space-8);
+}
+
+.invalidated-zone .conversation-turn.invalidated:hover {
+  background: rgba(var(--color-background-rgb), 0.9);
+  border-color: rgba(var(--color-primary-rgb), 0.3);
+}
+
+/* Zone separator - visual break between restored and invalidated content */
+.checkpoint-separator {
+  display: flex;
+  align-items: center;
+  margin: var(--space-20) 0;
+  opacity: 0;
+  animation: fade-in-separator var(--duration-standard) var(--ease-standard) forwards;
+}
+
+@keyframes fade-in-separator {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.checkpoint-separator::before,
+.checkpoint-separator::after {
+  content: '';
+  flex: 1;
+  height: 2px;
+  background: linear-gradient(90deg,
+    transparent 0%,
+    rgba(var(--color-warning-rgb), 0.3) 20%,
+    rgba(var(--color-warning-rgb), 0.6) 50%,
+    rgba(var(--color-warning-rgb), 0.3) 80%,
+    transparent 100%);
+}
+
+.checkpoint-separator-label {
+  padding: var(--space-8) var(--space-16);
+  background: var(--color-warning);
+  color: var(--color-btn-primary-text);
+  border-radius: var(--radius-full);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin: 0 var(--space-12);
+  box-shadow: 0 2px 8px rgba(var(--color-warning-rgb), 0.3);
+  white-space: nowrap;
+}
+
+/* Enhanced editable message container with prominent styling */
+.conversation-turn.message-editable {
+  background: linear-gradient(135deg,
+    rgba(var(--color-primary-rgb), 0.08) 0%,
+    rgba(var(--color-primary-rgb), 0.04) 100%);
+  border: 2px solid var(--color-primary);
+  border-radius: var(--radius-lg);
+  padding: var(--space-16);
+  margin: var(--space-16) 0;
+  position: relative;
+  transition: all var(--duration-standard) var(--ease-standard);
+  box-shadow: 0 4px 12px rgba(var(--color-primary-rgb), 0.15),
+              0 0 0 1px rgba(var(--color-primary-rgb), 0.2);
+}
+
+.conversation-turn.message-editable::before {
+  content: "";
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  right: -2px;
+  bottom: -2px;
+  background: linear-gradient(45deg, var(--color-primary), var(--color-primary-hover));
+  border-radius: var(--radius-lg);
+  z-index: -1;
+  opacity: 0.6;
+  animation: pulse-border 2s ease-in-out infinite;
+}
+
+@keyframes pulse-border {
+  0%, 100% { opacity: 0.6; transform: scale(1); }
+  50% { opacity: 0.8; transform: scale(1.02); }
+}
+
+/* Enhanced editable textarea styling */
+.editable-message {
+  width: 100%;
+  min-height: 80px;
+  padding: var(--space-16);
+  border: 1px solid rgba(var(--color-primary-rgb), 0.3);
+  border-radius: var(--radius-base);
+  background: var(--color-background);
+  font-family: var(--font-family-base);
+  font-size: var(--font-size-base);
+  line-height: var(--line-height-normal);
+  color: var(--color-text);
+  resize: vertical;
+  outline: none;
+  transition: all var(--duration-fast) var(--ease-standard);
+  box-shadow: inset 0 2px 4px rgba(var(--color-primary-rgb), 0.1);
+}
+
+.editable-message:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(var(--color-primary-rgb), 0.1),
+              inset 0 2px 4px rgba(var(--color-primary-rgb), 0.15);
+}
+
+/* Enhanced send button for edited messages */
+.send-edited-btn {
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-hover) 100%);
+  color: var(--color-btn-primary-text);
+  border: none;
+  border-radius: var(--radius-base);
+  padding: var(--space-12) var(--space-20);
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-standard);
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  margin-top: var(--space-12);
+  box-shadow: 0 2px 8px rgba(var(--color-primary-rgb), 0.3);
+  position: relative;
+  overflow: hidden;
+}
+
+.send-edited-btn::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg,
+    transparent,
+    rgba(255, 255, 255, 0.2),
+    transparent);
+  transition: left var(--duration-fast) var(--ease-standard);
+}
+
+.send-edited-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(var(--color-primary-rgb), 0.4);
+}
+
+.send-edited-btn:hover::before {
+  left: 100%;
+}
+
+.send-edited-btn:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(var(--color-primary-rgb), 0.3);
+}
+
+/* Instructional overlay for revert state */
+.revert-instructions {
+  position: relative;
+  background: rgba(var(--color-info-rgb), 0.1);
+  border: 1px solid rgba(var(--color-info-rgb), 0.3);
+  border-radius: var(--radius-base);
+  padding: var(--space-12);
+  margin: var(--space-8) 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-info);
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  animation: fade-in var(--duration-standard) var(--ease-standard);
+}
+
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.revert-instructions .codicon {
+  font-size: var(--font-size-base);
+  color: var(--color-info);
+}
+
+/* Enhanced revert button styling */
+.revert-btn {
+  background: rgba(var(--color-warning-rgb), 0.1);
+  border: 1px solid rgba(var(--color-warning-rgb), 0.3);
+  color: var(--color-warning);
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+  padding: var(--space-6) var(--space-12);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  border-radius: var(--radius-base);
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-standard);
+  -webkit-app-region: no-drag;
+}
+
+.revert-btn:hover {
+  background: rgba(var(--color-warning-rgb), 0.2);
+  border-color: rgba(var(--color-warning-rgb), 0.5);
+  color: var(--color-warning);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(var(--color-warning-rgb), 0.2);
+}
+
+.revert-btn svg {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  color: currentColor;
+  transition: transform var(--duration-fast) var(--ease-standard);
+}
+
+.revert-btn:hover svg {
+  transform: rotate(-15deg);
+}
+
+/* Enhanced message actions container */
+.message-actions {
+  margin-top: var(--space-8);
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  opacity: 0.7;
+  transition: opacity var(--duration-fast) var(--ease-standard);
+}
+
+.conversation-turn:hover .message-actions {
+  opacity: 1;
+}
+
+/* Smooth transitions for all conversation elements */
+.conversation-turn {
+  transition: all var(--duration-fast) var(--ease-standard);
+}
+
+.conversation-turn:hover {
+  transform: translateY(-1px);
+}
+
+/* Special styling for revert state in compact mode */
+.messages-container.compact-mode .conversation-turn.message-editable {
+  margin: var(--space-8) 0;
+  padding: var(--space-12);
+}
+
+.messages-container.compact-mode .revert-instructions {
+  padding: var(--space-8);
+  font-size: var(--font-size-xs);
+}
+
+.messages-container.compact-mode .invalidated-zone {
+  margin: var(--space-8) 0;
+  padding: var(--space-12);
+  min-height: 40px;
+}
+
+.messages-container.compact-mode .invalidated-zone::after {
+  font-size: var(--font-size-xs);
+  padding: var(--space-8) var(--space-12);
+}
+
+/* Animation classes for smooth edit mode transitions */
+.conversation-turn.entering-edit-mode {
+  animation: enter-edit-mode var(--duration-standard) var(--ease-standard);
+}
+
+.conversation-turn.exiting-edit-mode {
+  animation: exit-edit-mode var(--duration-fast) var(--ease-standard);
+}
+
+@keyframes enter-edit-mode {
+  from {
+    opacity: 0.8;
+    transform: scale(0.98);
+    background: var(--color-background);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+    background: linear-gradient(135deg,
+      rgba(var(--color-primary-rgb), 0.08) 0%,
+      rgba(var(--color-primary-rgb), 0.04) 100%);
+  }
+}
+
+@keyframes exit-edit-mode {
+  from {
+    opacity: 1;
+    transform: scale(1);
+    background: linear-gradient(135deg,
+      rgba(var(--color-primary-rgb), 0.08) 0%,
+      rgba(var(--color-primary-rgb), 0.04) 100%);
+  }
+  to {
+    opacity: 0.9;
+    transform: scale(0.99);
+    background: var(--color-background);
+  }
+}
+
+/* Enhanced keyboard shortcut hints */
+.editable-message-shortcuts {
+  position: absolute;
+  bottom: -28px;
+  right: 0;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  opacity: 0.7;
+  background: var(--color-surface);
+  padding: var(--space-2) var(--space-6);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  font-family: var(--font-family-mono);
+}
+
+/* Enhanced focus indicator for editable messages */
+.conversation-turn.message-editable:focus-within {
+  box-shadow: 0 4px 20px rgba(var(--color-primary-rgb), 0.25),
+              0 0 0 3px rgba(var(--color-primary-rgb), 0.15);
+}
+
+/* Global checkpoint state indicator */
+.messages-container.has-active-checkpoint {
+  position: relative;
+}
+
+.messages-container.has-active-checkpoint::before {
+  content: "📍 Checkpoint Active - Click in gray area below to restore changes";
+  position: sticky;
+  top: 0;
+  display: block;
+  background: linear-gradient(135deg,
+    rgba(var(--color-warning-rgb), 0.1) 0%,
+    rgba(var(--color-warning-rgb), 0.15) 100%);
+  color: var(--color-warning);
+  padding: var(--space-8) var(--space-16);
+  border-radius: var(--radius-base);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  text-align: center;
+  margin-bottom: var(--space-12);
+  border: 1px solid rgba(var(--color-warning-rgb), 0.3);
+  z-index: 5;
+  animation: slide-down var(--duration-standard) var(--ease-standard);
+}
+
+@keyframes slide-down {
+  from { opacity: 0; transform: translateY(-100%); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Enhanced Undo Revert Button */
+.undo-revert-btn {
+  background: rgba(var(--color-success-rgb), 0.15) !important;
+  border-color: rgba(var(--color-success-rgb), 0.4) !important;
+  color: var(--color-success) !important;
+}
+
+.undo-revert-btn:hover {
+  background: rgba(var(--color-success-rgb), 0.25) !important;
+  border-color: rgba(var(--color-success-rgb), 0.6) !important;
+  color: var(--color-success) !important;
+  transform: translateY(-1px) scale(1.02);
+  box-shadow: 0 4px 12px rgba(var(--color-success-rgb), 0.2);
+}
+
+.undo-revert-btn:hover svg {
+  transform: scale(-1.1, 1.1) rotate(15deg);
 }

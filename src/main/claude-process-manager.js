@@ -457,9 +457,19 @@ class ClaudeProcessManager {
                     );
 
                     if (toolCall) {
+                        console.log(`[Checkpoint Debug] Found matching tool_use block:`, toolCall);
                         toolCall.output = content;
                         if (is_error) {
                             toolCall.status = 'failed';
+                            console.log(`[Checkpoint Debug] Tool failed.`);
+                        } else {
+                            console.log(`[Checkpoint Debug] Tool succeeded.`);
+                            // If a file modification tool ran successfully, update the pending checkpoint.
+                            const isFileModTool = ['Edit', 'MultiEdit', 'Write', 'NotebookEdit'].includes(toolCall.name);
+                            if (isFileModTool) {
+                                console.log(`Tool ${toolCall.name} succeeded, triggering checkpoint update.`);
+                                this.updatePendingCheckpointsForMessage(sessionId, assistantMessage.id);
+                            }
                         }
                         console.log(`Updated tool_use ${tool_use_id} with result.`);
 
@@ -469,17 +479,35 @@ class ClaudeProcessManager {
                             isComplete: false,
                             cwd: cwd
                         });
+                    } else {
+                        console.log(`[Checkpoint Debug] Could not find matching tool_use block for id ${tool_use_id}.`);
+                        console.log(`[Checkpoint Debug] Current assistantMessage.content:`, JSON.stringify(assistantMessage.content));
                     }
                 }
             } else if (parsed.type === 'message' && parsed.role === 'user') {
               console.log('Received user message echo:', parsed);
             } else if (parsed.type === 'result') {
-              console.log('Received result message:', parsed);
+              console.log('Received final result message. Stream is complete.');
 
-              // Handle tool execution results and update checkpoints with post-edit content
-              if (parsed.tool_call_id) {
-                await this.handleToolResult(parsed, sessionId, assistantMessage.id);
-              }
+              // The `result` message signals the end of the interaction.
+              // We can now send the final, complete message to the renderer.
+
+              // Process any remaining buffer content before finalizing
+              this.processRemainingBuffer(jsonBuffer, assistantMessage);
+              jsonBuffer = ''; // Clear buffer since we're done
+
+              // The `assistantMessage` object has been accumulated through the stream.
+              // We can now mark it as complete.
+
+              console.log('Sending final message to renderer:', assistantMessage.id);
+              this.mainWindow.webContents.send('message-stream', {
+                sessionId,
+                message: assistantMessage,
+                isComplete: true,
+                cwd: cwd
+              });
+
+              // The 'close' event will handle saving the final state and resolving the promise.
             } else {
               console.log('Unhandled message type:', parsed.type, 'with role:', parsed.role);
             }
@@ -550,7 +578,7 @@ class ClaudeProcessManager {
           if (code === 143 && finalizeResult.savedMessage) {
             console.log('Process was interrupted (SIGTERM), but assistant message was saved:', finalizeResult.savedMessage.id);
             resolve(finalizeResult.savedMessage);
-          } else {
+          } else if (code !== 0) { // Don't reject if the process was already handled (e.g., streaming result)
             reject(new Error(`Claude process failed with code ${code}: ${errorOutput}`));
           }
         }
@@ -715,25 +743,14 @@ class ClaudeProcessManager {
 
   // Handle tool execution results and update checkpoints with post-edit content
   async handleToolResult(resultMessage, sessionId, messageId) {
-    try {
-      console.log('Processing tool result for checkpoint update:', resultMessage.tool_call_id);
-
-      // Look for file modification tool results that need checkpoint updates
-      if (resultMessage.content && Array.isArray(resultMessage.content)) {
-        for (const block of resultMessage.content) {
-          if (block.type === 'text' && block.text) {
-            // Parse the result text to see if it indicates successful file operations
-            await this.updateCheckpointsFromToolResult(block.text, sessionId, messageId);
-          }
-        }
-      }
-    } catch (error) {
-      console.error('Failed to handle tool result for checkpoint update:', error);
-    }
+    // This method is now deprecated, as checkpoint updates are handled directly
+    // when a tool_result is processed in the stdout stream.
+    // Keeping it here temporarily to avoid breaking any other potential call sites,
+    // but it should be removed in a future refactor.
   }
 
   // Update checkpoints based on tool result information
-  async updateCheckpointsFromToolResult(resultText, sessionId, messageId) {
+  async updatePendingCheckpointsForMessage(sessionId, messageId) {
     try {
       // Get all pending checkpoints for this session and message that need post-edit content
       const pendingCheckpoints = await this.checkpointManager.getPendingCheckpoints(sessionId, messageId);
@@ -758,6 +775,12 @@ class ClaudeProcessManager {
     } catch (error) {
       console.error('Failed to update checkpoints from tool result:', error);
     }
+  }
+
+  // Update checkpoints based on tool result information
+  async updateCheckpointsFromToolResult(resultText, sessionId, messageId) {
+    // This method is deprecated and renamed to updatePendingCheckpointsForMessage
+    await this.updatePendingCheckpointsForMessage(sessionId, messageId);
   }
 
   // Process any remaining buffer content before finalizing

@@ -8,10 +8,10 @@
     "dev": "electron . --dev",
     "build": "electron-builder",
     "install-claude": "npm install -g @anthropic-ai/claude-code",
-    "rebuild": "electron-builder install-app-deps --arch=arm64",
-    "postinstall": "electron-builder install-app-deps --arch=arm64",
+    "rebuild": "electron-builder install-app-deps",
+    "postinstall": "electron-builder install-app-deps",
     "clean": "rm -rf dist",
-    "build:mac": "npm run clean && electron-builder --mac",
+    "build:mac": "npm run clean && electron-builder --mac --universal",
     "notarize": "node scripts/notarize.js",
     "dist": "npm run build:mac"
   },
@@ -56,6 +56,7 @@
       "renderer/**/*",
       "src/**/*",
       "node_modules/**/*",
+      "assets/**/*",
       "package.json"
     ],
     "mac": {
@@ -68,7 +69,8 @@
         "LSUIElement": false,
         "LSBackgroundOnly": false
       },
-      "gatekeeperAssess": false
+      "gatekeeperAssess": false,
+      "mergeASARs": false
     },
     "win": {
       "target": "nsis",

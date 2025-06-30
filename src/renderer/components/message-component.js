@@ -5,6 +5,7 @@ class MessageComponent {
     this.isStreaming = false;
     this.editingMessageId = null;
     this.currentRevertMessageId = null;
+    this.userMessageIdForCurrentRevert = null;
     this.isDraftSession = false;
 
     // File mention state
@@ -534,39 +535,42 @@ class MessageComponent {
   }
 
   createMessageActions(message, sessionId) {
-    const isReverted = this.currentRevertMessageId === message.id;
-
-    if (isReverted) {
-      // Show send button for reverted/editable message
-      return `
-        <div class="message-actions">
-          <button class="send-edited-btn"
-                  onclick="window.messageComponent.sendEditedMessage('${sessionId}', '${message.id}')"
-                  title="Send edited message to continue conversation">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="m22 2-7 20-4-9-9-4 20-7z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-            Send
-          </button>
-        </div>
-      `;
-    } else if (message.type === 'user') {
-      // Always show the Restore checkpoint button so the user can attempt an undo at any time.
-      return `
-        <div class="message-actions">
-          <button class="revert-btn"
-                  onclick="window.messageComponent.revertChangesAfterMessage('${sessionId}', '${message.id}')"
-                  title="Restore checkpoint – revert file changes from the next assistant message">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M3 7v6h6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-              <path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-            Restore checkpoint
-          </button>
-        </div>
-      `;
+    if (message.type === 'user') {
+      if (this.currentRevertMessageId && this.userMessageIdForCurrentRevert === message.id) {
+        // Show "Undo Revert" button
+        return `
+          <div class="message-actions">
+            <button class="revert-btn undo-revert-btn"
+                    onclick="window.messageComponent.unrevertFromMessage('${sessionId}', '${this.currentRevertMessageId}')"
+                    title="Undo revert - re-apply the file changes">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <g transform="scale(-1, 1) translate(-24, 0)">
+                  <path d="M3 7v6h6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                  <path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </g>
+              </svg>
+              Undo Revert
+            </button>
+          </div>
+        `;
+      } else {
+        // Show "Restore checkpoint" button
+        return `
+          <div class="message-actions">
+            <button class="revert-btn"
+                    onclick="window.messageComponent.revertChangesAfterMessage('${sessionId}', '${message.id}')"
+                    title="Restore checkpoint – revert file changes from the next assistant message">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M3 7v6h6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+              Restore checkpoint
+            </button>
+          </div>
+        `;
+      }
     } else {
-      // No actions for assistant messages or other message types
+      // No actions for assistant messages.
       return '<div class="message-actions"></div>';
     }
   }
@@ -707,9 +711,33 @@ class MessageComponent {
 
         // Update UI state
         this.currentRevertMessageId = messageId;
+
+        // Find and store the corresponding user message ID
+        const userMessage = await this.findUserMessageForRevertedAssistant(messageId);
+        if (userMessage) {
+          this.userMessageIdForCurrentRevert = userMessage.id;
+          console.log(`Associated user message for revert: ${this.userMessageIdForCurrentRevert}`);
+        } else {
+          this.userMessageIdForCurrentRevert = null;
+          console.warn(`Could not find user message for reverted assistant message: ${messageId}`);
+        }
+
         this.markMessagesAsInvalidated(messageId);
-        this.makeMessageEditable(messageId);
-        this.setupUnrevertClickHandler();
+
+        // After setting the state, we must manually re-render the actions on the user message
+        // to show the "Undo Revert" button. This is crucial for UI consistency.
+        if (this.userMessageIdForCurrentRevert) {
+            const userMessageElement = document.getElementById(`message-${this.userMessageIdForCurrentRevert}`);
+            if (userMessageElement) {
+                console.log(`✅ Forcing UI update for 'Undo Revert' button on message: ${this.userMessageIdForCurrentRevert}`);
+                this.updateMessageActions(userMessageElement, this.userMessageIdForCurrentRevert);
+            } else {
+                console.warn(`Could not find user message element in DOM to update actions: ${this.userMessageIdForCurrentRevert}`);
+            }
+        }
+
+        // No longer making the assistant message editable.
+        // The clickable zone and new "Undo Revert" button handle the unrevert action.
 
         // Show success message with details
         const fileCount = result.revertedFiles?.length || 0;
@@ -860,52 +888,250 @@ class MessageComponent {
   }
 
   async unrevertFromMessage(sessionId, messageId) {
+    console.log('=== UNREVERT FROM MESSAGE UI START ===');
+    console.log('Parameters:', { sessionId, messageId });
+
     try {
+      // Enhanced parameter validation
+      if (!sessionId || !messageId) {
+        console.error('Invalid parameters for unrevert operation');
+        this.showError('Invalid session or message information');
+        return;
+      }
+
+      console.log('Calling backend unrevert operation...');
       const result = await window.electronAPI.unrevertFromMessage(sessionId, messageId);
+      console.log('Backend unrevert result:', result);
+
       if (result.success) {
+        console.log(`Successfully restored ${result.restoredFiles?.length || 0} files`);
+
+        const userMessageIdToUpdate = this.userMessageIdForCurrentRevert; // Store before clearing state
+
+        // Update UI state
         this.currentRevertMessageId = null;
+        this.userMessageIdForCurrentRevert = null;
+
         this.unmarkMessagesAsInvalidated(messageId);
-        this.makeMessageNonEditable(messageId);
-        this.removeUnrevertClickHandler();
+
+        // Remove any remaining edit-related UI elements
+        this.removeInvalidatedZones();
+
+        // After clearing state, manually update the original user message's actions
+        // to show the "Restore checkpoint" button again.
+        if (userMessageIdToUpdate) {
+            const userMessageElement = document.getElementById(`message-${userMessageIdToUpdate}`);
+            if (userMessageElement) {
+                console.log(`✅ Forcing UI update for 'Restore checkpoint' button on message: ${userMessageIdToUpdate}`);
+                this.updateMessageActions(userMessageElement, userMessageIdToUpdate);
+            } else {
+                 console.warn(`Could not find user message element in DOM to restore actions: ${userMessageIdToUpdate}`);
+            }
+        }
+
+        // Show success message with details
+        const fileCount = result.restoredFiles?.length || 0;
+        const successMessage = result.message || `Successfully restored ${fileCount} files`;
+
+        // Could implement a success toast here
+        console.log('Unrevert operation completed successfully:', successMessage);
+
+        // If there were partial failures, log them
+        if (result.failedFiles && result.failedFiles.length > 0) {
+          console.warn('Some files failed to restore:', result.failedFiles);
+        }
+
+        console.log('=== UNREVERT FROM MESSAGE UI END ===');
       } else {
-        this.showError(result.error || 'Failed to unrevert');
+        console.error('Unrevert operation failed:', result.error);
+
+        // Provide enhanced error reporting
+        let errorMessage = result.error || 'Failed to unrevert';
+
+        // Add context from session validation if available
+        if (result.sessionValidation && !result.sessionValidation.valid) {
+          errorMessage += ` (${result.sessionValidation.reason})`;
+        }
+
+        // Show session statistics for debugging if available
+        if (result.sessionStats) {
+          console.log('Session statistics:', result.sessionStats);
+        }
+
+        this.showError(errorMessage);
+        console.log('=== UNREVERT FROM MESSAGE UI END ===');
       }
     } catch (error) {
+      console.error('=== UNREVERT FROM MESSAGE UI ERROR ===');
       console.error('Failed to unrevert:', error);
-      this.showError('Failed to unrevert from message');
+      console.error('Stack trace:', error.stack);
+      console.error('Error context:', {
+        sessionId,
+        messageId,
+        errorType: error.name,
+        errorMessage: error.message
+      });
+
+      // Provide more specific error messages
+      if (error.message.includes('network') || error.message.includes('fetch')) {
+        this.showError('Network error: Unable to communicate with the backend');
+      } else if (error.message.includes('timeout')) {
+        this.showError('Operation timed out: Please try again');
+      } else {
+        this.showError(`Failed to unrevert from message: ${error.message}`);
+      }
+
+      console.log('=== UNREVERT FROM MESSAGE UI END ===');
     }
   }
 
+  // Enhanced UI state management for checkpoints
   markMessagesAsInvalidated(messageId) {
     if (!this.messagesContainer) return;
 
     const messages = this.messagesContainer.querySelectorAll('.conversation-turn');
     let foundMessage = false;
+    const invalidatedMessages = [];
 
-    messages.forEach(messageElement => {
+    // First pass: find and collect invalidated messages
+    messages.forEach((messageElement, index) => {
       if (foundMessage) {
-        messageElement.classList.add('invalidated');
+        invalidatedMessages.push(messageElement);
       }
       if (messageElement.id === `message-${messageId}`) {
         foundMessage = true;
       }
     });
+
+    if (invalidatedMessages.length === 0) {
+      console.log('No subsequent messages found to invalidate. This is expected if the last message was reverted.');
+      // Even if nothing is invalidated, the UI for the button needs to update.
+      // This is handled separately in the `revertToMessage` function.
+      return;
+    }
+
+    // Add checkpoint state to messages container
+    this.messagesContainer.classList.add('has-active-checkpoint');
+
+    // Create visual separator between checkpoint and invalidated content
+    const separator = this.createCheckpointSeparator();
+    const firstInvalidated = invalidatedMessages[0];
+    firstInvalidated.parentNode.insertBefore(separator, firstInvalidated);
+
+    // Create invalidated zone container
+    const invalidatedZone = this.createInvalidatedZone();
+
+    // Move all invalidated messages into the zone
+    invalidatedMessages.forEach((messageElement, index) => {
+      setTimeout(() => {
+        messageElement.classList.add('invalidated');
+        invalidatedZone.appendChild(messageElement);
+      }, index * 50); // Stagger by 50ms per message
+    });
+
+    // Insert the invalidated zone after the separator
+    separator.parentNode.insertBefore(invalidatedZone, separator.nextSibling);
+
+    console.log(`Created invalidated zone with ${invalidatedMessages.length} messages`);
   }
 
   unmarkMessagesAsInvalidated(messageId) {
     if (!this.messagesContainer) return;
 
-    const messages = this.messagesContainer.querySelectorAll('.conversation-turn');
-    let foundMessage = false;
+    // Remove checkpoint state from messages container
+    this.messagesContainer.classList.remove('has-active-checkpoint');
 
-    messages.forEach(messageElement => {
-      if (foundMessage) {
-        messageElement.classList.remove('invalidated');
-      }
-      if (messageElement.id === `message-${messageId}`) {
-        foundMessage = true;
+    // Find and remove the invalidated zone
+    const invalidatedZone = this.messagesContainer.querySelector('.invalidated-zone');
+    const separator = this.messagesContainer.querySelector('.checkpoint-separator');
+
+    if (invalidatedZone) {
+      // Move all messages back to their original container
+      const invalidatedMessages = invalidatedZone.querySelectorAll('.conversation-turn.invalidated');
+
+      invalidatedMessages.forEach((messageElement, index) => {
+        setTimeout(() => {
+          messageElement.classList.remove('invalidated');
+          // Re-insert the message in the main container before the invalidated zone
+          this.messagesContainer.insertBefore(messageElement, invalidatedZone);
+        }, index * 30); // Faster restore animation
+      });
+
+      // Remove the zone and separator after a delay
+      setTimeout(() => {
+        if (invalidatedZone.parentNode) {
+          invalidatedZone.remove();
+        }
+        if (separator && separator.parentNode) {
+          separator.remove();
+        }
+      }, invalidatedMessages.length * 30 + 100);
+    }
+
+    console.log('Removed invalidated zone and restored messages');
+  }
+
+  // Create visual separator between checkpoint and invalidated content
+  createCheckpointSeparator() {
+    const separator = document.createElement('div');
+    separator.className = 'checkpoint-separator';
+    separator.innerHTML = `
+      <div class="checkpoint-separator-label">
+        📍 Checkpoint Restored
+      </div>
+    `;
+    return separator;
+  }
+
+  // Create interactive invalidated zone container
+  createInvalidatedZone() {
+    const zone = document.createElement('div');
+    zone.className = 'invalidated-zone';
+    zone.setAttribute('data-revert-message-id', this.currentRevertMessageId);
+
+    // Add click handler to the entire zone
+    zone.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+
+      const sessionId = this.sessionManager.getCurrentSessionId();
+      if (sessionId && this.currentRevertMessageId) {
+        console.log('Invalidated zone clicked - unreverting changes');
+        this.unrevertFromMessage(sessionId, this.currentRevertMessageId);
       }
     });
+
+    return zone;
+  }
+
+  // Remove unrevert zones and clean up
+  removeInvalidatedZones() {
+    if (!this.messagesContainer) return;
+
+    // Remove checkpoint state
+    this.messagesContainer.classList.remove('has-active-checkpoint');
+
+    // Remove all invalidated zones and separators
+    const zones = this.messagesContainer.querySelectorAll('.invalidated-zone');
+    const separators = this.messagesContainer.querySelectorAll('.checkpoint-separator');
+
+    zones.forEach(zone => zone.remove());
+    separators.forEach(separator => separator.remove());
+
+    console.log('Cleaned up all invalidated zones and separators');
+  }
+
+  // Add unrevert zones to invalidated messages for enhanced feedback (deprecated)
+  addUnrevertZones() {
+    // This method is now deprecated as we use the invalidated-zone container instead
+    console.log('addUnrevertZones is deprecated - using invalidated-zone container instead');
+  }
+
+  // Remove unrevert zones and clean up (deprecated)
+  removeUnrevertZones() {
+    // This method is now deprecated as we use the removeInvalidatedZones method instead
+    console.log('removeUnrevertZones is deprecated - using removeInvalidatedZones instead');
+    this.removeInvalidatedZones();
   }
 
   updateInputArea(context) {
@@ -1271,7 +1497,7 @@ class MessageComponent {
     return escapedFilename;
   }
 
-  // Make a message editable after revert
+  // Make a message editable after revert with enhanced UI feedback
   makeMessageEditable(messageId) {
     const messageElement = document.getElementById(`message-${messageId}`);
     if (!messageElement) return;
@@ -1282,27 +1508,76 @@ class MessageComponent {
     // Get the original text content
     const originalText = messageContent.textContent;
 
-    // Replace with editable textarea
-    messageContent.innerHTML = `
-      <textarea class="editable-message" id="edit-${messageId}" rows="3">${DOMUtils.escapeHTML(originalText)}</textarea>
+    // Add enhanced instructional element
+    const instructionsHTML = `
+      <div class="revert-instructions" id="revert-instructions-${messageId}">
+        <i class="codicon codicon-edit"></i>
+        <span>Edit your message below and click Send to continue the conversation, or click in the gray area below to restore all changes.</span>
+      </div>
     `;
 
-    // Add editable class to message for styling
+    // Replace with enhanced editable textarea
+    messageContent.innerHTML = `
+      ${instructionsHTML}
+      <textarea class="editable-message" id="edit-${messageId}"
+                placeholder="Edit your message..."
+                rows="3">${DOMUtils.escapeHTML(originalText)}</textarea>
+    `;
+
+    // Add editable class to message for enhanced styling
     messageElement.classList.add('message-editable');
+
+    // Add animation class for smooth transition
+    messageElement.classList.add('entering-edit-mode');
+    setTimeout(() => {
+      messageElement.classList.remove('entering-edit-mode');
+    }, 300);
 
     // Auto-resize the textarea and focus it
     const textarea = messageContent.querySelector('.editable-message');
     if (textarea) {
+      // Enhanced textarea setup
       DOMUtils.autoResizeTextarea(textarea);
-      textarea.focus();
-      textarea.addEventListener('input', () => DOMUtils.autoResizeTextarea(textarea));
+
+      // Focus with a slight delay for better UX
+      setTimeout(() => {
+        textarea.focus();
+        // Select all text for easy editing
+        textarea.select();
+      }, 100);
+
+      // Enhanced input handling
+      textarea.addEventListener('input', () => {
+        DOMUtils.autoResizeTextarea(textarea);
+        this.updateSendButtonState();
+      });
+
+      // Enhanced keyboard shortcuts
+      textarea.addEventListener('keydown', (e) => {
+        if (e.ctrlKey || e.metaKey) {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            this.sendEditedMessage(this.sessionManager.getCurrentSessionId(), messageId);
+          } else if (e.key === 'z') {
+            // Ctrl/Cmd+Z to unrevert
+            e.preventDefault();
+            this.unrevertFromMessage(this.sessionManager.getCurrentSessionId(), messageId);
+          }
+        }
+      });
     }
 
-    // Re-render the message actions to show send button
+    // Re-render the message actions to show enhanced send button
     this.updateMessageActions(messageElement, messageId);
+
+    // Scroll the editable message into view
+    messageElement.scrollIntoView({
+      behavior: 'smooth',
+      block: 'center'
+    });
   }
 
-  // Make a message non-editable (restore normal view)
+  // Make a message non-editable (restore normal view) with enhanced cleanup
   makeMessageNonEditable(messageId) {
     const messageElement = document.getElementById(`message-${messageId}`);
     if (!messageElement) return;
@@ -1314,14 +1589,23 @@ class MessageComponent {
     // Get the current text from textarea
     const currentText = textarea.value;
 
-    // Replace with normal text display
-    messageContent.innerHTML = DOMUtils.escapeHTML(currentText);
+    // Add exit animation
+    messageElement.classList.add('exiting-edit-mode');
 
-    // Remove editable class
-    messageElement.classList.remove('message-editable');
+    setTimeout(() => {
+      // Replace with normal text display
+      messageContent.innerHTML = DOMUtils.escapeHTML(currentText);
 
-    // Re-render the message actions to show restore button
-    this.updateMessageActions(messageElement, messageId);
+      // Remove all edit-related classes
+      messageElement.classList.remove('message-editable');
+      messageElement.classList.remove('exiting-edit-mode');
+
+      // Re-render the message actions to show restore button
+      this.updateMessageActions(messageElement, messageId);
+
+      // Clean up any remaining invalidated zones
+      this.removeInvalidatedZones();
+    }, 200);
   }
 
   // Update message actions for a specific message
@@ -1349,6 +1633,11 @@ class MessageComponent {
     }
 
     try {
+      // Clear revert state before sending, as this creates a new branch in the timeline
+      this.currentRevertMessageId = null;
+      this.userMessageIdForCurrentRevert = null;
+      this.removeInvalidatedZones();
+
       // Send the edited message while keeping files in reverted state
       // This allows Claude to process the message with the reverted codebase
       await this.proceedWithSendMessage(editedMessage, sessionId);
@@ -1359,75 +1648,22 @@ class MessageComponent {
     }
   }
 
-  // Set up click handler to unrevert when clicking below reverted message
+  // Enhanced setup for unrevert functionality - now deprecated as we use invalidated zones
   setupUnrevertClickHandler() {
-    if (this.unrevertClickHandler) {
-      this.removeUnrevertClickHandler();
-    }
-
-    this.unrevertClickHandler = (event) => {
-      if (!this.currentRevertMessageId) return;
-
-      // Check if click is on a message below the reverted one
-      const clickedMessage = event.target.closest('.conversation-turn');
-      if (!clickedMessage) return;
-
-      const revertedElement = document.getElementById(`message-${this.currentRevertMessageId}`);
-
-      if (revertedElement && this.isElementAfter(revertedElement, clickedMessage)) {
-        const sessionId = this.sessionManager.getCurrentSessionId();
-        this.unrevertFromMessage(sessionId, this.currentRevertMessageId);
-      }
-    };
-
-    if (this.messagesContainer) {
-      this.messagesContainer.addEventListener('click', this.unrevertClickHandler);
-    }
+    console.log('setupUnrevertClickHandler is deprecated - using invalidated zone containers instead');
+    // The invalidated zone itself handles clicks, so this is no longer needed
   }
 
-  // Remove unrevert click handler
+  // Remove unrevert click handler - now deprecated
   removeUnrevertClickHandler() {
-    if (this.unrevertClickHandler && this.messagesContainer) {
-      this.messagesContainer.removeEventListener('click', this.unrevertClickHandler);
-      this.unrevertClickHandler = null;
-    }
+    console.log('removeUnrevertClickHandler is deprecated - invalidated zones handle their own cleanup');
+    // The invalidated zones are removed entirely, so no separate cleanup needed
   }
 
   // Check if element A comes before element B in the DOM
   isElementAfter(elementA, elementB) {
     const position = elementA.compareDocumentPosition(elementB);
     return (position & Node.DOCUMENT_POSITION_FOLLOWING) !== 0;
-  }
-
-  // Find the latest (most recent) assistant message that made file changes
-  async findLatestAssistantMessageWithChanges(allMessages, sessionId) {
-    if (!allMessages || !Array.isArray(allMessages)) {
-      console.log('No messages array provided to findLatestAssistantMessageWithChanges');
-      return null;
-    }
-
-    console.log(`Searching ${allMessages.length} messages for file changes in session ${sessionId}`);
-
-    // Look through messages in reverse order to find the most recent one with changes
-    for (let i = allMessages.length - 1; i >= 0; i--) {
-      const message = allMessages[i];
-      if (message && message.type === 'assistant' && message.id) {
-        // Check if this assistant message made file changes
-        try {
-          const hasChanges = await window.electronAPI.hasFileChanges(sessionId, message.id);
-          console.log(`Message ${message.id} has file changes: ${hasChanges}`);
-          if (hasChanges) {
-            return message;
-          }
-        } catch (error) {
-          console.error('Error checking file changes for assistant message:', message.id, error);
-          // Continue checking other messages instead of failing completely
-          continue;
-        }
-      }
-    }
-    console.log('No assistant messages with file changes found');
-    return null;
   }
 
   // Find the next assistant message after a user message that made file changes
@@ -1703,6 +1939,32 @@ class MessageComponent {
     // Clear the pending update
     this.pendingMessageUpdate = null;
     console.log('=== UPDATE USER MESSAGE ID DEBUG END ===');
+  }
+
+  async findUserMessageForRevertedAssistant(assistantMessageId) {
+    const sessionId = this.sessionManager.getCurrentSessionId();
+    if (!sessionId) return null;
+
+    const session = await window.electronAPI.getSessionContext(sessionId);
+    if (!session || !session.messages) {
+      console.warn('Could not get session context to find user message');
+      return null;
+    }
+
+    const assistantMessageIndex = session.messages.findIndex(m => m.id === assistantMessageId);
+    if (assistantMessageIndex === -1) {
+      console.warn(`Assistant message ${assistantMessageId} not found in session`);
+      return null;
+    }
+
+    for (let i = assistantMessageIndex - 1; i >= 0; i--) {
+      if (session.messages[i].type === 'user') {
+        return session.messages[i];
+      }
+    }
+
+    console.warn(`No preceding user message found for assistant message ${assistantMessageId}`);
+    return null;
   }
 }
 

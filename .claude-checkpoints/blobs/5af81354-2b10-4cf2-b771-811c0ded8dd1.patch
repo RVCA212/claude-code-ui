@@ -1,0 +1,34 @@
+Index: README.md
+===================================================================
+--- README.md	before
++++ README.md	after
+@@ -51,29 +51,8 @@
+ Edit the `app/projects/page.tsx` file to update your project showcase.
+ 
+ ## 🎨 Customization
+ 
+-### Project Structure
+-
+-```
+-portfolio-starter-kit/
+-├── app/
+-│   ├── blog/
+-│   ├── components/
+-│   ├── context/
+-│   ├── projects/
+-│   ├── global.css
+-│   ├── layout.tsx
+-│   └── page.tsx
+-├── CLAUDE.md
+-├── README.md
+-├── next-env.d.ts
+-├── package.json
+-├── postcss.config.js
+-├── tailwind.config.js
+-└── tsconfig.json
+-```
+-
+ ### Styling with Tailwind CSS
+ - Fully customizable design system
+ - Responsive and mobile-first approach
+ - Edit `tailwind.config.js` to personalize your theme

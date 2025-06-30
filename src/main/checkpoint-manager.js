@@ -5,8 +5,13 @@ const Database = require('better-sqlite3');
 const diff = require('diff');
 
 class CheckpointManager {
-  constructor() {
-    this.checkpointDir = path.join(process.cwd(), '.claude-checkpoints');
+  constructor(app) {
+    if (!app) {
+      throw new Error('CheckpointManager requires the Electron app object for pathing.');
+    }
+    // Use the recommended user data path for storing app data.
+    // This is a reliable, writable location in both dev and packaged apps.
+    this.checkpointDir = path.join(app.getPath('userData'), 'checkpoints');
     this.checkpointDbPath = path.join(this.checkpointDir, 'metadata.db');
     this.checkpointBlobsDir = path.join(this.checkpointDir, 'blobs');
     this.checkpointDb = null;
@@ -604,6 +609,9 @@ class CheckpointManager {
 
   // Revert files to a checkpoint
   async revertToCheckpoint(sessionId, messageId) {
+    console.log('=== REVERT TO CHECKPOINT OPERATION START ===');
+    console.log('Parameters:', { sessionId, messageId });
+
     if (!this.checkpointDb) {
       throw new Error('Checkpoint database not initialized');
     }
@@ -612,6 +620,8 @@ class CheckpointManager {
       const checkpoints = await this.getCheckpointsToRevert(sessionId, messageId);
       const revertedFiles = [];
       const failedFiles = [];
+
+      console.log(`Found ${checkpoints.length} checkpoints to process for revert`);
 
       // Check if any checkpoints were found
       if (checkpoints.length === 0) {
@@ -628,15 +638,19 @@ class CheckpointManager {
         fileGroups[checkpoint.file_path].push(checkpoint);
       });
 
+      console.log(`Processing ${Object.keys(fileGroups).length} unique files for revert`);
+
       for (const [filePath, checkpointList] of Object.entries(fileGroups)) {
         // Get the most recent checkpoint for this file
         const latestCheckpoint = checkpointList[0];
+        console.log(`Reverting file: ${filePath} using checkpoint ${latestCheckpoint.id}`);
 
         try {
           // Create backup before reverting
           const backupPath = path.join(this.checkpointBlobsDir, path.basename(filePath) + '.' + Date.now() + '.bak');
           try {
             await fs.copyFile(filePath, backupPath);
+            console.log(`Created backup: ${backupPath}`);
           } catch (err) {
             console.log('Could not create backup, file may not exist:', filePath);
           }
@@ -664,6 +678,13 @@ class CheckpointManager {
         }
       }
 
+      console.log(`Revert operation completed: ${revertedFiles.length} files reverted, ${failedFiles.length} failed`);
+      console.log('Reverted files:', revertedFiles);
+      if (failedFiles.length > 0) {
+        console.warn('Failed files:', failedFiles);
+      }
+      console.log('=== REVERT TO CHECKPOINT OPERATION END ===');
+
       if (failedFiles.length > 0) {
         console.warn(`Some files failed to revert:`, failedFiles);
         // Still return successful files, but include failure information
@@ -676,13 +697,18 @@ class CheckpointManager {
 
       return revertedFiles;
     } catch (error) {
+      console.error('=== REVERT TO CHECKPOINT OPERATION ERROR ===');
       console.error('Failed to revert to checkpoint:', error);
+      console.error('=== REVERT TO CHECKPOINT OPERATION END ===');
       throw error;
     }
   }
 
   // Revert files back to their state before a checkpoint
   async unrevertFromCheckpoint(sessionId, messageId) {
+    console.log('=== UNREVERT FROM CHECKPOINT OPERATION START ===');
+    console.log('Parameters:', { sessionId, messageId });
+
     if (!this.checkpointDb) {
       throw new Error('Checkpoint database not initialized');
     }
@@ -691,6 +717,8 @@ class CheckpointManager {
       const checkpoints = await this.getCheckpointsToRevert(sessionId, messageId);
       const restoredFiles = [];
       const failedFiles = [];
+
+      console.log(`Found ${checkpoints.length} checkpoints to process for unrevert`);
 
       // Check if any checkpoints were found
       if (checkpoints.length === 0) {
@@ -707,15 +735,19 @@ class CheckpointManager {
         fileGroups[checkpoint.file_path].push(checkpoint);
       });
 
+      console.log(`Processing ${Object.keys(fileGroups).length} unique files for unrevert`);
+
       for (const [filePath, checkpointList] of Object.entries(fileGroups)) {
         // Get the most recent checkpoint for this file
         const latestCheckpoint = checkpointList[0];
+        console.log(`Unreverting file: ${filePath} using checkpoint ${latestCheckpoint.id}`);
 
         try {
           // Create backup before unreverting
           const backupPath = path.join(this.checkpointBlobsDir, path.basename(filePath) + '.' + Date.now() + '.unrevert-bak');
           try {
             await fs.copyFile(filePath, backupPath);
+            console.log(`Created unrevert backup: ${backupPath}`);
           } catch (err) {
             console.log('Could not create backup, file may not exist:', filePath);
           }
@@ -753,6 +785,13 @@ class CheckpointManager {
         }
       }
 
+      console.log(`Unrevert operation completed: ${restoredFiles.length} files restored, ${failedFiles.length} failed`);
+      console.log('Restored files:', restoredFiles);
+      if (failedFiles.length > 0) {
+        console.warn('Failed files:', failedFiles);
+      }
+      console.log('=== UNREVERT FROM CHECKPOINT OPERATION END ===');
+
       if (failedFiles.length > 0) {
         console.warn(`Some files failed to unrevert:`, failedFiles);
         // Still return successful files, but include failure information
@@ -765,7 +804,9 @@ class CheckpointManager {
 
       return restoredFiles;
     } catch (error) {
+      console.error('=== UNREVERT FROM CHECKPOINT OPERATION ERROR ===');
       console.error('Failed to unrevert from checkpoint:', error);
+      console.error('=== UNREVERT FROM CHECKPOINT OPERATION END ===');
       throw error;
     }
   }

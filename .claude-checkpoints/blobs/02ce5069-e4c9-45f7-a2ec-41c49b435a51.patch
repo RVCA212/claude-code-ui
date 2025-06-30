@@ -1,0 +1,33 @@
+Index: README.md
+===================================================================
+--- README.md	before
++++ README.md	after
+@@ -86,27 +86,4 @@
+ - Lighthouse Score: 90+ 🚀
+ - Core Web Vitals: Optimized ✅
+ - Fully Responsive: Mobile to Desktop 📱💻
+ 
+-## 📂 Project Structure
+-
+-```
+-.                       # Project Root
+-├── CLAUDE.md           # Project instructions for Claude Code
+-├── README.md           # This readme file
+-├── app/                # Next.js application directory
+-│   ├── blog/           # Blog-related components and pages
+-│   ├── components/     # Reusable React components
+-│   ├── context/        # React context providers
+-│   ├── dark/           # Dark mode related code
+-│   ├── global.css      # Global CSS styles
+-│   ├── layout.tsx      # Main application layout
+-│   ├── page.tsx        # Home/landing page
+-│   ├── projects/       # Projects showcase page
+-│   └── other folders   # Additional application modules
+-├── public/             # Static assets
+-│   ├── blog-images/    # Blog post images
+-│   └── fonts/          # Custom font files
+-├── package.json        # Project dependencies and scripts
+-├── tailwind.config.js  # Tailwind CSS configuration
+-└── tsconfig.json       # TypeScript configuration
+-```
+\ No newline at end of file

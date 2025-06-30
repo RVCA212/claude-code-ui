@@ -629,7 +629,7 @@ async function initializeApp() {
   try {
     // Initialize all managers
     sessionManager = new SessionManager();
-    checkpointManager = new CheckpointManager();
+    checkpointManager = new CheckpointManager(app); // Pass app object for pathing
     modelConfig = new ModelConfig();
     fileOperations = new FileOperations(modelConfig);
 

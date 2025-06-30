@@ -1,0 +1,64 @@
+Session 86a65b55-a9a8-40d0-b853-e47d6570dcd9 has no working directory set
+message-component.js:388 📝 Session change detected: {from: '86a65b55-a9a8-40d0-b853-e47d6570dcd9', to: '86a65b55-a9a8-40d0-b853-e47d6570dcd9', isDraft: undefined, hasContext: true, claudeSessionId: 'undefined...'}
+session-manager.js:858 Created session from draft: 86a65b55-a9a8-40d0-b853-e47d6570dcd9
+message-component.js:1215 🎮 Updating message component button states: {streaming: true, sessionId: '86a65b55-a9a8-40d0-b853-e47d6570dcd9', sendBtnVisible: false, stopBtnVisible: true}
+message-component.js:369 === USER MESSAGE SAVED EVENT ===
+message-component.js:370 Event data: {sessionId: '86a65b55-a9a8-40d0-b853-e47d6570dcd9', messageId: 'd7aa8f95-ea52-4a81-a3df-5106448fd1c1', content: 'add a project tree to @README.md...', timestamp: '2025-06-29T13:13:43.847Z'}
+message-component.js:1870 === UPDATE USER MESSAGE ID DEBUG START ===
+message-component.js:1871 Updating temp ID: temp_1751202823722 to real ID: d7aa8f95-ea52-4a81-a3df-5106448fd1c1
+message-component.js:1886 Found temp message element, updating ID and actions
+message-component.js:1911 Updated message actions with real ID
+message-component.js:1914 Successfully updated message element from temp ID to real ID
+message-component.js:1941 === UPDATE USER MESSAGE ID DEBUG END ===
+message-component.js:381 === USER MESSAGE SAVED EVENT END ===
+message-component.js:1215 🎮 Updating message component button states: {streaming: false, sessionId: '86a65b55-a9a8-40d0-b853-e47d6570dcd9', sendBtnVisible: true, stopBtnVisible: false}
+message-component.js:801 === REVERT CHANGES DEBUG START ===
+message-component.js:802 Session ID: 86a65b55-a9a8-40d0-b853-e47d6570dcd9
+message-component.js:803 User Message ID: d7aa8f95-ea52-4a81-a3df-5106448fd1c1
+message-component.js:821 Session found with 2 messages
+message-component.js:822 Session messages: (2) [{…}, {…}]
+message-component.js:1671 === FIND ASSISTANT MESSAGE DEBUG START ===
+message-component.js:1672 Looking for user message ID: d7aa8f95-ea52-4a81-a3df-5106448fd1c1
+message-component.js:1673 Total messages to search: 2
+message-component.js:1681 User message index: 0
+message-component.js:1690 Found user message at index: 0
+message-component.js:1691 Searching 1 messages after user message
+message-component.js:1696 Checking message 1: {id: 'msg_01DnbSvRq5rCwMJHo983A1Ko', type: 'assistant'}
+message-component.js:1700 Checking file changes for assistant message: msg_01DnbSvRq5rCwMJHo983A1Ko
+message-component.js:1702 HasFileChanges result for msg_01DnbSvRq5rCwMJHo983A1Ko : false
+message-component.js:1743 No subsequent assistant message with file changes found
+message-component.js:1744 === FIND ASSISTANT MESSAGE DEBUG END ===
+message-component.js:844 No target assistant message found with file changes
+message-component.js:851 Found 1 assistant messages after user message
+message-component.js:854 Assistant messages found but none have file changes
+message-component.js:1239 Message component error: No file changes were made in the following conversation turns.
+showError @ message-component.js:1239
+revertChangesAfterMessage @ message-component.js:855
+await in revertChangesAfterMessage (async)
+onclick @ index.html:1
+message-component.js:865 === REVERT CHANGES DEBUG END ===
+message-component.js:801 === REVERT CHANGES DEBUG START ===
+message-component.js:802 Session ID: 86a65b55-a9a8-40d0-b853-e47d6570dcd9
+message-component.js:803 User Message ID: d7aa8f95-ea52-4a81-a3df-5106448fd1c1
+message-component.js:821 Session found with 2 messages
+message-component.js:822 Session messages: (2) [{…}, {…}]
+message-component.js:1671 === FIND ASSISTANT MESSAGE DEBUG START ===
+message-component.js:1672 Looking for user message ID: d7aa8f95-ea52-4a81-a3df-5106448fd1c1
+message-component.js:1673 Total messages to search: 2
+message-component.js:1681 User message index: 0
+message-component.js:1690 Found user message at index: 0
+message-component.js:1691 Searching 1 messages after user message
+message-component.js:1696 Checking message 1: {id: 'msg_01DnbSvRq5rCwMJHo983A1Ko', type: 'assistant'}
+message-component.js:1700 Checking file changes for assistant message: msg_01DnbSvRq5rCwMJHo983A1Ko
+message-component.js:1702 HasFileChanges result for msg_01DnbSvRq5rCwMJHo983A1Ko : false
+message-component.js:1743 No subsequent assistant message with file changes found
+message-component.js:1744 === FIND ASSISTANT MESSAGE DEBUG END ===
+message-component.js:844 No target assistant message found with file changes
+message-component.js:851 Found 1 assistant messages after user message
+message-component.js:854 Assistant messages found but none have file changes
+message-component.js:1239 Message component error: No file changes were made in the following conversation turns.
+showError @ message-component.js:1239
+revertChangesAfterMessage @ message-component.js:855
+await in revertChangesAfterMessage (async)
+onclick @ index.html:1
+message-component.js:865 === REVERT CHANGES DEBUG END ===

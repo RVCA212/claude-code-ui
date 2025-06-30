@@ -1,0 +1,33 @@
+```
+.                       # Project Root
+├── CLAUDE.md           # Project instructions for Claude Code
+├── README.md           # This readme file
+├── app/                # Next.js application directory
+│   ├── blog/           # Blog-related components and pages
+│   ├── components/     # Reusable React components
+│   ├── context/        # React context providers
+│   ├── dark/           # Dark mode related code
+│   ├── global.css      # Global CSS styles
+│   ├── layout.tsx      # Main application layout
+│   ├── page.tsx        # Home/landing page
+│   ├── projects/       # Projects showcase page
+│   └── other folders   # Additional application modules
+├── public/             # Static assets
+│   ├── blog-images/    # Blog post images
+│   └── fonts/          # Custom font files
+├── package.json        # Project dependencies and scripts
+├── tailwind.config.js  # Tailwind CSS configuration
+└── tsconfig.json       # TypeScript configuration
+```
+│   ├── global.css      # Global CSS styles
+│   ├── layout.tsx      # Main application layout
+│   ├── page.tsx        # Home/landing page
+│   ├── projects/       # Projects showcase page
+│   └── other folders   # Additional application modules
+├── public/             # Static assets
+│   ├── blog-images/    # Blog post images
+│   └── fonts/          # Custom font files
+├── package.json        # Project dependencies and scripts
+├── tailwind.config.js  # Tailwind CSS configuration
+└── tsconfig.json       # TypeScript configuration
+```

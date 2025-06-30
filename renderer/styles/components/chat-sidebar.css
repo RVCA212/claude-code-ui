@@ -230,18 +230,20 @@
 .chat-sidebar .messages-container {
   flex: 1;
   overflow-y: auto;
-  padding: var(--space-12);
+  padding: var(--space-12) var(--space-12) 0 var(--space-12);
   background-color: var(--color-surface);
 }
 
 /* Compact mode - remove top padding to allow touching global header */
 .app-content:not(.editor-active) .sidebar.hidden ~ .chat-sidebar .messages-container {
   padding-top: 0;
+  padding-bottom: 0; /* Remove bottom padding in compact mode too */
 }
 
 /* Ultra-compact mode - for maximum space efficiency when window is very small */
 .app-content:not(.editor-active) .sidebar.hidden ~ .chat-sidebar .messages-container.compact-mode {
   padding-top: var(--space-2); /* Nearly touching the header */
+  padding-bottom: 0; /* Ensure compact mode has no bottom padding */
 }
 
 /* Custom scrollbar for message container */
@@ -433,4 +435,182 @@
   border-radius: 50%;
   background-color: currentColor;
   display: inline-block;
+}
+
+/* ============================================================================
+   Enhanced Revert State Support for Chat Sidebar
+   ============================================================================ */
+
+/* Responsive revert styling for narrow sidebar */
+.chat-sidebar .conversation-turn.message-editable {
+  margin: var(--space-12) 0;
+  padding: var(--space-12);
+  /* Adjust for narrower sidebar width */
+}
+
+.chat-sidebar .revert-instructions {
+  padding: var(--space-8);
+  font-size: var(--font-size-xs);
+  /* Compact instructions for sidebar */
+}
+
+.chat-sidebar .revert-instructions span {
+  display: block;
+  margin-top: var(--space-4);
+  line-height: 1.3;
+}
+
+/* Enhanced send button for sidebar context */
+.chat-sidebar .send-edited-btn {
+  padding: var(--space-8) var(--space-16);
+  font-size: var(--font-size-sm);
+  width: 100%;
+  justify-content: center;
+}
+
+/* Enhanced invalidated zone for sidebar - more compact */
+.chat-sidebar .invalidated-zone {
+  margin: var(--space-8) 0;
+  padding: var(--space-12);
+  min-height: 50px;
+  border-radius: var(--radius-base);
+}
+
+.chat-sidebar .invalidated-zone::after {
+  content: "🔄 Click to restore changes";
+  font-size: var(--font-size-xs);
+  padding: var(--space-8) var(--space-12);
+  white-space: normal;
+  max-width: 180px;
+  text-align: center;
+  line-height: 1.3;
+}
+
+/* Compact checkpoint separator for sidebar */
+.chat-sidebar .checkpoint-separator {
+  margin: var(--space-12) 0;
+}
+
+.chat-sidebar .checkpoint-separator-label {
+  padding: var(--space-4) var(--space-8);
+  font-size: var(--font-size-xs);
+  margin: 0 var(--space-6);
+}
+
+/* Enhanced invalidated messages in sidebar */
+.chat-sidebar .conversation-turn.invalidated {
+  margin: var(--space-4) 0;
+  padding: var(--space-8);
+}
+
+.chat-sidebar .invalidated-zone .conversation-turn.invalidated {
+  margin: var(--space-4);
+  padding: var(--space-6);
+}
+
+/* Ensure invalidated messages don't overflow in sidebar */
+.chat-sidebar .conversation-turn.invalidated {
+  margin-left: 0;
+  margin-right: 0;
+}
+
+/* Enhanced hover states for narrow sidebar */
+.chat-sidebar .conversation-turn.invalidated:hover {
+  background-color: rgba(var(--color-primary-rgb), 0.04);
+  margin: var(--space-2) 0;
+  border-radius: var(--radius-sm);
+}
+
+/* Responsive editable textarea for sidebar */
+.chat-sidebar .editable-message {
+  min-height: 60px;
+  font-size: var(--font-size-sm);
+}
+
+/* Compact mode animations for sidebar */
+.chat-sidebar .conversation-turn.entering-edit-mode,
+.chat-sidebar .conversation-turn.exiting-edit-mode {
+  animation-duration: var(--duration-fast);
+}
+
+/* Ensure message actions fit in sidebar */
+.chat-sidebar .message-actions {
+  flex-wrap: wrap;
+  gap: var(--space-4);
+}
+
+.chat-sidebar .revert-btn {
+  padding: var(--space-4) var(--space-8);
+  font-size: var(--font-size-xs);
+}
+
+/* Sidebar-specific Undo Revert Button */
+.chat-sidebar .undo-revert-btn {
+  background: rgba(var(--color-success-rgb), 0.15) !important;
+  border-color: rgba(var(--color-success-rgb), 0.4) !important;
+  color: var(--color-success) !important;
+}
+
+.chat-sidebar .undo-revert-btn:hover {
+  background: rgba(var(--color-success-rgb), 0.25) !important;
+  border-color: rgba(var(--color-success-rgb), 0.6) !important;
+}
+
+/* Sidebar-specific pulse animation adjustment */
+.chat-sidebar .conversation-turn.message-editable::before {
+  animation: pulse-border-sidebar 2s ease-in-out infinite;
+}
+
+@keyframes pulse-border-sidebar {
+  0%, 100% { opacity: 0.4; transform: scale(1); }
+  50% { opacity: 0.6; transform: scale(1.01); }
+}
+
+/* Compact global checkpoint indicator for sidebar */
+.chat-sidebar .messages-container.has-active-checkpoint::before {
+  content: "📍 Checkpoint Active";
+  padding: var(--space-6) var(--space-12);
+  font-size: var(--font-size-xs);
+  margin-bottom: var(--space-8);
+}
+
+/* Enhanced click feedback for sidebar invalidated zone */
+.chat-sidebar .invalidated-zone:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(var(--color-primary-rgb), 0.15);
+}
+
+/* Responsive patterns for very narrow sidebar */
+@media (max-width: 400px) {
+  .chat-sidebar .invalidated-zone::after {
+    content: "🔄 Restore";
+    padding: var(--space-6) var(--space-8);
+    font-size: var(--font-size-xs);
+  }
+
+  .chat-sidebar .checkpoint-separator-label {
+    content: "Checkpoint";
+    padding: var(--space-2) var(--space-6);
+  }
+}
+
+/* Enhanced visual hierarchy for sidebar checkpoint states */
+.chat-sidebar .conversation-turn.message-editable {
+  border-width: 1px;
+  box-shadow: 0 2px 8px rgba(var(--color-primary-rgb), 0.1);
+}
+
+.chat-sidebar .conversation-turn.message-editable::before {
+  opacity: 0.4;
+}
+
+/* Sidebar-specific unrevert zone styling */
+.chat-sidebar .invalidated-zone::before {
+  background: repeating-linear-gradient(
+    45deg,
+    transparent,
+    transparent 4px,
+    rgba(var(--color-warning-rgb), 0.02) 4px,
+    rgba(var(--color-warning-rgb), 0.02) 8px
+  );
 }

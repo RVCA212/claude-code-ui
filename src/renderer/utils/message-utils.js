@@ -69,7 +69,6 @@ class MessageUtils {
         if (this.isValidFilePath(cleanPath)) {
           // Resolve to absolute path if needed so the editor always receives a full path
           const absolutePath = this.toAbsolutePath(cleanPath, cwd);
-          console.log('Creating clickable link for:', absolutePath); // Debug logging
           return `<span class="file-path-link" data-file-path="${this.escapeHTML(absolutePath)}" title="Click to open ${this.escapeHTML(absolutePath)}">${this.escapeHTML(match.trim())}</span>`;
         }
         console.log('Rejected file path:', cleanPath); // Debug logging
@@ -628,7 +627,43 @@ class MessageUtils {
       }
     }
 
-    return diffLines;
+    // Compress large unchanged blocks to a single skipped marker for better readability
+    const SKIP_THRESHOLD = 20; // min consecutive unchanged lines before collapsing
+    const CONTEXT = 3; // number of context lines to keep around skipped region
+
+    const compressed = [];
+    let i = 0;
+    while (i < diffLines.length) {
+      if (diffLines[i].type !== 'unchanged') {
+        compressed.push(diffLines[i]);
+        i++;
+        continue;
+      }
+
+      // Accumulate consecutive unchanged lines
+      let j = i;
+      while (j < diffLines.length && diffLines[j].type === 'unchanged') {
+        j++;
+      }
+      const count = j - i;
+
+      if (count > SKIP_THRESHOLD) {
+        // Keep leading and trailing context lines and insert a skipped marker
+        compressed.push(...diffLines.slice(i, i + CONTEXT));
+        compressed.push({
+          type: 'skipped',
+          oldLineNum: null,
+          newLineNum: null,
+          content: `… ${count - CONTEXT * 2} unchanged lines …`
+        });
+        compressed.push(...diffLines.slice(j - CONTEXT, j));
+      } else {
+        compressed.push(...diffLines.slice(i, j));
+      }
+      i = j;
+    }
+
+    return compressed;
   }
 
   // Render one side of the side-by-side diff
@@ -638,7 +673,11 @@ class MessageUtils {
       let lineClass = '';
       let lineNumber = '';
 
-      if (side === 'old') {
+      if (line.type === 'skipped') {
+        content = line.content || '…';
+        lineClass = 'diff-line-skipped';
+        // For skipped lines we omit line numbers on both sides
+      } else if (side === 'old') {
         if (line.type === 'removed' || line.type === 'unchanged') {
           content = line.content;
           lineNumber = line.oldLineNum || '';
@@ -683,9 +722,12 @@ class MessageUtils {
       } else if (line.type === 'removed') {
         prefix = '-';
         lineClass = 'diff-line-removed';
+      } else if (line.type === 'skipped') {
+        prefix = '…';
+        lineClass = 'diff-line-skipped';
       }
 
-      const lineNumbers = `${line.oldLineNum || ''}${line.oldLineNum && line.newLineNum ? ',' : ''}${line.newLineNum || ''}`;
+      const lineNumbers = line.type === 'skipped' ? '' : `${line.oldLineNum || ''}${line.oldLineNum && line.newLineNum ? ',' : ''}${line.newLineNum || ''}`;
 
       return `
         <div class="diff-line ${lineClass}">
@@ -820,23 +862,6 @@ class MessageUtils {
 
     html += '</div>';
     return html;
-  }
-
-  // Create message actions (revert button, etc.)
-  static createMessageActions(message, sessionId) {
-    return `
-      <div class="message-actions">
-        <button class="revert-btn"
-                onclick="revertToMessage('${sessionId}', '${message.id}')"
-                title="Revert files to this point">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-            <path d="M21 3v5h-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-            <path d="M21 12a9 9 0 0 1-9 9c-4.7 0-8.6-3.4-9-8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-        </button>
-      </div>
-    `;
   }
 
   // Update character counter

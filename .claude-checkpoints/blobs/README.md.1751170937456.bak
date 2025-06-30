@@ -1,0 +1,123 @@
+# Portfolio Starter Kit 🚀
+
+A cutting-edge, minimalist portfolio and blog template designed for developers and creatives, built with the latest web technologies.
+
+![Portfolio Starter Kit Preview](/public/images/portfolio-preview.png)
+
+**Transform your online presence with a sleek, high-performance personal website.**
+
+## ✨ Features
+
+- **Blazing Fast Performance**: Built on Next.js 14 with App Router for optimal loading speeds
+- **Responsive Design**: Looks great on all devices from mobile to desktop
+- **Modern Stack**: Next.js, TypeScript, and Tailwind CSS v4
+- **Blog Ready**: MDX support for rich content with code syntax highlighting
+- **SEO Optimized**: Dynamic sitemap, robots.txt, and metadata optimization
+- **Dark Mode**: Built-in dark mode with reactive animation effects
+- **Easy Customization**: Simple structure makes it easy to customize to your needs
+- **RSS Support**: Automatically generates RSS feed for your content
+- **OG Image Generation**: Dynamic Open Graph images for better social sharing
+- **Analytics Ready**: Integrated with Vercel Analytics and Speed Insights
+
+## 🚀 Quick Start
+
+### Prerequisites
+- Node.js (v18+ recommended)
+- npm, yarn, or pnpm
+
+### Installation
+```bash
+# Clone the repository
+git clone https://github.com/yourusername/portfolio-starter-kit.git
+cd portfolio-starter-kit
+
+# Install dependencies
+npm install  # or yarn install or pnpm install
+
+# Start development server
+npm run dev  # or yarn dev or pnpm dev
+```
+
+🌐 Your site is now live at [http://localhost:3000](http://localhost:3000)!
+
+## 📝 Adding Content
+
+### Blog Posts
+
+Add new blog posts by creating MDX files in the `app/blog/posts/` directory. Each post should include frontmatter with title, date, and other metadata.
+
+### Projects
+
+Edit the `app/projects/page.tsx` file to update your project showcase.
+
+## 🎨 Customization
+
+### Styling with Tailwind CSS
+- Fully customizable design system
+- Responsive and mobile-first approach
+- Edit `tailwind.config.js` to personalize your theme
+
+### Typography
+- Geist font for modern, clean typography
+- Easy font and style customization
+- Configure in global CSS and Tailwind settings
+
+## 📦 Deployment
+
+This project is optimized for deployment on [Vercel](https://vercel.com/), but can be deployed on any platform that supports Next.js.
+
+```bash
+# Build for production
+npm run build
+# or
+yarn build
+# or
+pnpm build
+
+# Start production server
+npm start
+# or
+yarn start
+# or
+pnpm start
+```
+
+## 🔗 Learn More
+
+### Technology Stack
+- [Next.js 14 Documentation](https://nextjs.org/docs)
+- [Tailwind CSS v4 Documentation](https://tailwindcss.com/docs)
+- [MDX Documentation](https://mdxjs.com/)
+
+### Community & Support
+- Star the repository ⭐
+- Open issues for feedback or suggestions
+- Contribute to continuous improvement
+
+## 📄 License
+
+MIT License - Free to use, modify, and distribute
+
+## 🤝 Contributing
+
+### How to Contribute
+1. Fork the repository
+2. Create a new branch (`git checkout -b feature/amazing-improvement`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-improvement`)
+5. Open a Pull Request
+
+### Code of Conduct
+- Be respectful and inclusive
+- Provide constructive feedback
+- Follow the project's coding standards
+
+## 🙏 Acknowledgements
+
+Crafted with passion, inspired by the open-source community. Designed to empower developers in showcasing their work and personal brand.
+
+## 📦 Performance Metrics
+
+- Lighthouse Score: 90+ 🚀
+- Core Web Vitals: Optimized ✅
+- Fully Responsive: Mobile to Desktop 📱💻
