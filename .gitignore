@@ -5,3 +5,5 @@ anthropic-sdk-typescript/
 node_modules/
 
 dist/
+
+.claude-checkpoints/
