@@ -4,6 +4,8 @@
 
 Claude Code Chat is an Electron-based desktop application for interacting with Claude Code in a 'Cursor' style view with features such as checkpointing.
 
+Download Live App [here](https://cloudcoding.ai)
+
 ![Claude Code Chat Screenshot](assets/cloud-code-ss.png)
 
 ## Features
