@@ -22,8 +22,8 @@
     "anthropic",
     "ai"
   ],
-  "author": "Cloud Code",
-  "license": "MIT",
+  "author": "Sean Sulliva",
+  "license": "GPL-3.0-or-later",
   "devDependencies": {
     "@electron/notarize": "^3.0.1",
     "@electron/rebuild": "^3.7.2",

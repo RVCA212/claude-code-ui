@@ -1,3 +1,36 @@
+/*
+ * Claude Code Chat - An Electron-based desktop application for Claude Code.
+ * Copyright (C) 2024 Sean Sullivan
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <https://www.gnu.org/licenses/>.
+ *
+ * As a special exception, the copyright holders of this program give you
+ * permission to link this program with files containing the following licenses:
+ *
+ * - MIT License
+ * - Apache License, Version 2.0
+ * - BSD 2-Clause "Simplified" License
+ * - BSD 3-Clause "New" or "Revised" License
+ * - ISC License
+ *
+ * and distribute linked combinations including the two. You must obey the
+ * GNU General Public License in all respects for all of the code used other
+ * than the parts mentioned above. If you modify this file, you may extend
+ * this exception to your version of the file, but you are not obligated to
+ * do so. If you do not wish to do so, delete this exception statement from
+ * your version.
+ */
 const { app, BrowserWindow, Tray, Menu, nativeImage, ipcMain, globalShortcut } = require('electron');
 const path = require('path');
 require('fix-path')();
