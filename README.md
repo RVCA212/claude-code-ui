@@ -21,7 +21,7 @@ Download Live App [here](https://cloudcoding.ai)
 
 - Node.js v16+
 - npm
-- Anthropic API Key
+- Claude Code installed globally
 
 ## Installation
 
