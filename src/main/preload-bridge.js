@@ -151,7 +151,10 @@ class PreloadBridge {
       getClaudeCliSessions: () => ipcRenderer.invoke('get-claude-cli-sessions'),
       getClaudeCliSessionDetails: (sessionId) => ipcRenderer.invoke('get-claude-cli-session-details', sessionId),
       searchClaudeCliSessions: (query) => ipcRenderer.invoke('search-claude-cli-sessions', query),
-      clearClaudeCliSessionsCache: () => ipcRenderer.invoke('clear-claude-cli-sessions-cache')
+      clearClaudeCliSessionsCache: () => ipcRenderer.invoke('clear-claude-cli-sessions-cache'),
+      resumeClaudeSession: (sessionId, projectPath) => ipcRenderer.invoke('resume-claude-session', sessionId, projectPath),
+      extractFileChanges: (sessionId, messageId) => ipcRenderer.invoke('extract-file-changes', sessionId, messageId),
+      extractConversationContext: (sessionId, messageId) => ipcRenderer.invoke('extract-conversation-context', sessionId, messageId)
     };
   }
 

@@ -426,6 +426,8 @@ class ClaudeCliHistory {
       const content = message && typeof message.content === 'string' ? message.content : '';
       const hasContent = content && content.trim().length > 0;
       const hasToolCalls = message.hasToolCalls && message.toolCalls && message.toolCalls.length > 0;
+      const hasFileChanges = this.messageHasFileChanges(message.toolCalls);
+      const isUserMessage = message.role === 'user';
 
       // If this is a tool-only message (no text content), render as tool result container
       if (hasToolCalls && !hasContent) {
@@ -438,8 +440,33 @@ class ClaudeCliHistory {
       }
 
       return `
-        <div class="raw-message ${message.role === 'user' ? 'raw-user' : 'raw-assistant'}">
-          <div class="raw-message-header">${DOMUtils.escapeHTML(headerParts)}</div>
+        <div class="raw-message ${isUserMessage ? 'raw-user' : 'raw-assistant'} ${hasFileChanges ? 'has-file-changes' : ''}" data-message-id="${message.id}">
+          <div class="raw-message-header">
+            <span class="raw-message-header-text">${DOMUtils.escapeHTML(headerParts)}</span>
+            ${isUserMessage ? `
+              <div class="copy-context-container">
+                <span class="copy-context-label">📋 Conversation</span>
+                <button class="copy-context-btn" title="Copy conversation context from this message" data-message-id="${message.id}">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2" stroke="currentColor" stroke-width="2"/>
+                    <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" stroke="currentColor" stroke-width="2"/>
+                  </svg>
+                  <span class="copy-context-text">Copy Context</span>
+                </button>
+              </div>
+            ` : hasFileChanges ? `
+              <div class="copy-changes-container">
+                <span class="copy-changes-label">📝 File Changes</span>
+                <button class="copy-changes-btn" title="Copy all file changes from this message" data-message-id="${message.id}">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2" stroke="currentColor" stroke-width="2"/>
+                    <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" stroke="currentColor" stroke-width="2"/>
+                  </svg>
+                  <span class="copy-changes-text">Copy Changes</span>
+                </button>
+              </div>
+            ` : ''}
+          </div>
           <div class="raw-message-content">
             <pre class="raw-text">${DOMUtils.escapeHTML(content)}</pre>
             ${hasToolCalls ? this.renderToolCallsRaw(message.toolCalls) : ''}
@@ -449,6 +476,10 @@ class ClaudeCliHistory {
     }).join('');
 
     this.conversationContent.innerHTML = messagesHtml;
+
+    // Add event listeners for copy buttons
+    this.attachCopyChangesEventHandlers();
+    this.attachCopyContextEventHandlers();
   }
 
   renderToolCalls(toolCalls, messageId) {
@@ -637,6 +668,162 @@ class ClaudeCliHistory {
       textArea.select();
       document.execCommand('copy');
       document.body.removeChild(textArea);
+    }
+  }
+
+  /**
+   * Check if a message has file-modifying tool calls
+   */
+  messageHasFileChanges(toolCalls) {
+    if (!toolCalls || !Array.isArray(toolCalls)) return false;
+
+    const fileModifyingTools = ['Edit', 'Write', 'MultiEdit'];
+    return toolCalls.some(toolCall => fileModifyingTools.includes(toolCall.name));
+  }
+
+  /**
+   * Attach event handlers for copy changes buttons
+   */
+  attachCopyChangesEventHandlers() {
+    if (!this.conversationContent) return;
+
+    const copyButtons = this.conversationContent.querySelectorAll('.copy-changes-btn');
+    copyButtons.forEach(button => {
+      button.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const messageId = button.getAttribute('data-message-id');
+        await this.copyFileChangesToClipboard(messageId, button);
+      });
+    });
+  }
+
+  /**
+   * Attach event handlers for copy context buttons
+   */
+  attachCopyContextEventHandlers() {
+    if (!this.conversationContent) return;
+
+    const copyButtons = this.conversationContent.querySelectorAll('.copy-context-btn');
+    copyButtons.forEach(button => {
+      button.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const messageId = button.getAttribute('data-message-id');
+        await this.copyConversationContextToClipboard(messageId, button);
+      });
+    });
+  }
+
+  /**
+   * Copy all file changes from a message to clipboard
+   */
+  async copyFileChangesToClipboard(messageId, button) {
+    try {
+      // Show loading state
+      const originalText = button.querySelector('.copy-changes-text');
+      const originalTextContent = originalText.textContent;
+      originalText.textContent = 'Copying...';
+      button.disabled = true;
+      button.classList.add('loading');
+
+      // Get current session ID from the conversation
+      const sessionId = this.currentConversation?.id;
+      if (!sessionId) {
+        throw new Error('No active session');
+      }
+
+      // Extract file changes via IPC
+      const result = await window.electronAPI.extractFileChanges(sessionId, messageId);
+
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to extract file changes');
+      }
+
+      // Copy to clipboard
+      await navigator.clipboard.writeText(result.formattedText);
+
+      // Show success feedback
+      originalText.textContent = 'Copied!';
+      button.classList.remove('loading');
+      button.classList.add('success');
+
+      setTimeout(() => {
+        originalText.textContent = originalTextContent;
+        button.classList.remove('success');
+        button.disabled = false;
+      }, 2000);
+
+    } catch (error) {
+      console.error('Failed to copy file changes:', error);
+
+      // Show error feedback
+      const originalText = button.querySelector('.copy-changes-text');
+      const originalTextContent = originalText.textContent;
+      originalText.textContent = 'Error';
+      button.classList.remove('loading');
+      button.classList.add('error');
+      button.disabled = false;
+
+      setTimeout(() => {
+        originalText.textContent = originalTextContent;
+        button.classList.remove('error');
+      }, 3000);
+    }
+  }
+
+  /**
+   * Copy conversation context from a user message to clipboard
+   */
+  async copyConversationContextToClipboard(messageId, button) {
+    try {
+      // Show loading state
+      const originalText = button.querySelector('.copy-context-text');
+      const originalTextContent = originalText.textContent;
+      originalText.textContent = 'Copying...';
+      button.disabled = true;
+      button.classList.add('loading');
+      
+      // Get current session ID from the conversation
+      const sessionId = this.currentConversation?.id;
+      if (!sessionId) {
+        throw new Error('No active session');
+      }
+
+      // Extract conversation context via IPC
+      const result = await window.electronAPI.extractConversationContext(sessionId, messageId);
+      
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to extract conversation context');
+      }
+
+      // Copy JSON to clipboard
+      await navigator.clipboard.writeText(result.jsonString);
+
+      // Show success feedback
+      originalText.textContent = 'Copied!';
+      button.classList.remove('loading');
+      button.classList.add('success');
+
+      setTimeout(() => {
+        originalText.textContent = originalTextContent;
+        button.classList.remove('success');
+        button.disabled = false;
+      }, 2000);
+
+    } catch (error) {
+      console.error('Failed to copy conversation context:', error);
+      
+      // Show error feedback
+      const originalText = button.querySelector('.copy-context-text');
+      const originalTextContent = originalText.textContent;
+      originalText.textContent = 'Error';
+      button.classList.remove('loading');
+      button.classList.add('error');
+      button.disabled = false;
+
+      setTimeout(() => {
+        originalText.textContent = originalTextContent;
+        button.classList.remove('error');
+      }, 3000);
     }
   }
 

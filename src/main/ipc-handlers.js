@@ -1167,6 +1167,84 @@ class IPCHandlers {
         return { success: false, error: error.message };
       }
     });
+
+    // Resume Claude CLI session in terminal
+    ipcMain.handle('resume-claude-session', async (event, sessionId, projectPath) => {
+      try {
+        const result = await this.openTerminalAndResumeSession(sessionId, projectPath);
+        return result;
+      } catch (error) {
+        console.error('Error resuming Claude CLI session:', error);
+        return { success: false, error: error.message };
+      }
+    });
+
+    // Extract file changes from Claude CLI message
+    ipcMain.handle('extract-file-changes', async (event, sessionId, messageId) => {
+      try {
+        const result = await this.claudeCliHistory.extractFileChangesFromMessage(sessionId, messageId);
+        return { success: true, ...result };
+      } catch (error) {
+        console.error('Error extracting file changes:', error);
+        return { success: false, error: error.message };
+      }
+    });
+
+    // Extract conversation context from Claude CLI user message
+    ipcMain.handle('extract-conversation-context', async (event, sessionId, messageId) => {
+      try {
+        const result = await this.claudeCliHistory.extractConversationContext(sessionId, messageId);
+        return { success: true, ...result };
+      } catch (error) {
+        console.error('Error extracting conversation context:', error);
+        return { success: false, error: error.message };
+      }
+    });
+  }
+
+  /**
+   * Open terminal in the specified directory and run claude --resume command
+   * @param {string} sessionId - The Claude CLI session ID
+   * @param {string} projectPath - The directory path where the session was created
+   * @returns {Promise<{success: boolean, error?: string}>}
+   */
+  async openTerminalAndResumeSession(sessionId, projectPath) {
+    const { spawn } = require('child_process');
+    const { shell } = require('electron');
+
+    try {
+      console.log(`Opening terminal to resume Claude session ${sessionId} in ${projectPath}`);
+
+      // Create the command to run in terminal
+      const command = `claude --resume ${sessionId}`;
+      
+      // Platform-specific terminal opening
+      if (process.platform === 'darwin') {
+        // macOS
+        const appleScript = `
+          tell application "Terminal"
+            activate
+            do script "cd '${projectPath}' && ${command}"
+          end tell
+        `;
+        
+        spawn('osascript', ['-e', appleScript], { detached: true });
+        
+      } else if (process.platform === 'win32') {
+        // Windows
+        spawn('cmd', ['/c', 'start', 'cmd', '/k', `cd /d "${projectPath}" && ${command}`], { detached: true });
+        
+      } else {
+        // Linux
+        spawn('gnome-terminal', ['--working-directory', projectPath, '--', 'bash', '-c', `${command}; exec bash`], { detached: true });
+      }
+
+      return { success: true };
+      
+    } catch (error) {
+      console.error('Error opening terminal:', error);
+      return { success: false, error: error.message };
+    }
   }
 }
 
