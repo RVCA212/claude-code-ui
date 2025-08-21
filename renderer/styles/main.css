@@ -47,6 +47,9 @@
 /* Global search modal component */
 @import './components/global-search.css';
 
+/* Claude CLI history viewer component */
+@import './components/claude-cli-history.css';
+
 /* Left sidebar container and general sidebar behavior */
 @import './components/sidebar.css';
 

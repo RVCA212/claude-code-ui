@@ -145,7 +145,13 @@ class PreloadBridge {
       removeAllListeners: (channel) => ipcRenderer.removeAllListeners(channel),
 
       // New CLI installer
-      installClaudeCli: () => ipcRenderer.invoke('install-claude-cli')
+      installClaudeCli: () => ipcRenderer.invoke('install-claude-cli'),
+
+      // Claude CLI history management
+      getClaudeCliSessions: () => ipcRenderer.invoke('get-claude-cli-sessions'),
+      getClaudeCliSessionDetails: (sessionId) => ipcRenderer.invoke('get-claude-cli-session-details', sessionId),
+      searchClaudeCliSessions: (query) => ipcRenderer.invoke('search-claude-cli-sessions', query),
+      clearClaudeCliSessionsCache: () => ipcRenderer.invoke('clear-claude-cli-sessions-cache')
     };
   }
 

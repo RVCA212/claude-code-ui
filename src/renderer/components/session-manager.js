@@ -73,11 +73,14 @@ class SessionManager {
       this.conversationTitle.contentEditable = 'false'; // Disable title editing
     }
 
-    // History dropdown
+    // History dropdown - Claude CLI history functionality
     if (this.historyBtn) {
       this.historyBtn.addEventListener('click', (e) => {
         e.stopPropagation();
-        this.toggleHistoryDropdown();
+        // Open Claude CLI history viewer
+        if (window.claudeCliHistory) {
+          window.claudeCliHistory.toggle();
+        }
       });
     }
 

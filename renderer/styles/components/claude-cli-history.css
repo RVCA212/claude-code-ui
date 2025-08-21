@@ -1,0 +1,1052 @@
+/**
+ * Claude CLI History Viewer Component Styles
+ *
+ * Used by: Claude CLI history overlay component
+ * Related files:
+ *   - src/renderer/components/claude-cli-history.js
+ *   - renderer/index.html (history modal)
+ *
+ * Features:
+ *   - Full-screen overlay view
+ *   - Session list with search and filtering
+ *   - Conversation viewer with message display
+ *   - Responsive design for different screen sizes
+ */
+
+/* ============================================================================
+   Modal Overlay and Container
+   ============================================================================ */
+
+.claude-cli-history-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: var(--z-modals);
+  backdrop-filter: blur(6px);
+}
+
+.claude-cli-history-modal {
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xl);
+  width: 95vw;
+  height: 90vh;
+  max-width: 1400px;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--color-border);
+  overflow: hidden;
+}
+
+/* ============================================================================
+   Header Section
+   ============================================================================ */
+
+.claude-cli-history-header {
+  padding: var(--space-20) var(--space-24);
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+}
+
+.claude-cli-history-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-12);
+}
+
+.claude-cli-history-title h2 {
+  margin: 0;
+  color: var(--color-text);
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+}
+
+.claude-cli-history-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--space-12);
+}
+
+.claude-cli-history-search {
+  position: relative;
+  width: 300px;
+}
+
+.claude-cli-history-search input {
+  width: 100%;
+  padding: var(--space-8) var(--space-12) var(--space-8) var(--space-36);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-secondary);
+  color: var(--color-text);
+  font-size: var(--font-size-sm);
+}
+
+.claude-cli-history-search input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px var(--color-primary-alpha);
+}
+
+.claude-cli-history-search .search-icon {
+  position: absolute;
+  left: var(--space-12);
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--color-text-tertiary);
+  pointer-events: none;
+}
+
+.claude-cli-history-actions {
+  display: flex;
+  gap: var(--space-8);
+}
+
+.claude-cli-history-btn {
+  padding: var(--space-8) var(--space-12);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-secondary);
+  color: var(--color-text);
+  cursor: pointer;
+  font-size: var(--font-size-sm);
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  transition: all 0.2s ease;
+}
+
+.claude-cli-history-btn:hover {
+  background: var(--color-surface-hover);
+  border-color: var(--color-primary);
+}
+
+.claude-cli-history-close {
+  background: transparent;
+  border: none;
+  padding: var(--space-8);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.claude-cli-history-close:hover {
+  background: var(--color-surface-hover);
+  color: var(--color-text);
+}
+
+/* ============================================================================
+   Content Area
+   ============================================================================ */
+
+.claude-cli-history-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  height: 100%;
+}
+
+.claude-cli-history-loading,
+#claudeCliHistoryLoading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-base);
+}
+
+/* ============================================================================
+   Sessions List View
+   ============================================================================ */
+
+.claude-cli-history-list,
+#claudeCliHistoryList {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: var(--space-16);
+  height: 100%;
+  max-height: 100%;
+}
+
+.claude-cli-sessions-list,
+#claudeCliSessionsList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  max-width: 100%;
+  min-height: min-content;
+}
+
+.claude-cli-session-item {
+  display: flex;
+  align-items: center;
+  padding: var(--space-16);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface-secondary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.claude-cli-session-item:hover {
+  background: var(--color-surface-hover);
+  border-color: var(--color-primary);
+  box-shadow: var(--shadow-sm);
+}
+
+.session-main {
+  flex: 1;
+  min-width: 0; /* Allow text overflow */
+}
+
+.session-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-8);
+}
+
+.session-project {
+  font-weight: 600;
+  color: var(--color-text);
+  font-size: var(--font-size-base);
+}
+
+.session-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-12);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+}
+
+.session-preview {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  line-height: 1.4;
+  margin-bottom: var(--space-8);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.session-details {
+  display: flex;
+  align-items: center;
+  gap: var(--space-12);
+  font-size: var(--font-size-xs);
+}
+
+.session-model {
+  background: var(--color-primary-alpha);
+  color: var(--color-primary);
+  padding: var(--space-2) var(--space-8);
+  border-radius: var(--radius-sm);
+  font-weight: 500;
+}
+
+.session-branch {
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  padding: var(--space-2) var(--space-8);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+}
+
+.session-id {
+  color: var(--color-text-tertiary);
+  font-family: var(--font-mono);
+}
+
+.session-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  margin-left: var(--space-16);
+}
+
+.session-view-btn {
+  padding: var(--space-8);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.session-view-btn:hover {
+  background: var(--color-primary);
+  color: white;
+  border-color: var(--color-primary);
+}
+
+/* ============================================================================
+   Conversation View
+   ============================================================================ */
+
+.claude-cli-history-conversation,
+#claudeCliHistoryConversation {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  height: 100%;
+}
+
+.claude-cli-conversation-header,
+#claudeCliConversationHeader {
+  padding: var(--space-16) var(--space-24);
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+}
+
+.conversation-header-left {
+  display: flex;
+  align-items: center;
+  gap: var(--space-16);
+  flex: 1;
+}
+
+.conversation-back-btn {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  padding: var(--space-8) var(--space-12);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.conversation-back-btn:hover {
+  background: var(--color-surface-hover);
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.conversation-back-btn svg {
+  flex-shrink: 0;
+}
+
+.conversation-title h3 {
+  margin: 0 0 var(--space-4) 0;
+  color: var(--color-text);
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+}
+
+.conversation-subtitle {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.conversation-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-12);
+}
+
+
+
+.conversation-branch {
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  padding: var(--space-4) var(--space-12);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  font-size: var(--font-size-sm);
+}
+
+.conversation-copy-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-6);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.conversation-copy-btn:hover {
+  background: var(--color-surface-hover);
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.conversation-copy-btn:hover::before {
+  content: 'Copy session ID';
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--color-text);
+  color: var(--color-surface);
+  padding: var(--space-6) var(--space-8);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-xs);
+  white-space: nowrap;
+  z-index: 1000;
+  opacity: 1;
+  pointer-events: none;
+  box-shadow: var(--shadow-sm);
+}
+
+.conversation-copy-btn:hover::after {
+  content: '';
+  position: absolute;
+  bottom: calc(100% + 2px);
+  left: 50%;
+  transform: translateX(-50%);
+  border: 3px solid transparent;
+  border-top-color: var(--color-text);
+  z-index: 1000;
+  pointer-events: none;
+}
+
+.conversation-copy-btn svg {
+  flex-shrink: 0;
+}
+
+.claude-cli-conversation-content,
+#claudeCliConversationContent {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: var(--space-20);
+  height: 100%;
+  max-height: 100%;
+}
+
+/* ============================================================================
+   Message Display
+   ============================================================================ */
+
+.conversation-message {
+  margin-bottom: var(--space-24);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.conversation-message.message-user {
+  background: var(--color-primary-alpha);
+  border: 1px solid var(--color-primary-light);
+}
+
+.conversation-message.message-assistant {
+  background: var(--color-surface-secondary);
+  border: 1px solid var(--color-border);
+}
+
+.message-header {
+  padding: var(--space-12) var(--space-16);
+  background: rgba(0, 0, 0, 0.05);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.conversation-message.message-user .message-header {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.message-role {
+  font-weight: 600;
+  color: var(--color-text);
+  font-size: var(--font-size-sm);
+}
+
+.message-timestamp {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+}
+
+.message-model {
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  padding: var(--space-2) var(--space-8);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-xs);
+  border: 1px solid var(--color-border);
+}
+
+.message-content {
+  padding: var(--space-16);
+  color: var(--color-text);
+  line-height: 1.6;
+  font-size: var(--font-size-base);
+}
+
+.message-content .code-block {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  margin: var(--space-12) 0;
+  overflow: hidden;
+}
+
+.message-content .code-language {
+  background: var(--color-surface-secondary);
+  padding: var(--space-8) var(--space-12);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  font-weight: 500;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.message-content .code-block pre {
+  margin: 0;
+  padding: var(--space-16);
+  background: transparent;
+  color: var(--color-text);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-sm);
+  line-height: 1.5;
+  overflow-x: auto;
+}
+
+/* Enhanced content styling for thinking and tool calls */
+.message-content strong {
+  color: var(--color-primary);
+  font-weight: 600;
+}
+
+/* ============================================================================
+   Tool Call and Result Display
+   ============================================================================ */
+
+.tool-call-container {
+  margin-top: var(--space-16);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-secondary);
+  overflow: hidden;
+}
+
+.tool-call-container.expanded {
+  border-color: var(--color-primary);
+  box-shadow: var(--shadow-sm);
+}
+
+.tool-call-header {
+  padding: var(--space-12) var(--space-16);
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+
+.tool-call-info {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.tool-call-name {
+  font-weight: 600;
+  color: var(--color-primary);
+  font-size: var(--font-size-sm);
+  font-family: var(--font-mono);
+}
+
+.tool-result-toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  padding: var(--space-6) var(--space-12);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-secondary);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  font-size: var(--font-size-xs);
+  transition: all 0.2s ease;
+}
+
+.tool-result-toggle:hover {
+  background: var(--color-surface-hover);
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.tool-result-status {
+  font-weight: 500;
+}
+
+.tool-call-payload {
+  padding: var(--space-16);
+}
+
+.tool-call-payload .code-block {
+  margin: 0;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+.tool-call-payload .code-language {
+  background: var(--color-surface-secondary);
+  color: var(--color-text-secondary);
+  font-weight: 500;
+  padding: var(--space-8) var(--space-12);
+  font-size: var(--font-size-xs);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.tool-call-payload pre {
+  margin: 0;
+  padding: var(--space-12);
+  background: transparent;
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  line-height: 1.4;
+  color: var(--color-text);
+  overflow-x: auto;
+}
+
+/* ============================================================================
+   Tool Result Expandable UI
+   ============================================================================ */
+
+.expand-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-4);
+  color: var(--color-text-secondary);
+  transition: all 0.2s ease;
+}
+
+.expand-indicator svg {
+  flex-shrink: 0;
+  transition: transform 0.2s ease;
+}
+
+.expand-indicator.expanded svg {
+  transform: rotate(90deg);
+}
+
+.tool-result-details {
+  margin-top: var(--space-12);
+  padding: var(--space-16);
+  background: var(--color-surface-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  border-left: 3px solid var(--color-primary);
+}
+
+.tool-result-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-12);
+  padding-bottom: var(--space-8);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.tool-result-header strong {
+  color: var(--color-text);
+  font-size: var(--font-size-sm);
+}
+
+.tool-result-copy-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.tool-result-copy-btn:hover {
+  background: var(--color-surface-hover);
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.tool-result-content {
+  max-height: 400px;
+  overflow-y: auto;
+  border-radius: var(--radius-sm);
+}
+
+.tool-result-content pre {
+  margin: 0;
+  padding: var(--space-12);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  line-height: 1.4;
+  color: var(--color-text);
+  overflow-x: auto;
+}
+
+.tool-result-content code {
+  background: transparent;
+  color: inherit;
+  font-family: inherit;
+}
+
+/* Animation for smooth expand/collapse */
+.tool-result-details {
+  animation: slideDown 0.2s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.message-usage {
+  padding: var(--space-8) var(--space-16);
+  background: rgba(0, 0, 0, 0.05);
+  border-top: 1px solid rgba(0, 0, 0, 0.1);
+  display: flex;
+  gap: var(--space-16);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+}
+
+.conversation-message.message-user .message-usage {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* ============================================================================
+   Empty and Error States
+   ============================================================================ */
+
+.claude-cli-history-empty,
+.error-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-48);
+  text-align: center;
+  flex: 1;
+}
+
+.empty-icon,
+.error-icon {
+  font-size: 48px;
+  margin-bottom: var(--space-16);
+  opacity: 0.5;
+}
+
+.empty-title,
+.error-title {
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+  color: var(--color-text);
+  margin-bottom: var(--space-8);
+}
+
+.empty-subtitle,
+.error-subtitle {
+  font-size: var(--font-size-base);
+  color: var(--color-text-secondary);
+  margin-bottom: var(--space-16);
+}
+
+.claude-cli-history-empty code {
+  background: var(--color-surface-secondary);
+  padding: var(--space-2) var(--space-6);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-sm);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+}
+
+/* ============================================================================
+   Responsive Design
+   ============================================================================ */
+
+@media (max-width: 768px) {
+  .claude-cli-history-modal {
+    width: 100vw;
+    height: 100vh;
+    border-radius: 0;
+    max-width: none;
+  }
+
+  .claude-cli-history-header {
+    padding: var(--space-16);
+  }
+
+  .claude-cli-history-search {
+    width: 200px;
+  }
+
+  .session-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-4);
+  }
+
+  .session-meta {
+    font-size: var(--font-size-xs);
+  }
+
+  .claude-cli-conversation-header {
+    padding: var(--space-12) var(--space-16);
+  }
+
+  .conversation-header-left {
+    gap: var(--space-12);
+  }
+
+  .conversation-back-btn {
+    padding: var(--space-6) var(--space-8);
+    font-size: var(--font-size-xs);
+  }
+
+  .conversation-copy-btn {
+    padding: var(--space-4);
+  }
+
+  .claude-cli-conversation-content {
+    padding: var(--space-12);
+  }
+
+  .conversation-message {
+    margin-bottom: var(--space-16);
+  }
+
+  .tool-result-toggle {
+    padding: var(--space-4) var(--space-8);
+    font-size: var(--font-size-xs);
+  }
+
+  .expand-indicator {
+    padding: var(--space-6);
+    min-width: 40px;
+    min-height: 40px;
+  }
+}
+
+@media (max-width: 480px) {
+  .claude-cli-history-controls {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-8);
+  }
+
+  .claude-cli-history-search {
+    width: 100%;
+  }
+
+  .session-details {
+    flex-wrap: wrap;
+    gap: var(--space-6);
+  }
+
+  .session-actions {
+    margin-left: var(--space-8);
+  }
+
+
+
+  .tool-result-details {
+    padding: var(--space-12);
+  }
+
+  .tool-result-content {
+    max-height: 300px;
+  }
+
+  .tool-result-content pre {
+    font-size: var(--font-size-xs);
+    padding: var(--space-8);
+  }
+}
+
+/* ============================================================================
+   Raw, Condensed Conversation View (scoped to conversation content only)
+   - Minimal styles, monospace, preformatted, low overhead
+   - Does not affect sessions list or other views
+   ============================================================================ */
+
+#claudeCliConversationContent.raw-mode {
+  padding: var(--space-12);
+  font-family: var(--font-mono);
+}
+
+#claudeCliConversationContent.raw-mode .raw-message {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  margin-bottom: var(--space-8);
+  background: var(--color-surface);
+}
+
+#claudeCliConversationContent.raw-mode .raw-message-header {
+  padding: var(--space-6) var(--space-8);
+  font-weight: 600;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface-secondary);
+}
+
+#claudeCliConversationContent.raw-mode .raw-message-content {
+  padding: var(--space-8);
+}
+
+#claudeCliConversationContent.raw-mode .raw-text {
+  margin: 0;
+  white-space: pre-wrap;
+  font-family: var(--font-mono);
+  font-size: var(--font-size-sm);
+  line-height: 1.4;
+  color: var(--color-text);
+}
+
+#claudeCliConversationContent.raw-mode details.tool-call {
+  margin-top: var(--space-8);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-secondary);
+}
+
+#claudeCliConversationContent.raw-mode details.tool-call > summary {
+  cursor: pointer;
+  padding: var(--space-6) var(--space-8);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  user-select: none;
+}
+
+#claudeCliConversationContent.raw-mode details.tool-call[open] > summary {
+  color: var(--color-primary);
+  border-bottom: 1px solid var(--color-border);
+}
+
+#claudeCliConversationContent.raw-mode .tool-call-body {
+  padding: var(--space-8);
+}
+
+#claudeCliConversationContent.raw-mode .tool-label {
+  font-size: var(--font-size-2xs, 11px);
+  color: var(--color-text-tertiary);
+  margin-bottom: var(--space-4);
+}
+
+#claudeCliConversationContent.raw-mode .raw-code {
+  margin: 0 0 var(--space-8) 0;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-8);
+  white-space: pre;
+  overflow-x: auto;
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  line-height: 1.4;
+  color: var(--color-text);
+}
+
+/* Tool Result Container - Standalone highlighted containers */
+#claudeCliConversationContent.raw-mode .tool-result-container {
+  margin-bottom: var(--space-8);
+  border: 1px solid var(--color-border);
+  border-left: 3px solid var(--color-primary);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-secondary);
+}
+
+#claudeCliConversationContent.raw-mode .tool-result-details {
+  margin: 0;
+}
+
+#claudeCliConversationContent.raw-mode .tool-result-summary {
+  cursor: pointer;
+  padding: var(--space-8) var(--space-12);
+  user-select: none;
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  transition: background-color 0.2s ease;
+}
+
+#claudeCliConversationContent.raw-mode .tool-result-summary:hover {
+  background: var(--color-surface-hover);
+}
+
+#claudeCliConversationContent.raw-mode .tool-result-details[open] .tool-result-summary {
+  border-bottom: 1px solid var(--color-border);
+}
+
+#claudeCliConversationContent.raw-mode .tool-result-badge {
+  background: var(--color-surface);
+  color: var(--color-primary);
+  border: 1px solid var(--color-primary);
+  padding: var(--space-2) var(--space-6);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+#claudeCliConversationContent.raw-mode .tool-result-name {
+  font-family: var(--font-mono);
+  font-weight: 500;
+  color: var(--color-text);
+  font-size: var(--font-size-sm);
+}
+
+#claudeCliConversationContent.raw-mode .tool-result-timestamp {
+  margin-left: auto;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  font-family: var(--font-mono);
+}
+
+#claudeCliConversationContent.raw-mode .tool-result-body {
+  padding: var(--space-12);
+  background: var(--color-surface);
+}

@@ -1,5 +1,6 @@
 const { ipcMain } = require('electron');
 const McpServerManager = require('./mcp-server-manager');
+const ClaudeCliHistory = require('./claude-cli-history');
 const path = require('path');
 const { exec } = require('child_process');
 
@@ -11,6 +12,7 @@ class IPCHandlers {
     this.modelConfig = modelConfig;
     this.claudeProcessManager = claudeProcessManager;
     this.mainWindow = mainWindow;
+    this.claudeCliHistory = new ClaudeCliHistory();
   }
 
   // Register all IPC handlers
@@ -47,6 +49,9 @@ class IPCHandlers {
 
     // Window handlers
     this.registerWindowHandlers();
+
+    // Claude CLI history handlers
+    this.registerClaudeCliHistoryHandlers();
   }
 
   registerSetupHandlers() {
@@ -1117,6 +1122,49 @@ class IPCHandlers {
         const newWidth = width || currentWidth;
         const newHeight = height || currentHeight;
         this.mainWindow.setSize(newWidth, newHeight, true);
+      }
+    });
+  }
+
+  registerClaudeCliHistoryHandlers() {
+    // Get all Claude CLI sessions
+    ipcMain.handle('get-claude-cli-sessions', async () => {
+      try {
+        return await this.claudeCliHistory.getAllSessions();
+      } catch (error) {
+        console.error('Error getting Claude CLI sessions:', error);
+        return [];
+      }
+    });
+
+    // Get detailed conversation for a specific session
+    ipcMain.handle('get-claude-cli-session-details', async (event, sessionId) => {
+      try {
+        return await this.claudeCliHistory.getSessionDetails(sessionId);
+      } catch (error) {
+        console.error('Error getting Claude CLI session details:', error);
+        throw error;
+      }
+    });
+
+    // Search Claude CLI sessions
+    ipcMain.handle('search-claude-cli-sessions', async (event, query) => {
+      try {
+        return await this.claudeCliHistory.searchSessions(query);
+      } catch (error) {
+        console.error('Error searching Claude CLI sessions:', error);
+        return [];
+      }
+    });
+
+    // Clear Claude CLI sessions cache
+    ipcMain.handle('clear-claude-cli-sessions-cache', async () => {
+      try {
+        this.claudeCliHistory.clearCache();
+        return { success: true };
+      } catch (error) {
+        console.error('Error clearing Claude CLI sessions cache:', error);
+        return { success: false, error: error.message };
       }
     });
   }

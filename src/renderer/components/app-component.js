@@ -27,6 +27,7 @@ class AppComponent {
       this.components.fileViewer = new FileViewerComponent();
       this.components.chatSidebar = new ChatSidebarComponent();
       this.components.globalSearch = new GlobalSearch();
+      this.components.claudeCliHistory = new ClaudeCliHistory();
       this.components.tasksSidebar = new TasksSidebar();
 
       // Hide folder sidebar by default
@@ -42,8 +43,9 @@ class AppComponent {
       setTimeout(() => {
         this.setupComponentCommunication();
         
-        // Expose messageComponent globally for button onclick handlers
+        // Expose components globally for button onclick handlers
         window.messageComponent = this.components.messageComponent;
+        window.claudeCliHistory = this.components.claudeCliHistory;
       }, 100);
 
       // Initialize global header button states after everything is ready
